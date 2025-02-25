@@ -23,5 +23,5 @@ print(oloc.calculate('1+2/3*(4/5-sin(π/2))')) # Output: 13/15
 - High compatibility with various inputs  
 - Clear and complete exception alerts  
 
-Read the [detailed tutorial](./source/README.md) to get started with `oloc`.  
-
+Read the [detailed tutorial](doc/en/README.md) to get started with `oloc`.  
+> More Document in `doc` directory  
