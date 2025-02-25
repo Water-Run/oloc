@@ -13,15 +13,15 @@ pip install oloc
 
 ```python
 import oloc
-print(oloc.calculate('1+2/3*(4/5-sin(π/2))')) # Output: 13/15
+print(oloc.calculate('1+2/3*(4/5-0.5)')) # Output: 6/5
 ```
 
 ***Features of oloc***:  
-- Lightweight and extremely easy to use  
-- Realization of common basic arithmetic operations  
-- Accurate results based on fractional arithmetic   
-- High compatibility with various inputs  
-- Clear and complete exception alerts  
+- **Accurate calculations based on fractional arithmetic** 
+- **Built-in support for algebraic functions and irrational numbers**  
+- **Highly compatible with diverse input formats and notations**  
+- **Allows comments within expressions**  
+- **Clear and precise error messages with suggestions**  
 
 Read the [detailed tutorial](doc/en/README.md) to get started with `oloc`.  
 > More Document in `doc` directory  
