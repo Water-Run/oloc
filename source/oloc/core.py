@@ -2,6 +2,7 @@ r"""
 :file: core.py
 :author: WaterRun
 :time: 2025-02-24
+:version: 0.1.0
 :description:
 """
 from typing import final
