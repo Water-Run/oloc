@@ -24,4 +24,4 @@ print(oloc.calculate('1+2/3*(4/5-0.5)')) # Output: 6/5
 - **Clear and precise error messages with suggestions**  
 
 Read the [detailed tutorial](doc/en/README.md) to get started with `oloc`.  
-> More Document in `doc` directory  
+*[中文文档](doc/zh/README.md)*  
