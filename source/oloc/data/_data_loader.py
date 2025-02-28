@@ -15,10 +15,13 @@ After modification, run this script directly in the "data" path
 # Symbol Mapping Table
 
 symbol_mapping_table: Dict[str, List[str]] = {
-    "": [" ", "=", "equal", "equals", "is", "rad", "radians"],
+    "": [" ", "=", "equal", "equals", "is", "rad", "radians", "等于", "等", "是"],
     "^": ["^", "**"],
-    "+": ["+", "plus"],
-    "-": ["-", "minus"]
+    "+": ["+", "plus", "加"],
+    "-": ["-", "minus", "减"],
+    "*": ["*"],
+    "/": ["/"],
+
 }
 
 # Function Conversion Table
