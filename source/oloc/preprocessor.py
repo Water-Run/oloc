@@ -14,7 +14,7 @@ from source.oloc.exceptions import *
 class Preprocessor:
     r"""
     预处理器
-
+    实例创建同时进行预处理操作,结果写入self.expression中
     :param expression: 待处理的表达式
     """
 
@@ -62,6 +62,12 @@ class Preprocessor:
         for target, sources in symbol_mapping_table.items():
             for source in sources:
                 self.expression = self.expression.replace(source, target)
+
+    def _convert_fraction(self):
+        r"""
+        将表达式中的各种有理数进行分数化
+        :return: None
+        """
 
     def execute(self) -> None:
         r"""

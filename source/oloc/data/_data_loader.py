@@ -21,7 +21,8 @@ symbol_mapping_table: Dict[str, List[str]] = {
     "-": ["-", "minus", "减"],
     "*": ["*"],
     "/": ["/"],
-
+    "00": [],
+    "0": ["0"],
 }
 
 # Function Conversion Table
