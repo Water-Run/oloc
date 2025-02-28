@@ -6,6 +6,7 @@ r"""
 """
 
 import simpsave as ss
+from typing import Dict, List
 
 r"""
 After modification, run this script directly in the "data" path
@@ -13,8 +14,11 @@ After modification, run this script directly in the "data" path
 
 # Symbol Mapping Table
 
-symbol_mapping_table: dict = {
-
+symbol_mapping_table: Dict[str, List[str]] = {
+    "": [" ", "=", "equal", "equals", "is", "rad", "radians"],
+    "^": ["^", "**"],
+    "+": ["+", "plus"],
+    "-": ["-", "minus"]
 }
 
 # Function Conversion Table

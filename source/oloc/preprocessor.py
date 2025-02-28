@@ -22,6 +22,7 @@ class Preprocessor:
 
     def __init__(self, expression: str):
         self.expression = expression
+        self.execute()
 
     def _remove_comment(self) -> None:
         r"""
@@ -29,16 +30,15 @@ class Preprocessor:
         :return: None
         """
 
-        # 检查并移除 '@' 之后的注释
+        # 移除结尾注释
         if '@' in self.expression:
             self.expression = self.expression.split('@', 1)[0].strip()
 
-        # 查找所有 '#' 的位置
+        # 检查自由注释的匹配情况
         hash_positions = [pos for pos, char in enumerate(self.expression) if char == '#']
 
-        # 如果 '#' 数量不是偶数，说明有不匹配的问题
         if len(hash_positions) % 2 != 0:
-            # 找到第一个不匹配的 '#' 的位置
+            # 获取未匹配的 '#' 的字符位置（基于字符索引）
             unmatched_position = hash_positions[-1]
             raise OlocFreeCommentException(
                 message="OlocFreeCommentException: Mismatch '#' detected",
@@ -46,9 +46,22 @@ class Preprocessor:
                 position=unmatched_position
             )
 
-        # 正则表达式匹配包裹在 ## 中的内容
+        # 移除自由注释 (清除所有 #注释内容# 格式的部分)
         pattern = r'#(.*?)#'
         self.expression = re.sub(pattern, '', self.expression).strip()
+
+    def _symbol_mapper(self):
+        r"""
+        读取符号映射表,并依次遍历进行映射
+        :return: None
+        """
+        # 符号映射表
+        symbol_mapping_table:dict = ss.read('symbol_mapping_table', './data/olocdata.ini')
+
+        # 遍历映射表并执行替换
+        for target, sources in symbol_mapping_table.items():
+            for source in sources:
+                self.expression = self.expression.replace(source, target)
 
     def execute(self) -> None:
         r"""
@@ -57,5 +70,11 @@ class Preprocessor:
         """
 
         self._remove_comment()
+        self._symbol_mapper()
 
-        symbol_mapping_table = ss.read('symbol_mapping_table', file='data\olocdata.ini') # 读取符号映射表
+"""test"""
+while True:
+    try:
+        print(Preprocessor(input('>>')).expression)
+    except OlocException as e:
+        print(e)
