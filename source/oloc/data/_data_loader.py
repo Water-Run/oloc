@@ -28,7 +28,7 @@ symbol_mapping_table: Dict[str, List[str]] = {
 # Function Conversion Table
 
 function_conversion_table: dict = {
-
+    {"type": "pow", "result": "pow(x,y)"}: ["pow(x,y)", "x^y"]
 }
 
 # Write Data

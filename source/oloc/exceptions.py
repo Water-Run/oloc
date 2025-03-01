@@ -41,7 +41,7 @@ class OlocException(ABC, Exception):
             f"{self.message}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
-            f"{self._get_context_message()}"
+            f"Note: {self._get_context_message()}"
         )
 
     @abstractmethod
@@ -54,7 +54,7 @@ class OlocException(ABC, Exception):
 
         :return: A string with additional context about the exception.
         """
-        pass
+        ...
 
 
 class OlocFreeCommentException(OlocException):
@@ -66,4 +66,8 @@ class OlocFreeCommentException(OlocException):
 
         :return: A string describing the issue with free comments.
         """
-        return "The content of free comments should be wrapped in a before and after '#'."
+        return "The content of free comments should be wrapped in a before and after '#'"
+
+
+class OlocNumericSeparator(OlocException):
+    """"""

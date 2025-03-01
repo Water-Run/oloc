@@ -69,6 +69,13 @@ class Preprocessor:
         :return: None
         """
 
+        def _eliminate_digit_separator(expression: str) -> str:
+            r"""
+            消除数字分隔符
+            :param expression:
+            :return:
+            """
+
     def execute(self) -> None:
         r"""
         执行预处理,并将结果写入self.expression中
