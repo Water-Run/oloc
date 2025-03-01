@@ -7,6 +7,7 @@ r"""
 
 import simpsave as ss  # 使用simpsave进行数据读取操作
 import re
+import utils
 
 from source.oloc.exceptions import *
 
@@ -39,11 +40,11 @@ class Preprocessor:
 
         if len(hash_positions) % 2 != 0:
             # 获取未匹配的 '#' 的字符位置（基于字符索引）
-            unmatched_position = hash_positions[-1]
+            unmatched_position = [hash_positions[-1]]  # 单个未匹配的位置放入列表
             raise OlocFreeCommentException(
-                message="OlocFreeCommentException: Mismatch '#' detected",
-                expression=self.expression,
-                position=unmatched_position
+                exception_type=OlocFreeCommentException.ExceptionType.MISMATCH,  # 枚举类型
+                expression=self.expression,  # 错误的表达式
+                positions=unmatched_position  # 未匹配的位置
             )
 
         # 移除自由注释 (清除所有 #注释内容# 格式的部分)
@@ -56,7 +57,7 @@ class Preprocessor:
         :return: None
         """
         # 符号映射表
-        symbol_mapping_table:dict = ss.read('symbol_mapping_table', './data/olocdata.ini')
+        symbol_mapping_table = utils.get_symbol_mapping_table()
 
         # 遍历映射表并执行替换
         for target, sources in symbol_mapping_table.items():
@@ -84,6 +85,7 @@ class Preprocessor:
 
         self._remove_comment()
         self._symbol_mapper()
+
 
 """test"""
 while True:

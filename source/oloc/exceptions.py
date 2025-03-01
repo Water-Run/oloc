@@ -1,11 +1,13 @@
 r"""
 :author: WaterRun
-:date: 2025-02-28
+:date: 2025-03-01
 :file: exceptions.py
 :description: Oloc exceptions
 """
 
 from abc import ABC, abstractmethod
+from enum import Enum
+from typing import List
 
 
 class OlocException(ABC, Exception):
@@ -13,21 +15,31 @@ class OlocException(ABC, Exception):
     Abstract base class for all Oloc exceptions.
 
     This class provides a standard structure for exception messages,
-    requiring subclasses to define a context message.
+    requiring subclasses to define an exception type enumeration.
     """
 
-    def __init__(self, message: str, expression: str, position: int):
+    @abstractmethod
+    class ExceptionType(Enum):
         """
-        Initialize the exception with a specific error message, the expression,
-        and the position of the issue.
+        Abstract inner class for exception types.
 
-        :param message: The error message
-        :param expression: The original expression
-        :param position: The position of the issue in the expression
+        Subclasses must define this enum to provide specific messages
+        and context information for their exception types.
         """
-        self.message = message
+        ...
+
+    def __init__(self, exception_type: Enum, expression: str, positions: List[int]):
+        """
+        Initialize the exception with a specific error type, the expression,
+        and the positions of the issues.
+
+        :param exception_type: The type of the exception (Enum)
+        :param expression: The original expression
+        :param positions: The positions of the issues in the expression
+        """
+        self.exception_type = exception_type
         self.expression = expression
-        self.position = position
+        self.positions = positions
         super().__init__(self.__str__())
 
     def __str__(self):
@@ -36,38 +48,48 @@ class OlocException(ABC, Exception):
 
         :return: A formatted string describing the error.
         """
-        marker_line = ' ' * self.position + '^'
+        marker_line = self._generate_marker_line()
         return (
-            f"{self.message}\n"
+            f"{self.exception_type.value[0]}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
-            f"Note: {self._get_context_message()}"
+            f"Note: {self.exception_type.value[1]}"
         )
 
-    @abstractmethod
-    def _get_context_message(self) -> str:
+    def _generate_marker_line(self) -> str:
         """
-        Abstract method to provide additional context for the exception.
+        Generate a line with '^' markers at the specified positions.
 
-        Subclasses must implement this method to provide specific context
-        messages related to the error.
-
-        :return: A string with additional context about the exception.
+        :return: A string with markers indicating the error positions.
         """
-        ...
+        marker_line = [' '] * len(self.expression)
+        for pos in self.positions:
+            if 0 <= pos < len(self.expression):
+                marker_line[pos] = '^'
+        return ''.join(marker_line)
 
 
 class OlocFreeCommentException(OlocException):
-    """Exception raised for unmatched '#' in free comments."""
+    """
+    Exception raised for unmatched '#' in free comments.
+    """
 
-    def _get_context_message(self) -> str:
+    class ExceptionType(Enum):
         """
-        Provide a specific context message for free comment issues.
-
-        :return: A string describing the issue with free comments.
+        Enum class defining the types of OlocFreeCommentException.
         """
-        return "The content of free comments should be wrapped in a before and after '#'"
+        MISMATCH = (
+            "OlocFreeCommentException: Mismatch '#' detected",
+            "The content of free comments should be wrapped in a before and after '#'."
+        )
+        # Add more specific types of free comment errors here if needed.
 
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+        """
+        Initialize the OlocFreeCommentException.
 
-class OlocNumericSeparator(OlocException):
-    """"""
+        :param exception_type: The type of the exception (Enum)
+        :param expression: The original expression
+        :param positions: The positions of the issues in the expression
+        """
+        super().__init__(exception_type, expression, positions)
