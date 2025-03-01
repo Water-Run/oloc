@@ -11,7 +11,7 @@ from typing import List
 
 
 class OlocException(ABC, Exception):
-    """
+    r"""
     Abstract base class for all Oloc exceptions.
 
     This class provides a standard structure for exception messages,
@@ -20,7 +20,7 @@ class OlocException(ABC, Exception):
 
     @abstractmethod
     class ExceptionType(Enum):
-        """
+        r"""
         Abstract inner class for exception types.
 
         Subclasses must define this enum to provide specific messages
@@ -29,7 +29,7 @@ class OlocException(ABC, Exception):
         ...
 
     def __init__(self, exception_type: Enum, expression: str, positions: List[int]):
-        """
+        r"""
         Initialize the exception with a specific error type, the expression,
         and the positions of the issues.
 
@@ -43,7 +43,7 @@ class OlocException(ABC, Exception):
         super().__init__(self.__str__())
 
     def __str__(self):
-        """
+        r"""
         Generate a detailed string representation of the exception.
 
         :return: A formatted string describing the error.
@@ -57,7 +57,7 @@ class OlocException(ABC, Exception):
         )
 
     def _generate_marker_line(self) -> str:
-        """
+        r"""
         Generate a line with '^' markers at the specified positions.
 
         :return: A string with markers indicating the error positions.
@@ -70,12 +70,12 @@ class OlocException(ABC, Exception):
 
 
 class OlocFreeCommentException(OlocException):
-    """
+    r"""
     Exception raised for unmatched '#' in free comments.
     """
 
     class ExceptionType(Enum):
-        """
+        r"""
         Enum class defining the types of OlocFreeCommentException.
         """
         MISMATCH = (
@@ -85,7 +85,7 @@ class OlocFreeCommentException(OlocException):
         # Add more specific types of free comment errors here if needed.
 
     def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
-        """
+        r"""
         Initialize the OlocFreeCommentException.
 
         :param exception_type: The type of the exception (Enum)
