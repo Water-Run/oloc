@@ -64,6 +64,13 @@ class Preprocessor:
             for source in sources:
                 self.expression = self.expression.replace(source, target)
 
+    def _formal_elimination(self):
+        r"""
+        消除表达式中的一些特殊形式.包括数字分隔符,括号化简,正负号消除
+        :return: None
+        """
+
+
     def _convert_fraction(self):
         r"""
         将表达式中的各种有理数进行分数化

@@ -14,24 +14,36 @@ After modification, run this script directly in the "data" path
 
 # Symbol Mapping Table
 
-symbol_mapping_table: Dict[str, List[str]] = {
-    "": [" ", "=", "equal", "equals", "is", "rad", "radians", "等于", "等", "是"],
+symbol_mapping_table: dict = {
+    "": [" ", "=", "equal", "equals", "is", "rad", "radians"],
+    "√": ["√", "┌"],
+    "°": ["°", "deg", "degree", "^o"],
     "^": ["^", "**"],
-    "+": ["+", "plus", "加"],
-    "-": ["-", "minus", "减"],
+    "+": ["+", "plus"],
+    "-": ["-", "minus"],
     "*": ["*"],
     "/": ["/"],
-    "00": [],
-    "0": ["0"],
 }
 
 # Function Conversion Table
 
 function_conversion_table: dict = {
-    {"type": "pow", "result": "pow(x,y)"}: ["pow(x,y)", "x^y"]
+    "sqrt(x)": ["sqrt(x)", "x^(1/2)", "√x", "pow(x,1/2)"],
+    "square(x)": ["square(x)", "x^2", "pow(x,2)", "sq(x)"],
+    "cube(x)": ["cube(x)", "x^3", "pow(x,3)", "cub(x)"],
+    "reciprocal(x)": ["reciprocal(x)", "x^-1", "pow(x,-1)", "rec(x)"],
+    "pow(x,y)": ["pow(x,y)", "x^y", "x**y"],
+    "exp(x)": ["exp(x)", "pow(e,x)"],
+    "mod(x,y)": ["mod(x,y)", "x%y"],
+    "fact(x)": ["fact(x)", "x!"],
+    "abs(x)": ["abs(x)", "|x|"],
+    "sign(x)": ["sign(x)"],
+    "rad(x)": ["rad(x)", "x°"],
+    "gcd(x,y)": ["gcd(x,y)"],
+    "lcm(x,y)": ["lcm(x,y)"],
 }
 
 # Write Data
 
-ss.write('symbol_mapping_table', symbol_mapping_table, 'olocdata.ini')
-ss.write('function_conversion_table', function_conversion_table, 'olocdata.ini')
+ss.write('symbol_mapping_table', symbol_mapping_table, file='olocdata.ini')
+ss.write('function_conversion_table', function_conversion_table, file='olocdata.ini')

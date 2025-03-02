@@ -7,6 +7,5 @@ r"""
 
 from result import OlocResult
 
-
-def calculate(expression:str, *, time_limit:float = 1.0) -> OlocResult:
+def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
     ...
