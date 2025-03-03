@@ -1,12 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-02-28
+:date: 2025-03-03
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
 
 import simpsave as ss
-from typing import Dict, List
 
 r"""
 After modification, run this script directly in the "data" path
@@ -45,5 +44,5 @@ function_conversion_table: dict = {
 
 # Write Data
 
-ss.write('symbol_mapping_table', symbol_mapping_table, file='olocdata.ini')
-ss.write('function_conversion_table', function_conversion_table, file='olocdata.ini')
+if ss.write('symbol_mapping_table', symbol_mapping_table, file='olocdata.ini') and ss.write('function_conversion_table', function_conversion_table, file='olocdata.ini'):
+    print('olocdata updated')

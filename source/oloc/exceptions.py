@@ -1,8 +1,8 @@
-r"""
+"""
 :author: WaterRun
-:date: 2025-03-01
+:date: 2025-03-03
 :file: exceptions.py
-:description: Oloc exceptions
+:description: Oloc 异常模块
 """
 
 from abc import ABC, abstractmethod
@@ -12,30 +12,29 @@ from typing import List
 
 class OlocException(ABC, Exception):
     r"""
-    Abstract base class for all Oloc exceptions.
+    所有 Oloc 异常的抽象基类。
 
-    This class provides a standard structure for exception messages,
-    requiring subclasses to define an exception type enumeration.
+    该类为异常消息提供了标准结构，
+    要求子类定义一个异常类型枚举类。
     """
 
     @abstractmethod
     class ExceptionType(Enum):
         r"""
-        Abstract inner class for exception types.
+        异常类型的抽象内部类。
 
-        Subclasses must define this enum to provide specific messages
-        and context information for their exception types.
+        子类必须定义此枚举类，以提供特定的消息
+        和与其异常类型相关的上下文信息。
         """
         ...
 
     def __init__(self, exception_type: Enum, expression: str, positions: List[int]):
         r"""
-        Initialize the exception with a specific error type, the expression,
-        and the positions of the issues.
+        使用特定的异常类型、表达式和错误位置初始化异常。
 
-        :param exception_type: The type of the exception (Enum)
-        :param expression: The original expression
-        :param positions: The positions of the issues in the expression
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
         """
         self.exception_type = exception_type
         self.expression = expression
@@ -44,13 +43,13 @@ class OlocException(ABC, Exception):
 
     def __str__(self):
         r"""
-        Generate a detailed string representation of the exception.
+        生成异常的详细字符串表示。
 
-        :return: A formatted string describing the error.
+        :return: 描述错误的格式化字符串
         """
         marker_line = self._generate_marker_line()
         return (
-            f"{self.exception_type.value[0]}\n"
+            f"{self.exception_type.value[0].format(time_limit=getattr(self, 'time_limit', 0))}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
             f"Note: {self.exception_type.value[1]}"
@@ -58,9 +57,9 @@ class OlocException(ABC, Exception):
 
     def _generate_marker_line(self) -> str:
         r"""
-        Generate a line with '^' markers at the specified positions.
+        根据指定位置生成带有 '^' 标记的定位行。
 
-        :return: A string with markers indicating the error positions.
+        :return: 一个字符串，包含标记错误位置的 '^'
         """
         marker_line = [' '] * len(self.expression)
         for pos in self.positions:
@@ -69,27 +68,30 @@ class OlocException(ABC, Exception):
         return ''.join(marker_line)
 
 
-class OlocFreeCommentException(OlocException):
+class OlocTimeOutException(OlocException):
     r"""
-    Exception raised for unmatched '#' in free comments.
+    当函数执行时间超出设定的最大时间时引发的异常。
     """
 
     class ExceptionType(Enum):
         r"""
-        Enum class defining the types of OlocFreeCommentException.
+        定义 OlocTimeOutException 的异常类型的枚举类。
         """
-        MISMATCH = (
-            "OlocFreeCommentException: Mismatch '#' detected",
-            "The content of free comments should be wrapped in a before and after '#'."
+        TIMEOUT = (
+            "OlocTimeOutException: Calculation time exceeds the set maximum time of {time_limit:.1f}s",
+            "Check your expression or modify time_limit to a larger value."
         )
-        # Add more specific types of free comment errors here if needed.
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], time_limit: float, elapsed_time: float):
         r"""
-        Initialize the OlocFreeCommentException.
+        初始化 OlocTimeOutException，包含时间限制和实际耗时。
 
-        :param exception_type: The type of the exception (Enum)
-        :param expression: The original expression
-        :param positions: The positions of the issues in the expression
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param time_limit: 最大允许的执行时间
+        :param elapsed_time: 实际花费的时间
         """
+        self.time_limit = time_limit
+        self.elapsed_time = elapsed_time
         super().__init__(exception_type, expression, positions)

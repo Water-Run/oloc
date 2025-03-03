@@ -1,11 +1,10 @@
 r"""
 :author: WaterRun
-:date: 2025-03-01
+:date: 2025-03-03
 :file: preprocessor.py
 :description: Oloc preprocessor
 """
 
-import simpsave as ss  # 使用simpsave进行数据读取操作
 import re
 import utils
 
@@ -44,7 +43,7 @@ class Preprocessor:
             raise OlocFreeCommentException(
                 exception_type=OlocFreeCommentException.ExceptionType.MISMATCH,  # 枚举类型
                 expression=self.expression,  # 错误的表达式
-                positions=unmatched_position  # 未匹配的位置
+                positions=unmatched_position  # 未匹配的位置列表
             )
 
         # 移除自由注释 (清除所有 #注释内容# 格式的部分)

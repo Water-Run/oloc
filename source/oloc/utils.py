@@ -1,11 +1,10 @@
-r"""
+"""
 :author: WaterRun
 :date: 2025-03-03
 :file: utils.py
 :description: Oloc utils
 """
 
-from typing import Dict, List
 import simpsave as ss
 
 
@@ -34,11 +33,10 @@ def get_function_name_list() -> list:
     function_names = []
     for key, values in get_function_conversion_table().items():
         for func in values:
-            if '(' in func and ')' in func:  # 只保留标准函数调用形式
+            if '(' in func and ')' and not '/' in func:  # 只保留标准函数调用形式
                 function_names.append(func.split('(')[0])  # 提取函数名
 
     return list(set(function_names))
 
 
 """test"""
-print(get_function_name_list())
