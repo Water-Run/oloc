@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-03
+:date: 2025-03-06
 :file: exceptions.py
 :description: Oloc 异常模块
 """
@@ -94,4 +94,29 @@ class OlocTimeOutException(OlocException):
         """
         self.time_limit = time_limit
         self.elapsed_time = elapsed_time
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocFreeCommentException(OlocException):
+    r"""
+    当自由注释的格式不匹配时引发的异常。
+    """
+
+    class ExceptionType(Enum):
+        r"""
+        定义 OlocFreeCommentException 的异常类型的枚举类。
+        """
+        MISMATCH = (
+            "OlocFreeCommentException: Mismatch '#' detected",
+            "The content of free comments should be wrapped in a before and after '#'."
+        )
+
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+        r"""
+        初始化 OlocFreeCommentException。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        """
         super().__init__(exception_type, expression, positions)
