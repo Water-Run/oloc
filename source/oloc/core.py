@@ -9,7 +9,6 @@ from result import OlocResult
 from exceptions import OlocTimeOutException
 import time
 from multiprocessing import Process, Queue
-from typing import Optional
 
 
 def _execute_calculation(expression: str, result_queue: Queue):
@@ -20,8 +19,8 @@ def _execute_calculation(expression: str, result_queue: Queue):
     :param result_queue: 用于存储计算结果或异常的队列
     """
     try:
-        time.sleep(10)  # 模拟长时间计算
-        result = OlocResult(expression=expression, result="Calculated Result")
+        time.sleep(2)  # 模拟长时间计算
+        result = OlocResult()
         result_queue.put(result)
     except Exception as e:
         result_queue.put(e)
@@ -79,7 +78,6 @@ def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
 """test"""
 if __name__ == "__main__":
     try:
-        # 测试超时
-        calculate('123', time_limit=0.1)
+        calculate('123+456+678', time_limit=1)
     except OlocTimeOutException as e:
         print(e)
