@@ -11,6 +11,9 @@ r"""
 After modification, run this script directly in the "data" path
 """
 
+# Retain decimal places
+retain_decimal_places: int = 7
+
 # Symbol Mapping Table
 
 symbol_mapping_table: dict = {
@@ -44,5 +47,5 @@ function_conversion_table: dict = {
 
 # Write Data
 
-if ss.write('symbol_mapping_table', symbol_mapping_table, file='olocdata.ini') and ss.write('function_conversion_table', function_conversion_table, file='olocdata.ini'):
+if ss.write('symbol_mapping_table', symbol_mapping_table, file='olocdata.ini') and ss.write('function_conversion_table', function_conversion_table, file='olocdata.ini') and ss.write('retain_decimal_places', retain_decimal_places, file='olocdata.ini'):
     print('olocdata updated')
