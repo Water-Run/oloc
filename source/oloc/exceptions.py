@@ -120,3 +120,29 @@ class OlocFreeCommentException(OlocException):
         :param positions: 表示问题位置的列表
         """
         super().__init__(exception_type, expression, positions)
+
+
+class OlocNumberSeparatorException(OlocException):
+    r"""
+    当数字分隔符规则被违反时引发的异常。
+    """
+
+    class ExceptionType(Enum):
+        r"""
+        定义 OlocNumberSeparatorException 的异常类型的枚举类。
+        """
+        INVALID_SEPARATOR = (
+            "OlocNumberSeparatorException: Invalid numeric separator detected",
+            "Ensure commas are used correctly as numeric separators in rational numbers. Commas must not appear at "
+            "the start, end, or consecutively"
+        )
+
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+        r"""
+        初始化 OlocNumberSeparatorException。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        """
+        super().__init__(exception_type, expression, positions)

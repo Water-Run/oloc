@@ -17,14 +17,15 @@ retain_decimal_places: int = 7
 # Symbol Mapping Table
 
 symbol_mapping_table: dict = {
-    "": [" ", "=", "equal", "equals", "is", "rad", "radians"],
+    "": [" ", "=", "_", "equal", "equals", "is", "rad", "radians"],
     "√": ["√", "┌"],
     "°": ["°", "deg", "degree", "^o"],
     "^": ["^", "**"],
-    "+": ["+", "plus"],
+    "+": ["+", "plus", "加"],
     "-": ["-", "minus"],
     "*": ["*"],
     "/": ["/"],
+    "π": ["π", "p", "pi"]
 }
 
 # Function Conversion Table
