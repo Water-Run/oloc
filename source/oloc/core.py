@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-06
+:date: 2025-03-07
 :file: core.py
 :description: Core of oloc
 """
@@ -9,6 +9,8 @@ from result import OlocResult
 from exceptions import *
 import time
 from multiprocessing import Process, Queue
+
+from preprocessor import Preprocessor
 
 
 def _execute_calculation(expression: str, result_queue: Queue):
@@ -19,9 +21,10 @@ def _execute_calculation(expression: str, result_queue: Queue):
     :param result_queue: 用于存储计算结果或异常的队列
     """
     """test"""
-    time.sleep(2)
-    result = OlocResult()
-    result_queue.put(result)
+    preprocess = Preprocessor(expression)
+    preprocess.execute()
+
+    result_queue.put(OlocResult(preprocess.expression, [preprocess.expression]))
 
 
 def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
@@ -87,7 +90,9 @@ def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
 
 """test"""
 if __name__ == "__main__":
-    try:
-        calculate('123+456+678', time_limit=0.5)
-    except OlocTimeOutException as e:
-        print(e)
+    while True:
+        try:
+            result = calculate(input('>>'), time_limit=0)
+            print(result.expression)
+        except OlocException as error:
+            print(error)

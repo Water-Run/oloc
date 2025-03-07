@@ -1,11 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-03-06
+:date: 2025-03-07
 :file: result.py
 :description: Oloc result
 """
 from typing import List, Dict, Any
-
+from fractions import Fraction
 
 class OlocResult:
     r"""
@@ -14,7 +14,7 @@ class OlocResult:
 
     :param expression: 要计算的表达式
     :param result: 表达式计算结果的字符串列表
-    :raises: TypeError: 如果输入的参数类型不正确
+    :raises TypeError: 如果输入的参数类型不正确
     """
 
     def __init__(self, expression: str, result: List[str]) -> None:
@@ -59,29 +59,12 @@ class OlocResult:
         """
         return f"OlocResult(expression={self._expression!r}, result={self._result!r})"
 
-    def __dict__(self) -> Dict[str, Any]:
-        r"""
-        将 OlocResult 转换为字典。
-
-        :return: 表示 OlocResult 的字典
-        """
-        return {"expression": self._expression, "result": self._result}
-
-    def __list__(self) -> List[str]:
-        r"""
-        将 OlocResult 转换为列表。
-
-        :return: result 列表
-        """
-        return self._result
-
     def __float__(self) -> float:
         r"""
         转换为浮点型。
 
         :raises TypeError: 如果无法进行转换
         """
-        raise TypeError("OlocResult does not support conversion to float.")
 
     def __int__(self) -> int:
         r"""
@@ -89,7 +72,6 @@ class OlocResult:
 
         :raises TypeError: 如果无法进行转换
         """
-        raise TypeError("OlocResult does not support conversion to int.")
 
     def __setattr__(self, name: str, value: Any) -> None:
         r"""
@@ -108,4 +90,10 @@ class OlocResult:
         :raises AttributeError: 如果尝试删除属性
         """
         raise AttributeError(f"OlocResult is immutable. Cannot delete attribute '{name}'.")
-    
+
+    def get_fraction(self) -> Fraction:
+        r"""
+        转化为Python原生的Fraction类型
+
+        :return: Fraction类型的结果
+        """

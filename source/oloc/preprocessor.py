@@ -22,7 +22,6 @@ class Preprocessor:
 
     def __init__(self, expression: str):
         self.expression = expression
-        self.execute()
 
     def _remove_comment(self) -> None:
         r"""
@@ -91,11 +90,3 @@ class Preprocessor:
 
         self._remove_comment()
         self._symbol_mapper()
-
-
-"""test"""
-while True:
-    try:
-        print(Preprocessor(input('>>')).expression)
-    except OlocException as e:
-        print(e)
