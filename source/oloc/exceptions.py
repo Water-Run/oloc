@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-06
+:date: 2025-03-08
 :file: exceptions.py
 :description: Oloc 异常模块
 """
@@ -134,7 +134,7 @@ class OlocNumberSeparatorException(OlocException):
         INVALID_SEPARATOR = (
             "OlocNumberSeparatorException: Invalid numeric separator detected",
             "Ensure commas are used correctly as numeric separators in rational numbers. Commas must not appear at "
-            "the start, end, or consecutively"
+            "the start, end, or consecutively."
         )
 
     def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):

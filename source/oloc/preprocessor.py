@@ -14,7 +14,6 @@ from source.oloc.exceptions import *
 class Preprocessor:
     r"""
     预处理器
-    实例创建同时进行预处理操作,结果写入self.expression中
     :param expression: 待处理的表达式
     """
 
