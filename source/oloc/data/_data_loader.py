@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-08
+:date: 2025-03-09
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -25,15 +25,40 @@ Type: dict
 Description: This dictionary maps symbols (keys) to a list of possible conversions (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right.
 """
 symbol_mapping_table: dict = {
-    "": [" ", "=", "_", "equal", "equals", "is", "rad", "radians"],
-    "√": ["√", "┌"],
-    "°": ["°", "deg", "degree", "^o"],
+    "": [" ", "=", "_", "equal", "equals", "eq", "is", "are", "=>", "->", "rad", "radians", "等", "于", "以", "是", "个"],
+    "√": ["√", "┌", "根号"],
+    "°": ["°", "deg", "degree", "^o", "度"],
     "^": ["^", "**"],
-    "+": ["+", "plus", "加"],
-    "-": ["-", "minus"],
-    "*": ["*"],
-    "/": ["/"],
-    "π": ["π", "p", "pi"]
+    "+": ["+", "plus", "add", "加"],
+    "-": ["-", "minus", "sub",  "减"],
+    "*": ["*", "・", "×", "mul",  "multiply", "乘"],
+    "/": ["/", "÷", "div",  "divide", "除"],
+    "%": ["%", "余"],
+    "!": ["!", "阶层"],
+    "π": ["π", "p", "pi", "派", "圆周率"],
+    "𝑒": ["𝑒", "e", "自然", "自然底数"],
+    ".": [".", "dot", "点"],
+    "(": ["(", "（", "左括号", "左小括号"],
+    ")": [")", "）", "右括号", "右小括号"],
+    "[": ["[", "左中括号"],
+    "]": ["]", "右中括号"],
+    "{": ["{", "左大括号"],
+    "}": ["}", "右大括号"],
+    "?": ["?", "def", "dflt", "default", "指定"],
+    ",": [","],
+    ";": [";"],
+    "\\": ["\\"],
+    "0": ["0", "zero", "零", "〇"],
+    "1": ["1", "one", "一"],
+    "2": ["2", "two", "二"],
+    "3": ["3", "three", "三"],
+    "4": ["4", "four", "四"],
+    "5": ["5", "five", "五"],
+    "6": ["6", "six", "六"],
+    "7": ["7", "seven", "七"],
+    "8": ["8", "eight", "八"],
+    "9": ["9", "nine", "九"],
+    "10": ["10", "ten", "十"],
 }
 
 r"""
@@ -46,10 +71,10 @@ function_conversion_table: dict = {
     "square(x)": ["square(x)", "x^2", "pow(x,2)", "sq(x)"],
     "cube(x)": ["cube(x)", "x^3", "pow(x,3)", "cub(x)"],
     "reciprocal(x)": ["reciprocal(x)", "x^-1", "pow(x,-1)", "rec(x)"],
-    "pow(x,y)": ["pow(x,y)", "x^y", "x**y"],
+    "pow(x,y)": ["pow(x,y)", "x^y", "x**y", "power(x,y)"],
     "exp(x)": ["exp(x)", "pow(e,x)"],
-    "mod(x,y)": ["mod(x,y)", "x%y"],
-    "fact(x)": ["fact(x)", "x!"],
+    "mod(x,y)": ["mod(x,y)", "x%y", "modulo(x,y)"],
+    "fact(x)": ["fact(x)", "x!", "factorial(x)"],
     "abs(x)": ["abs(x)", "|x|"],
     "sign(x)": ["sign(x)"],
     "rad(x)": ["rad(x)", "x°"],

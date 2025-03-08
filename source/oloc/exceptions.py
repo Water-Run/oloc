@@ -52,7 +52,7 @@ class OlocException(ABC, Exception):
             f"{self.exception_type.value[0].format(time_limit=getattr(self, 'time_limit', 0))}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
-            f"Note: {self.exception_type.value[1]}"
+            f"Hint: {self.exception_type.value[1]}"
         )
 
     def _generate_marker_line(self) -> str:
@@ -66,6 +66,15 @@ class OlocException(ABC, Exception):
             if 0 <= pos < len(self.expression):
                 marker_line[pos] = '^'
         return ''.join(marker_line)
+
+    def __reduce__(self):
+        r"""
+        自定义序列化逻辑，用于支持 multiprocessing.Queue 的序列化。
+        """
+        return (
+            self.__class__,  # 返回类本身
+            (self.exception_type, self.expression, self.positions)  # 返回初始化所需的参数
+        )
 
 
 class OlocTimeOutException(OlocException):
@@ -95,6 +104,15 @@ class OlocTimeOutException(OlocException):
         self.time_limit = time_limit
         self.elapsed_time = elapsed_time
         super().__init__(exception_type, expression, positions)
+
+    def __reduce__(self):
+        r"""
+        自定义序列化逻辑，用于支持 multiprocessing.Queue 的序列化。
+        """
+        return (
+            self.__class__,
+            (self.exception_type, self.expression, self.positions, self.time_limit, self.elapsed_time)
+        )
 
 
 class OlocFreeCommentException(OlocException):

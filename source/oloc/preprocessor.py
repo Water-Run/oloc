@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-08
+:date: 2025-03-09
 :file: preprocessor.py
 :description: Oloc preprocessor
 """
@@ -138,13 +138,26 @@ class Preprocessor:
             invalid_separator_positions = []
             for match in re.finditer(r',', expression):
                 index = match.start()
-                # 合法：逗号前后必须是数字
-                if not (index > 0 and index < len(expression) - 1 and expression[index - 1].isdigit() and expression[
-                    index + 1].isdigit()):
+
+                # 判断逗号是否是有效的数字分隔符 (例如: 1,234)
+                is_valid_numeric_separator = (
+                        0 < index < len(expression) - 1 and  # 逗号不在开头或结尾
+                        expression[index - 1].isdigit() and  # 逗号前是数字
+                        expression[index + 1].isdigit()  # 逗号后是数字
+                )
+
+                # 判断逗号是否是连续分隔符错误 (例如: 1,,234)
+                is_invalid_consecutive_comma = (
+                        0 < index < len(expression) - 1 and  # 逗号不在开头或结尾
+                        expression[index - 1] != ',' and  # 逗号前不是逗号
+                        expression[index + 1] == ','  # 逗号后是逗号
+                )
+
+                # 如果逗号既不是有效分隔符，也不是连续分隔符错误，记录其位置
+                if not is_valid_numeric_separator and not is_invalid_consecutive_comma:
                     invalid_separator_positions.append(index)
 
             if invalid_separator_positions:
-
                 raise OlocNumberSeparatorException(
                     OlocNumberSeparatorException.ExceptionType.INVALID_SEPARATOR,
                     expression,
@@ -160,19 +173,71 @@ class Preprocessor:
         # 数字分隔符消除
         self.expression = _remove_numeric_separators(self.expression)
 
+    def _formal_completion(self):
+        r"""
+        补全表达式中的一些可省略的特殊形式.包括隐式的乘法符号
+        :return: None
+        """
+        symbol_mapping_table = utils.get_symbol_mapping_table()
+        reserved_symbols = set(symbol_mapping_table.keys())
+
+        left_brackets = '([{'
+        right_brackets = ')]}'
+
+        result = []
+        in_custom_irrational = False
+
+        i = 0
+        while i < len(self.expression):
+            current_char = self.expression[i]
+
+            if current_char == '<':
+                in_custom_irrational = True
+            elif current_char == '>':
+                in_custom_irrational = False
+
+            result.append(current_char)
+
+            if i < len(self.expression) - 1:
+                next_char = self.expression[i + 1]
+
+                if not in_custom_irrational:
+                    is_current_short_irrational = current_char.isalpha() and current_char not in reserved_symbols
+                    is_current_irrational = is_current_short_irrational or current_char in "π𝑒"
+                    is_next_short_irrational = next_char.isalpha() and next_char not in reserved_symbols
+                    is_next_irrational = is_next_short_irrational or next_char in "π𝑒"
+
+                    # 直接处理问号后面跟着字母、数字或左括号的情况
+                    if current_char == '?' and (next_char.isalnum() or next_char in left_brackets or next_char == '<'):
+                        result.append('*')
+                    else:
+                        # 应用正常的隐式乘法规则
+                        if current_char.isdigit() and next_char in left_brackets:
+                            result.append('*')
+                        elif current_char in right_brackets and (
+                                next_char.isdigit() or is_next_irrational or next_char == '<' or next_char in left_brackets):
+                            result.append('*')
+                        elif current_char.isdigit() and (is_next_irrational or next_char == '<'):
+                            result.append('*')
+                        elif (is_current_irrational or current_char == '>') and next_char.isdigit():
+                            result.append('*')
+                        elif current_char in right_brackets and (is_next_irrational or next_char == '<'):
+                            result.append('*')
+                        elif (is_current_irrational or current_char == '>') and next_char in left_brackets:
+                            result.append('*')
+                        elif (is_current_irrational or current_char == '>') and (
+                                is_next_irrational or next_char == '<'):
+                            result.append('*')
+
+            i += 1
+
+        self.expression = ''.join(result)
 
     def _convert_fraction(self):
         r"""
         将表达式中的各种有理数进行分数化
         :return: None
         """
-
-        def _eliminate_digit_separator(expression: str) -> str:
-            r"""
-            消除数字分隔符
-            :param expression:
-            :return:
-            """
 
     def execute(self) -> None:
         r"""
@@ -183,13 +248,5 @@ class Preprocessor:
         self._remove_comment()
         self._symbol_mapper()
         self._formal_elimination()
+        self._formal_completion()
 
-
-"""test"""
-while True:
-    try:
-        process = Preprocessor(input('>>'))
-        process.execute()
-        print(process.expression)
-    except OlocException as error:
-        print(error)

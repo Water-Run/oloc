@@ -1,15 +1,13 @@
 r"""
 :author: WaterRun
-:date: 2025-03-07
+:date: 2025-03-09
 :file: core.py
 :description: Core of oloc
 """
 
 from result import OlocResult
 from exceptions import *
-import time
 from multiprocessing import Process, Queue
-
 from preprocessor import Preprocessor
 
 
@@ -21,13 +19,15 @@ def _execute_calculation(expression: str, result_queue: Queue):
     :param result_queue: 用于存储计算结果或异常的队列
     """
     """test"""
-    preprocess = Preprocessor(expression)
-    preprocess.execute()
+    try:
+        preprocess = Preprocessor(expression)
+        preprocess.execute()
+        result_queue.put(OlocResult(preprocess.expression, [preprocess.expression]))
+    except Exception as e:
+        result_queue.put(e)
 
-    result_queue.put(OlocResult(preprocess.expression, [preprocess.expression]))
 
-
-def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
+def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
     r"""
     计算oloc表达式的结果,并监控计算时间
     如果计算时间超过time_limit秒，立即中断并抛出OlocTimeOutException
@@ -59,10 +59,11 @@ def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
 
     if time_limit < 0:  # 不监视时间
         _execute_calculation(expression, result_queue)
-        result = result_queue.get()
-        if isinstance(result, OlocException):
-            raise result
-        return result
+        if not result_queue.empty():
+            result = result_queue.get()
+            if isinstance(result, Exception):
+                raise result
+            return result
     else:
         r"""
         在子进程中调用calculate()执行计算, 一旦超过time_limit则
@@ -83,6 +84,8 @@ def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
 
     if not result_queue.empty():
         result = result_queue.get()
+        if isinstance(result, Exception):
+            raise result
         return result
 
     raise RuntimeError("Unknown exception in calculate() of oloc: result queue is empty")
@@ -92,7 +95,8 @@ def calculate(expression: str, *, time_limit: float = 1.0) -> OlocResult:
 if __name__ == "__main__":
     while True:
         try:
-            result = calculate(input('>>'), time_limit=0)
-            print(result.expression)
-        except OlocException as error:
+            user_input = input('>>')
+            result = calculate(user_input)
+            print("Result:", result.expression)
+        except Exception as error:
             print(error)
