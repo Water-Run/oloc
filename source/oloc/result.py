@@ -1,11 +1,12 @@
 r"""
 :author: WaterRun
-:date: 2025-03-07
+:date: 2025-03-09
 :file: result.py
 :description: Oloc result
 """
-from typing import List, Dict, Any
+from typing import List, Any
 from fractions import Fraction
+
 
 class OlocResult:
     r"""
@@ -24,6 +25,7 @@ class OlocResult:
             raise TypeError("Result must be a list of strings.")
         self._expression = expression
         self._result = result
+        self._raw_result: str | None = None
 
     @property
     def expression(self) -> str:

@@ -17,8 +17,6 @@ class Preprocessor:
     :param expression: 待处理的表达式
     """
 
-    expression: str = ''
-
     def __init__(self, expression: str):
         self.expression = expression
 
@@ -26,20 +24,18 @@ class Preprocessor:
         r"""
         移除表达式中的@结尾注释和##包裹的自由注释
         :return: None
-        :raise OlocFreeCommentException: 如果出现无法匹配的#
+        :raise OlocCommentException: 如果出现无法匹配的#
         """
 
-        # 移除结尾注释
         if '@' in self.expression:
             self.expression = self.expression.split('@', 1)[0].strip()
 
-        # 检查自由注释的匹配情况
         hash_positions = [pos for pos, char in enumerate(self.expression) if char == '#']
 
         if len(hash_positions) % 2 != 0:
             unmatched_position = [hash_positions[-1]]
-            raise OlocFreeCommentException(
-                exception_type=OlocFreeCommentException.ExceptionType.MISMATCH,
+            raise OlocCommentException(
+                exception_type=OlocCommentException.ExceptionType.MISMATCH_HASH,
                 expression=self.expression,
                 positions=unmatched_position
             )
@@ -139,21 +135,18 @@ class Preprocessor:
             for match in re.finditer(r',', expression):
                 index = match.start()
 
-                # 判断逗号是否是有效的数字分隔符 (例如: 1,234)
                 is_valid_numeric_separator = (
                         0 < index < len(expression) - 1 and  # 逗号不在开头或结尾
                         expression[index - 1].isdigit() and  # 逗号前是数字
                         expression[index + 1].isdigit()  # 逗号后是数字
                 )
 
-                # 判断逗号是否是连续分隔符错误 (例如: 1,,234)
                 is_invalid_consecutive_comma = (
                         0 < index < len(expression) - 1 and  # 逗号不在开头或结尾
                         expression[index - 1] != ',' and  # 逗号前不是逗号
                         expression[index + 1] == ','  # 逗号后是逗号
                 )
 
-                # 如果逗号既不是有效分隔符，也不是连续分隔符错误，记录其位置
                 if not is_valid_numeric_separator and not is_invalid_consecutive_comma:
                     invalid_separator_positions.append(index)
 
@@ -167,10 +160,8 @@ class Preprocessor:
             sanitized_expression = expression.replace(",", "")
             return sanitized_expression
 
-        # 正负号消除
         self.expression = _simplify_signs(self.expression)
 
-        # 数字分隔符消除
         self.expression = _remove_numeric_separators(self.expression)
 
     def _formal_completion(self):
@@ -207,11 +198,9 @@ class Preprocessor:
                     is_next_short_irrational = next_char.isalpha() and next_char not in reserved_symbols
                     is_next_irrational = is_next_short_irrational or next_char in "π𝑒"
 
-                    # 直接处理问号后面跟着字母、数字或左括号的情况
                     if current_char == '?' and (next_char.isalnum() or next_char in left_brackets or next_char == '<'):
                         result.append('*')
                     else:
-                        # 应用正常的隐式乘法规则
                         if current_char.isdigit() and next_char in left_brackets:
                             result.append('*')
                         elif current_char in right_brackets and (
@@ -233,12 +222,6 @@ class Preprocessor:
 
         self.expression = ''.join(result)
 
-    def _convert_fraction(self):
-        r"""
-        将表达式中的各种有理数进行分数化
-        :return: None
-        """
-
     def execute(self) -> None:
         r"""
         执行预处理,并将结果写入self.expression中
@@ -249,4 +232,3 @@ class Preprocessor:
         self._symbol_mapper()
         self._formal_elimination()
         self._formal_completion()
-

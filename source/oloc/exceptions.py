@@ -1,8 +1,8 @@
 """
 :author: WaterRun
-:date: 2025-03-08
+:date: 2025-03-09
 :file: exceptions.py
-:description: Oloc 异常模块
+:description: Oloc exceptions
 """
 
 from abc import ABC, abstractmethod
@@ -79,7 +79,7 @@ class OlocException(ABC, Exception):
 
 class OlocTimeOutException(OlocException):
     r"""
-    当函数执行时间超出设定的最大时间时引发的异常。
+    当函数执行时间超出设定的最大时间时引发的异常
     """
 
     class ExceptionType(Enum):
@@ -91,7 +91,8 @@ class OlocTimeOutException(OlocException):
             "Check your expression or modify time_limit to a larger value."
         )
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], time_limit: float, elapsed_time: float):
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], time_limit: float,
+                 elapsed_time: float):
         r"""
         初始化 OlocTimeOutException，包含时间限制和实际耗时。
 
@@ -115,23 +116,23 @@ class OlocTimeOutException(OlocException):
         )
 
 
-class OlocFreeCommentException(OlocException):
+class OlocCommentException(OlocException):
     r"""
-    当自由注释的格式不匹配时引发的异常。
+    当注释的格式不匹配时引发的异常
     """
 
     class ExceptionType(Enum):
         r"""
-        定义 OlocFreeCommentException 的异常类型的枚举类。
+        定义 OlocCommentException 的异常类型的枚举类。
         """
-        MISMATCH = (
-            "OlocFreeCommentException: Mismatch '#' detected",
+        MISMATCH_HASH = (
+            "OlocCommentException: Mismatch '#' detected",
             "The content of free comments should be wrapped in a before and after '#'."
         )
 
     def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
         r"""
-        初始化 OlocFreeCommentException。
+        初始化 OlocCommentException。
 
         :param exception_type: 异常的类型 (Enum)
         :param expression: 触发异常的原始表达式
@@ -142,7 +143,7 @@ class OlocFreeCommentException(OlocException):
 
 class OlocNumberSeparatorException(OlocException):
     r"""
-    当数字分隔符规则被违反时引发的异常。
+    当数字分隔符规则被违反时引发的异常
     """
 
     class ExceptionType(Enum):
@@ -164,3 +165,23 @@ class OlocNumberSeparatorException(OlocException):
         :param positions: 表示问题位置的列表
         """
         super().__init__(exception_type, expression, positions)
+
+
+class OlocResultException(OlocException):
+    r"""
+    当结果中存在异常(即尝试读取OlocResult中的指定信息时)引发的异常
+    """
+
+    class ExceptionType(Enum):
+        r"""
+        定义 OlocResultException 的异常类型的枚举类。
+        """
+        NO_VALID_RESULT = (
+            "OlocResultException: Calculations fail to yield valid results",
+            "."
+        )
+
+        NON_CONVERTIBLE_RESULT = (
+            "OlocResultException: Unable to convert `` in the result",
+            ""
+        )

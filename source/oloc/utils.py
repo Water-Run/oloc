@@ -10,18 +10,18 @@ import simpsave as ss
 
 def get_symbol_mapping_table() -> dict:
     r"""
-    Read symbol mapping table from ./data/olocdata.ini
+    Read symbol mapping table from ./data/olocconfig.ini
     :return: Readout table
     """
-    return ss.read('symbol_mapping_table', file='./data/olocdata.ini')
+    return ss.read('symbol_mapping_table', file='./data/olocconfig.ini')
 
 
 def get_function_conversion_table() -> dict:
     r"""
-    Read function conversion table from ./data/olocdata.ini
+    Read function conversion table from ./data/olocconfig.ini
     :return: Readout table
     """
-    return ss.read('function_conversion_table', file='./data/olocdata.ini')
+    return ss.read('function_conversion_table', file='./data/olocconfig.ini')
 
 
 def get_function_name_list() -> list:

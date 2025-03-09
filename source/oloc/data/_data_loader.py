@@ -82,7 +82,22 @@ function_conversion_table: dict = {
     "lcm(x,y)": ["lcm(x,y)"],
 }
 
-# Write Data
+r"""
+Formatting Output Function Options Table
+Type: Dict
+Description: Configure each function setting of the formatted output filter
+"""
+formatting_output_function_options_table: dict = {
+    "main switch": True,
+    "number separators add thresholds": -1,
+    "scientific notation adding thresholds": -1,
+    "spaces between token": -1,
+    "operator form functions": True,
+    "retain '?'": True,
+}
 
-if ss.write('retain_decimal_places', retain_decimal_places, file='olocdata.ini') and ss.write('symbol_mapping_table', symbol_mapping_table, file='olocdata.ini') and ss.write('function_conversion_table', function_conversion_table, file='olocdata.ini'):
-    print('olocdata updated')
+# Write Data
+pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table])
+for table in pending:
+    ss.write(table[0], table[1], file='olocconfig.ini')
+print('olocconfig updated')

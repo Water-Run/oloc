@@ -1,8 +1,8 @@
-# olocdata范式  
+# olocconfig范式  
 
 ## 概要  
 
-`olocdata.ini`存储在源码路径下的`data`子文件夹中.  
+`olocconfig.ini`存储在源码路径下的`data`子文件夹中.  
 其是一个`simpsave` `ini`文件.  
 > 安装`simpsave`: `pip install simpsave`  
 
