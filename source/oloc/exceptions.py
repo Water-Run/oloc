@@ -185,3 +185,4 @@ class OlocResultException(OlocException):
             "OlocResultException: Unable to convert `` in the result",
             ""
         )
+

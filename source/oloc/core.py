@@ -66,7 +66,7 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
             return result
     else:
         r"""
-        在子进程中调用calculate()执行计算, 一旦超过time_limit则
+        在子进程中调用calculate()执行计算, 一旦超过time_limit则抛出OlocTimeOutException
         """
         process = Process(target=_execute_calculation, args=(expression, result_queue))
         process.start()

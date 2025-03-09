@@ -96,8 +96,15 @@ formatting_output_function_options_table: dict = {
     "retain '?'": True,
 }
 
+r"""
+Transcendental Function Values Table
+Type: Dict
+Description: A lookup table for exact or simplified values of common transcendental functions at specific points.
+"""
+transcendental_function_table = {}
+
 # Write Data
-pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table])
+pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
 print('olocconfig updated')
