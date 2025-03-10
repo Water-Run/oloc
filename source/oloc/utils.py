@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-03
+:date: 2025-03-10
 :file: utils.py
 :description: Oloc utils
 """
@@ -37,3 +37,35 @@ def get_function_name_list() -> list:
                 function_names.append(func.split('(')[0])  # 提取函数名
 
     return list(set(function_names))
+
+
+def str_fraction_simplifier(fraction: str) -> str:
+    r"""
+    化简分数
+    :param fraction: 待化简的分数
+    :return: 化简后的分数
+    """
+
+    def _get_gcd(num1: int, num2: int) -> int:
+        r"""
+        计算两个整数的最大公约数（使用欧几里得算法）
+        :param num1: 整数 1
+        :param num2: 整数 2
+        :return: 最大公约数
+        """
+        while num2 != 0:
+            num1, num2 = num2, num1 % num2
+        return abs(num1)  # 返回正数作为最大公约数
+
+    numerator, denominator = map(int, fraction.split('/'))
+
+    gcd_value = _get_gcd(numerator, denominator)
+
+    numerator //= gcd_value
+    denominator //= gcd_value
+
+    if denominator < 0:
+        numerator = -numerator
+        denominator = -denominator
+
+    return f"{numerator}/{denominator}"

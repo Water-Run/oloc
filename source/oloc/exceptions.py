@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-09
+:date: 2025-03-10
 :file: exceptions.py
 :description: Oloc exceptions
 """
@@ -186,3 +186,112 @@ class OlocResultException(OlocException):
             ""
         )
 
+
+class OlocInvalidTokenException(OlocException):
+    r"""
+    当Token不合法(即,Token的is_legal为False时)在静态检查流程中引发的异常
+    """
+
+    class ExceptionType(Enum):
+        r"""
+        定义 OlocInvalidTokenException 的异常类型的枚举类。
+        """
+
+        UNKNOWN_TOKEN = (
+            "OlocInvalidTokenException: Token that Tokenizer could not parse `{token_content}`",
+            "Check the documentation for instructions and check the expression."
+        )
+
+        INVALID_PERCENTAGE = (
+            "OlocInvalidTokenException: Invalid percentage number `{token_content}`",
+            "A percentage must consist of a whole number or a finite number of decimals followed by a `%`. e.g. 100%, "
+            "0.125%"
+        )
+
+        INVALID_MIXED_FRACTION = (
+            "OlocInvalidTokenException: Invalid mixed-fraction number `{token_content}`",
+            r"A mixed-fraction must consist of an integer followed by the symbol `\` and then a fraction. e.g. 4\2/3"
+        )
+
+        INVALID_FRACTION = (
+            "OlocInvalidTokenException: Invalid fraction number `{token_content}`",
+            r"A fraction must be composed of a fraction line consisting of `/` and integers before and after. e.g. 2/3"
+        )
+
+        INVALID_INFINITE_DECIMAL = (
+            "OlocInvalidTokenException: Invalid infinite-decimal number `{token_content}`",
+            "An infinite cyclic decimal must be followed by a finite cyclic decimal ending in 3-6 ` . ` or `:` "
+            "followed by an integer. e.g. 1.23..., 2.34......, 10.1:2"
+        )
+
+        INVALID_FINITE_DECIMAL = (
+            "OlocInvalidTokenException: Invalid finite-decimal number `{token_content}`",
+            "A finite repeating decimal must consist of an integer with integer digits and a decimal point. e.g. "
+            "3.14, 0.233"
+        )
+
+        INVALID_INTEGER = (
+            "OlocInvalidTokenException: Invalid integer number `{token_content}`",
+            "An integer must be composed of Arabic numerals from 0 to 9. e.g. 0, 1024, 54321"
+        )
+
+        INVALID_NATIVE_IRRATIONAL = (
+            "OlocInvalidTokenException: Invalid native-irrational number `{token_content}`",
+            "A primitive irrational number must be one of π or 𝑒."
+        )
+
+        INVALID_SHORT_CUSTOM_IRRATIONAL = (
+            "OlocInvalidTokenException: Invalid short-custom-irrational number `{token_content}`",
+            "A short custom irrational number must be a non-operator and non-digit character, including an optional "
+            "`?` expression. The character between the end and `?` can only be a positive or negative sign or an "
+            "integer or a finite decimal (with a sign). e.g. x, y-?, i3.14?, s+2?"
+        )
+
+        INVALID_LONG_CUSTOM_IRRATIONAL = (
+            "OlocInvalidTokenException: Invalid long-custom-irrational number `{token_content}`",
+            "A long custom irrational number must be wrapped in `<>`, including an optional `?` expression. The "
+            "character between the end and `?` can only be a positive or negative sign or an integer or a finite "
+            "decimal (with a sign). e.g. <ir>, <无理数>+?, <A long one>-3?, <irrational>0.12?"
+        )
+
+        INVALID_OPERATOR = (
+            "OlocInvalidTokenException: Invalid operator `{token_content}`",
+            "Check the expression, or check the tutorial (and symbol-mapping-table)."
+        )
+
+        INVALID_BRACKET = (
+            "OlocInvalidTokenException: Invalid bracket `{token_content}`",
+            "The brackets can only be one of `()`, `[]`, `{}`. Check the expression, or refer to the tutorial for "
+            "information about grouping operators."
+        )
+
+        INVALID_FUNCTION = (
+            "OlocInvalidTokenException: Invalid function `{token_content}`",
+            "Check out the tutorial or the function-conversion-table for more information."
+        )
+
+        INVALID_PARAM_SEPARTOR = (
+            "OlocInvalidTokenException: Invalid param-separator `{token_content}`",
+            "The function parameter separator can only be `,` or `;`. If your parameters contain numeric separators, "
+            "the parameter separator can only be ';'."
+        )
+
+    def __init__(self, exception_type: ExceptionType, token_content: str):
+        r"""
+        初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param token_content: 引发异常的 Token 内容
+        """
+        self.exception_type = exception_type
+        self.token_content = token_content
+
+        # 动态生成异常消息
+        main_message = exception_type.value[0].format(token_content=token_content)
+        suggestion = exception_type.value[1]
+
+        # 设置完整的异常消息
+        self.message = f"{main_message} {suggestion}"
+
+        # 调用父类初始化
+        super().__init__(self.message)

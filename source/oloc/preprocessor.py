@@ -6,7 +6,7 @@ r"""
 """
 
 import re
-import utils
+import utils, lexer
 
 from source.oloc.exceptions import *
 
@@ -222,6 +222,103 @@ class Preprocessor:
 
         self.expression = ''.join(result)
 
+    def _convert_fraction(self):
+        r"""
+        将表达式中的各种数字转换为分数
+        :return: None
+        """
+
+        temp_tokens = lexer.Lexer.tokenizer(self.expression)
+
+        convert_num_types = [
+            lexer.Token.TYPE.PERCENTAGE,
+            lexer.Token.TYPE.MIXED_FRACTION,
+            lexer.Token.TYPE.FINITE_DECIMAL,
+            lexer.Token.TYPE.INFINITE_DECIMAL,
+        ]
+
+        def _convert_finite_decimal(finite_decimal: str) -> str:
+            r"""
+            将有限小数转为分数
+            :param finite_decimal: 待转换的有限小数
+            :return: 转换后的分数
+            """
+            integer_part, decimal_part = finite_decimal.split('.')
+
+            numerator = int(integer_part + decimal_part)
+            denominator = 10 ** len(decimal_part)
+
+            if int(integer_part) < 0:
+                numerator = -numerator
+
+            fraction = f"{numerator}/{denominator}"
+
+            simplified_fraction = utils.str_fraction_simplifier(fraction)
+
+            return simplified_fraction
+
+        def _convert_infinite_decimal(infinite_decimal: str) -> str:
+            r"""
+            将无限小数转为分数
+            :param infinite_decimal: 待转换的无限小数
+            :return: 转换后的分数
+            """
+            return ""
+
+        def _convert_percentage(percentage: str) -> str:
+            r"""
+            将百分数转为小数
+            :param percentage: 待转换的百分数，例如"12.5%"
+            :return: 转换后的小数字符串，例如"0.125"
+            """
+            percentage = percentage[:-1]
+
+            if '.' not in percentage:
+                percentage += '.0'
+
+            integer_part, decimal_part = percentage.split('.')
+
+            if integer_part == '0':
+                percentage = '0.00' + decimal_part
+            elif len(integer_part) == 1:
+                percentage = '0.0' + integer_part + decimal_part
+            elif len(integer_part) == 2:
+                percentage = '0.' + integer_part + decimal_part
+            else:
+                decimal_point_pos = len(integer_part) - 2
+                percentage = integer_part[:decimal_point_pos] + '.' + integer_part[decimal_point_pos:] + decimal_part
+
+            percentage = percentage.rstrip('0')
+            if percentage.endswith('.'):
+                percentage = percentage[:-1]
+
+            return _convert_finite_decimal(percentage)
+
+        def _convert_mix_fraction(mix_fraction: str) -> str:
+            r"""
+            将带分数转为分数
+            :param mix_fraction: 待转换的带分数
+            :return: 转换后的分数
+            """
+            return ""
+
+        fraction_expression = ""
+
+        for temp_token in temp_tokens:
+            if (convert_type := temp_token.type) in convert_num_types:
+                match convert_type:
+                    case lexer.Token.TYPE.MIXED_FRACTION:
+                        fraction_expression += _convert_mix_fraction(temp_token.value)
+                    case lexer.Token.TYPE.FINITE_DECIMAL:
+                        fraction_expression += _convert_finite_decimal(temp_token.value)
+                    case lexer.Token.TYPE.INFINITE_DECIMAL:
+                        fraction_expression += _convert_infinite_decimal(temp_token.value)
+                    case lexer.Token.TYPE.PERCENTAGE:
+                        fraction_expression += _convert_percentage(temp_token.value)
+            else:
+                fraction_expression += temp_token.value
+        self.expression = fraction_expression
+
     def execute(self) -> None:
         r"""
         执行预处理,并将结果写入self.expression中
@@ -232,3 +329,12 @@ class Preprocessor:
         self._symbol_mapper()
         self._formal_elimination()
         self._formal_completion()
+        self._convert_fraction()
+
+
+"""test"""
+if __name__ == '__main__':
+    while True:
+        result = Preprocessor(input(">>"))
+        result.execute()
+        print(result.expression)
