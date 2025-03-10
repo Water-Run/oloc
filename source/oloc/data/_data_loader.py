@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-09
+:date: 2025-03-10
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -24,7 +24,7 @@ Symbol Mapping Table
 Type: dict
 Description: This dictionary maps symbols (keys) to a list of possible conversions (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right.
 """
-symbol_mapping_table: dict = {
+symbol_mapping_table: dict[str, list[str]] = {
     "": [" ", "=", "_", "equal", "equals", "eq", "is", "are", "=>", "->", "rad", "radians", "等", "于", "以", "是", "个"],
     "√": ["√", "┌", "根号"],
     "°": ["°", "deg", "degree", "^o", "度"],
@@ -47,6 +47,7 @@ symbol_mapping_table: dict = {
     "?": ["?", "def", "dflt", "default", "指定"],
     ",": [","],
     ";": [";"],
+    "|": ["|"],
     "\\": ["\\"],
     "0": ["0", "zero", "零", "〇"],
     "1": ["1", "one", "一"],
@@ -66,7 +67,7 @@ Function conversion table
 Type: dict
 Description: This dictionary maps function names (keys) to a list of possible equivalent representations (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right. The standard function name is the function name before the parentheses, and these names will be protected during the symbol mapping phase.
 """
-function_conversion_table: dict = {
+function_conversion_table: dict[str, list[str]] = {
     "sqrt(x)": ["sqrt(x)", "x^(1/2)", "√x", "pow(x,1/2)"],
     "square(x)": ["square(x)", "x^2", "pow(x,2)", "sq(x)"],
     "cube(x)": ["cube(x)", "x^3", "pow(x,3)", "cub(x)"],
@@ -87,7 +88,7 @@ Formatting Output Function Options Table
 Type: Dict
 Description: Configure each function setting of the formatted output filter
 """
-formatting_output_function_options_table: dict = {
+formatting_output_function_options_table: dict[str, any] = {
     "main switch": True,
     "number separators add thresholds": -1,
     "scientific notation adding thresholds": -1,
@@ -101,7 +102,7 @@ Transcendental Function Values Table
 Type: Dict
 Description: A lookup table for exact or simplified values of common transcendental functions at specific points.
 """
-transcendental_function_table = {}
+transcendental_function_table: dict = {}
 
 # Write Data
 pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table])

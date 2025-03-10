@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-09
+:date: 2025-03-10
 :file: preprocessor.py
 :description: Oloc preprocessor
 """
@@ -14,7 +14,7 @@ from source.oloc.exceptions import *
 class Preprocessor:
     r"""
     预处理器
-    :param expression: 待处理的表达式
+    :param: expression: 待处理的表达式
     """
 
     def __init__(self, expression: str):

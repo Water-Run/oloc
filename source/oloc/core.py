@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-09
+:date: 2025-03-10
 :file: core.py
 :description: Core of oloc
 """
@@ -9,6 +9,7 @@ from result import OlocResult
 from exceptions import *
 from multiprocessing import Process, Queue
 from preprocessor import Preprocessor
+from lexer import Lexer
 
 
 def _execute_calculation(expression: str, result_queue: Queue):
@@ -22,7 +23,12 @@ def _execute_calculation(expression: str, result_queue: Queue):
     try:
         preprocess = Preprocessor(expression)
         preprocess.execute()
-        result_queue.put(OlocResult(preprocess.expression, [preprocess.expression]))
+        result = preprocess # temp
+
+        lexer = Lexer(preprocess.expression)
+        lexer.execute()
+
+        result_queue.put(OlocResult(result.expression, [result.expression]))
     except Exception as e:
         result_queue.put(e)
 
