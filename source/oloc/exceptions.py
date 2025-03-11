@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-11
+:date: 2025-03-12
 :file: exceptions.py
 :description: Oloc exceptions
 """
@@ -220,12 +220,6 @@ class OlocInvalidTokenException(OlocException):
             "OlocInvalidTokenException: Invalid mixed-fraction number `{token_content}`",
             r"A mixed-fraction must consist of an integer followed by the symbol `\` and then an unsigned fraction. "
             r"e.g. 4\2/3"
-        )
-
-        INVALID_FRACTION = (
-            "OlocInvalidTokenException: Invalid fraction number `{token_content}`",
-            r"A fraction must be composed of a fraction line consisting of `/` and unsigned integers before and "
-            r"after. e.g. 2/3"
         )
 
         INVALID_INFINITE_DECIMAL = (

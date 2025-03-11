@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-11
+:date: 2025-03-12
 :file: lexer.py
 :description: Oloc lexer
 """
@@ -29,7 +29,6 @@ class Token:
         INFINITE_DECIMAL = 'infinite recurring decimal'  # 无限小数: 3.3... 或 2.3:4
         FINITE_DECIMAL = 'finite decimal'  # 有限小数: 3.14
         INTEGER = 'integer'  # 整数: 42
-        FRACTION = 'fraction'  # 分数: 1/2
 
         # 无理数类型
         NATIVE_IRRATIONAL = 'native irrational number'  # 原生无理数: π, e
@@ -48,7 +47,9 @@ class Token:
         # 未知类型
         UNKNOWN = 'unknown'  # 无法识别的字符
 
-    def __init__(self, token_type: TYPE, token_range: list[int, int], token_value: str = None):
+    def __init__(self, token_type: TYPE, token_value: str = "", token_range: list[int, int] = None):
+        if token_range is None:
+            token_range = [0, 0]
         self.type = token_type
         self.range = token_range
         self.value = token_value if token_value is not None else None
@@ -56,7 +57,30 @@ class Token:
         self._check_legal()
 
     def __repr__(self):
-        return f"Token({self.type.value}, {self.range}, '{self.value}')"
+        return f"Token({self.type.value}, '{self.value}, {self.range}')"
+
+    def get_exception_type(self) -> OlocInvalidTokenException.ExceptionType:
+        r"""
+        返回对应的OlocInvalidTokenException.ExceptionType类型
+        :return:
+        """
+        mapping = {
+            Token.TYPE.PERCENTAGE: OlocInvalidTokenException.ExceptionType.INVALID_PERCENTAGE,
+            Token.TYPE.MIXED_FRACTION: OlocInvalidTokenException.ExceptionType.INVALID_MIXED_FRACTION,
+            Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_INFINITE_DECIMAL,
+            Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
+            Token.TYPE.INTEGER: OlocInvalidTokenException.ExceptionType.INVALID_INTEGER,
+            Token.TYPE.NATIVE_IRRATIONAL: OlocInvalidTokenException.ExceptionType.INVALID_NATIVE_IRRATIONAL,
+            Token.TYPE.SHORT_CUSTOM: OlocInvalidTokenException.ExceptionType.INVALID_SHORT_CUSTOM_IRRATIONAL,
+            Token.TYPE.LONG_CUSTOM: OlocInvalidTokenException.ExceptionType.INVALID_LONG_CUSTOM_IRRATIONAL,
+            Token.TYPE.OPERATOR: OlocInvalidTokenException.ExceptionType.INVALID_OPERATOR,
+            Token.TYPE.LBRACKET: OlocInvalidTokenException.ExceptionType.INVALID_BRACKET,
+            Token.TYPE.RBRACKET: OlocInvalidTokenException.ExceptionType.INVALID_BRACKET,
+            Token.TYPE.FUNCTION: OlocInvalidTokenException.ExceptionType.INVALID_FUNCTION,
+            Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.ExceptionType.INVALID_PARAM_SEPARTOR,
+            Token.TYPE.UNKNOWN: OlocInvalidTokenException.ExceptionType.UNKNOWN_TOKEN,
+        }
+        return mapping[self.TYPE]
 
     def _check_legal(self) -> bool:
         r"""
@@ -239,9 +263,255 @@ class Lexer:
 
     def __init__(self, expression: str):
         self.expression = expression
+        self.tokens = []
+
+    def _convert_token_flow(self):
+        r"""
+        将表达式转为Token流,并检查Token的合法性
+        :return: None
+        """
+        self.tokens = Lexer.tokenizer(self.expression)
+        for token in self.tokens:
+            if not token.is_legal:
+                raise OlocInvalidTokenException(
+                    exception_type=token.get_exception_type(),
+                    expression=self.expression,
+                    positions=token.range,
+                    token_content=token.value if token else "",
+                )
+
+    def _convert_fraction(self):
+        r"""
+        将表达式Token流中的各种数字转换为分数
+        :return: None
+        """
+
+        temp_tokens = Lexer.tokenizer(self.expression)
+
+        convert_num_types = [
+            Token.TYPE.PERCENTAGE,
+            Token.TYPE.MIXED_FRACTION,
+            Token.TYPE.FINITE_DECIMAL,
+            Token.TYPE.INFINITE_DECIMAL,
+        ]
+
+        def _convert_finite_decimal(finite_decimal: str) -> str:
+            r"""
+            将有限小数转为分数
+            :param finite_decimal: 待转换的有限小数
+            :return: 转换后的分数
+            """
+            integer_part, decimal_part = finite_decimal.split('.')
+
+            numerator = int(integer_part + decimal_part)
+            denominator = 10 ** len(decimal_part)
+
+            if int(integer_part) < 0:
+                numerator = -numerator
+
+            fraction = f"{numerator}/{denominator}"
+
+            return fraction
+
+        def _convert_infinite_decimal(infinite_decimal: str) -> str:
+            r"""
+            将无限循环小数转为分数
+            :param infinite_decimal: 待转换的无限小数
+            :return: 转换后的分数
+            """
+
+            def _spilt_decimal_parts(process_decimal: str) -> list[str, str]:
+                r"""
+                切分无限循环小数中重复的部分和有限小数部分
+                :param process_decimal: 待查找的无限循环小数
+                :return: 一个字符串列表, 第一项是查找到的重复部分, 第二项是移除重复部分后的有限小数
+                """
+                # 处理结尾有点号的情况
+                if '.' in process_decimal and process_decimal.count('.') > 1:
+                    # 移除结尾的所有点号
+                    base_number = process_decimal.rstrip('.')
+
+                    # 分离整数和小数部分
+                    integer_part, decimal_part = base_number.split('.')
+
+                    # 最后一位数字是循环部分
+                    if decimal_part:
+                        repeat_part = decimal_part[-1]
+                        finite_part = integer_part + "." + decimal_part[:-1]
+                    else:
+                        # 如果没有小数部分，默认循环部分为0
+                        repeat_part = "0"
+                        finite_part = integer_part + ".0"
+
+                    return [repeat_part, finite_part]
+
+                # 处理显式声明循环部分的情况（使用:分隔）
+                if ':' in process_decimal:
+                    base_number, repeat_part = process_decimal.split(':')
+
+                    if '.' in base_number:
+                        integer_part, decimal_part = base_number.split('.')
+                        finite_part = integer_part + "." + decimal_part
+                    else:
+                        # 如果基数部分没有小数点，加上.0
+                        finite_part = base_number + ".0"
+
+                    return [repeat_part, finite_part]
+
+                # 默认情况：不应该进入此分支，因为输入保证是循环小数
+                return ["", process_decimal]
+
+            def _fraction_from_parts(repeat_part: str, finite_part: str) -> str:
+                r"""
+                根据循环部分和有限部分计算分数形式
+                :param repeat_part: 循环部分
+                :param finite_part: 有限部分
+                :return: 分数字符串
+                """
+                # 分解有限部分
+                if '.' in finite_part:
+                    integer_str, decimal_str = finite_part.split('.')
+                else:
+                    integer_str, decimal_str = finite_part, '0'
+
+                # 将整数部分转为整数
+                integer_value = int(integer_str) if integer_str else 0
+
+                # 计算分母：循环部分产生的分母是9的乘积
+                denominator = int('9' * len(repeat_part))
+
+                # 如果有限小数部分非空，需要将循环部分乘以适当的因子
+                if decimal_str:
+                    denominator = denominator * (10 ** len(decimal_str))
+
+                # 计算分子
+                numerator = 0
+
+                # 处理整数部分
+                if integer_value:
+                    numerator += integer_value * denominator
+
+                # 处理有限小数部分
+                if decimal_str:
+                    numerator += int(decimal_str) * int('9' * len(repeat_part))
+
+                # 处理循环部分
+                if repeat_part:
+                    numerator += int(repeat_part)
+
+                # 返回分数形式
+                return f"{numerator}/{denominator}"
+
+            # 主函数逻辑
+            parts = _spilt_decimal_parts(infinite_decimal)
+            repeat_part, finite_part = parts[0], parts[1]
+
+            # 计算分数
+            fraction = _fraction_from_parts(repeat_part, finite_part)
+
+            # 调用化简函数
+            return fraction
+
+        def _convert_percentage(percentage: str) -> str:
+            r"""
+            将百分数转为小数
+            :param percentage: 待转换的百分数，例如"12.5%"
+            :return: 转换后的小数字符串，例如"0.125"
+            """
+            # 去掉百分号
+            percentage = percentage[:-1]
+
+            # 检查是否包含小数点，确保分割操作不会出错
+            if '.' not in percentage:
+                percentage += '.0'
+
+            integer_part, decimal_part = percentage.split('.')
+
+            # 根据整数部分长度调整小数点位置
+            if integer_part == '0':
+                percentage = '0.00' + decimal_part
+            elif len(integer_part) == 1:
+                percentage = '0.0' + integer_part + decimal_part
+            elif len(integer_part) == 2:
+                percentage = '0.' + integer_part + decimal_part
+            else:
+                decimal_point_pos = len(integer_part) - 2
+                percentage = integer_part[:decimal_point_pos] + '.' + integer_part[decimal_point_pos:] + decimal_part
+
+            percentage = percentage.rstrip('0')
+            if percentage.endswith('.'):
+                percentage = percentage[:-1]
+
+            return percentage if '.' not in percentage else _convert_finite_decimal(percentage)
+
+        def _convert_mix_fraction(mix_fraction: str) -> str:
+            r"""
+            将带分数转为分数
+            :param mix_fraction: 待转换的带分数
+            :return: 转换后的分数
+            """
+            # 分割带分数的整数部分和分数部分
+            parts = mix_fraction.split('\\')
+
+            # 获取整数部分
+            integer_part = parts[0]
+
+            # 获取分数部分
+            fraction_part = parts[1]
+
+            # 分割分子和分母
+            numerator, denominator = fraction_part.split('/')
+
+            # 将整数部分转换为同分母的分数
+            integer_as_fraction_numerator = int(integer_part) * int(denominator)
+
+            # 计算最终的分子
+            final_numerator = integer_as_fraction_numerator + int(numerator)
+
+            # 构建最终的分数字符串
+            final_fraction = f"{final_numerator}/{denominator}"
+
+            return final_fraction
+
+        fractionalized_expression = ""
+
+        for temp_token in temp_tokens:
+            if (convert_type := temp_token.type) in convert_num_types:
+
+                EXCEPTION_TYPE_MAPPING_DICT:dict = {
+                    Token.TYPE.MIXED_FRACTION: OlocInvalidTokenException.ExceptionType.INVALID_MIXED_FRACTION,
+                    Token.TYPE.PERCENTAGE: OlocInvalidTokenException.ExceptionType.INVALID_PERCENTAGE,
+                    Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
+                    Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
+                }
+
+
+                token_fractionalized = ""
+                match convert_type:
+                    case Token.TYPE.MIXED_FRACTION:
+                        token_fractionalized = _convert_mix_fraction(temp_token.value)
+                    case Token.TYPE.FINITE_DECIMAL:
+                        token_fractionalized = _convert_finite_decimal(temp_token.value)
+                    case Token.TYPE.INFINITE_DECIMAL:
+                        token_fractionalized = _convert_infinite_decimal(temp_token.value)
+                    case Token.TYPE.PERCENTAGE:
+                        token_fractionalized = _convert_percentage(temp_token.value)
+                fractionalized_expression += utils.str_fraction_simplifier(token_fractionalized)
+            else:
+                fractionalized_expression += temp_token.value
+        self.expression = fractionalized_expression
 
     def execute(self):
-        ...
+        r"""
+        执行分词器
+        :return: None
+        """
+
+        self._convert_token_flow()
+
+    """
+    静态方法
+    """
 
     @staticmethod
     def _is_native_irrational(to_check: str) -> bool:
@@ -307,243 +577,12 @@ class Lexer:
         :return: 分词后的Token列表
         """
         tokens = []
-        index = 0
         function_names = utils.get_function_name_list()
 
+        index = 0
         while index < len(expression):
+            ...
 
-            # 处理数字(整数、小数、分数、百分数等)
-            if expression[index].isdigit() or (
-                    expression[index] == '.' and index + 1 < len(expression) and expression[index + 1].isdigit()):
-                start = index
-                decimal_point = False
-                percentage = False
-                fraction = False
-                mixed_fraction = False
-                infinite = False
-
-                # 处理数字部分
-                while index < len(expression):
-                    # 整数部分
-                    if expression[index].isdigit():
-                        index += 1
-                    # 处理小数点
-                    elif expression[index] == '.' and not decimal_point:
-                        decimal_point = True
-                        index += 1
-                    # 处理分数
-                    elif expression[index] == '/' and not fraction:
-                        # 确保前面有数字
-                        if index > start:
-                            fraction = True
-                            index += 1
-                        else:
-                            break
-                    # 处理带分数
-                    elif expression[index] == '\\' and not mixed_fraction:
-                        # 确保前面有数字，后面有分数
-                        if index > start and index + 1 < len(expression) and (
-                                expression[index + 1].isdigit() or expression[index + 1] == '-'):
-                            mixed_fraction = True
-                            index += 1
-                        else:
-                            break
-                    # 处理显式循环小数部分
-                    elif expression[index] == ':' and decimal_point:
-                        infinite = True
-                        index += 1
-                        # 跳过冒号后的数字，它们是循环部分
-                        while index < len(expression) and expression[index].isdigit():
-                            index += 1
-                        break
-                    # 处理省略号(无限循环小数)
-                    elif expression[index] == '.' and decimal_point:
-                        # 检查是否有至少3个连续的点
-                        j = index
-                        dot_count = 0
-                        while j < len(expression) and expression[j] == '.':
-                            dot_count += 1
-                            j += 1
-
-                        if dot_count >= 3:
-                            infinite = True
-                            index = j  # 跳过所有点
-                            break
-                        else:
-                            break
-                    # 处理百分数
-                    elif expression[index] == '%':
-                        # 检查后面不是数字或括号，确保这不是模运算符
-                        if index + 1 >= len(expression) or (
-                                not expression[index + 1].isdigit() and expression[index + 1] not in "([{"):
-                            percentage = True
-                            index += 1
-                        break
-                    else:
-                        break
-
-                # 根据识别的特征确定数字类型
-                token_value = expression[start:index]
-
-                if percentage:
-                    token_type = Token.TYPE.PERCENTAGE
-                elif mixed_fraction:
-                    token_type = Token.TYPE.MIXED_FRACTION
-                elif infinite:
-                    token_type = Token.TYPE.INFINITE_DECIMAL
-                elif decimal_point:
-                    token_type = Token.TYPE.FINITE_DECIMAL
-                elif fraction:
-                    token_type = Token.TYPE.FRACTION
-                else:
-                    token_type = Token.TYPE.INTEGER
-
-                tokens.append(Token(token_type, [start, index], token_value))
-                continue
-
-            # 处理原生无理数(π, e)
-            if Lexer._is_native_irrational(expression[index]):
-                start = index
-                index += 1
-
-                # 可选问号表达式处理
-                temp_scan_index = index
-                have_reserved = False
-                while temp_scan_index < len(expression):
-                    temp_scan_index += 1
-                    print(expression[temp_scan_index])
-                    if expression[temp_scan_index].isdigit():
-                        if expression[temp_scan_index] == '?':
-                            have_reserved = True
-                            break
-                    else:
-                        break
-                if have_reserved:
-                    index = temp_scan_index
-
-                tokens.append(Token(Token.TYPE.NATIVE_IRRATIONAL, [start, index], expression[start:index]))
-                continue
-
-            # 处理自定义长无理数 <name>
-            if expression[index] == '<':
-                if len(expression) == 1:  # 长无理数的表达式肯定至少2个字符
-                    raise OlocIrrationalNumberException(
-                        exception_type=OlocIrrationalNumberException.ExceptionType.IMPOSSIBLE_LONG,
-                        expression=expression,
-                        positions=[0, 0]
-                    )
-
-                start = index
-                index += 1
-                while index < len(expression) and expression[index] != '>':
-                    index += index
-
-                if index < len(expression) and expression[index] == '>':
-                    index += index
-
-                    # 检查无理数后的可选问号表达式
-                    if index < len(expression) and expression[index] == '?':
-                        index += index
-
-                        if index < len(expression) and (expression[index] == '+' or expression[index] == '-'):
-                            index += index
-                        else:
-
-                            decimal_seen = False
-                            while index < len(expression) and (
-                                    expression[index].isdigit() or (expression[index] == '.' and not decimal_seen)):
-                                if expression[index] == '.':
-                                    decimal_seen = True
-                                index += index
-
-                    tokens.append(Token(Token.TYPE.LONG_CUSTOM, [start, index], expression[start:index]))
-                    continue
-
-            if index > len(expression):
-                break
-
-            # 处理函数
-            potential_func = ""
-            j = index
-            while j < len(expression) and Lexer._is_identifier_char(expression[j]):
-                potential_func += expression[j]
-                j += 1
-
-            if potential_func in function_names and j < len(expression) and expression[j] == '(':
-                start = index
-                index = j + 1  # 跳过左括号
-                tokens.append(Token(Token.TYPE.FUNCTION, [start, j], potential_func))
-                tokens.append(Token(Token.TYPE.LBRACKET, [j, j + 1], '('))
-                continue
-
-            if index >= len(expression):
-                break
-            # 处理自定义短无理数(单个字符)
-            if index < len(expression) - 1 and expression[index].isalpha() and not Lexer._is_native_irrational(
-                    expression[index]):
-                start = index
-                index += 1
-
-                # 检查无理数后的可选问号表达式
-                if expression[index] == '?':
-                    index += 1
-                    if index < len(expression):
-                        if expression[index] in '+-':
-                            index += 1
-                        else:
-                            # 处理小数值
-                            decimal_seen = False
-                            while index < len(expression) and (
-                                    expression[index].isdigit() or (expression[index] == '.' and not decimal_seen)):
-                                if expression[index] == '.':
-                                    decimal_seen = True
-                                index += 1
-
-                tokens.append(Token(Token.TYPE.SHORT_CUSTOM, [start, index], expression[start:index]))
-                continue
-            if index >= len(expression):
-                break
-            # 处理运算符
-            if Lexer._is_operator(expression[index]):
-                start = index
-
-                # 特殊处理可能的多字符运算符
-                if expression[index] == '*' and index + 1 < len(expression) and expression[index + 1] == '*':
-                    # 处理 ** 运算符
-                    tokens.append(Token(Token.TYPE.OPERATOR, [index, index + 2], '**'))
-                    index += 2
-                elif expression[index] == '%':
-                    # 简单处理%符号，后续函数化流程会区分百分比和取余
-                    tokens.append(Token(Token.TYPE.OPERATOR, [index, index + 1], '%'))
-                    index += 1
-                else:
-                    # 其他单字符运算符
-                    tokens.append(Token(Token.TYPE.OPERATOR, [index, index + 1], expression[index]))
-                    index += 1
-                continue
-
-            # 处理括号
-            if Lexer._is_bracket(expression[index]):
-                start = index
-                if expression[index] in '([{':
-                    tokens.append(Token(Token.TYPE.LBRACKET, [index, index + 1], expression[index]))
-                else:
-                    tokens.append(Token(Token.TYPE.RBRACKET, [index, index + 1], expression[index]))
-                index += 1
-                continue
-
-            # 处理函数参数分隔符
-            if Lexer._is_separator(expression[index]):
-                tokens.append(Token(Token.TYPE.PARAM_SEPARATOR, [index, index + 1], expression[index]))
-                index += 1
-                continue
-
-            # 无法识别的字符，归类为UNKNOWN
-            start = index
-            tokens.append(Token(Token.TYPE.UNKNOWN, [index, index + 1], expression[index]))
-            index += 1
-
-        return tokens
 
 """test"""
 if __name__ == '__main__':
