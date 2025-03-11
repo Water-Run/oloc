@@ -42,6 +42,7 @@ def get_function_name_list() -> list:
 def str_fraction_simplifier(fraction: str) -> str:
     r"""
     化简分数
+    当分数可化简为整数时,返回整数结果
     :param fraction: 待化简的分数
     :return: 化简后的分数
     """
@@ -57,6 +58,9 @@ def str_fraction_simplifier(fraction: str) -> str:
             num1, num2 = num2, num1 % num2
         return abs(num1)  # 返回正数作为最大公约数
 
+    if "/" not in fraction:
+        return fraction
+
     numerator, denominator = map(int, fraction.split('/'))
 
     gcd_value = _get_gcd(numerator, denominator)
@@ -68,4 +72,4 @@ def str_fraction_simplifier(fraction: str) -> str:
         numerator = -numerator
         denominator = -denominator
 
-    return f"{numerator}/{denominator}"
+    return str(numerator) if denominator == 1 else f"{numerator}/{denominator}"

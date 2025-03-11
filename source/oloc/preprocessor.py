@@ -5,11 +5,8 @@ r"""
 :description: Oloc preprocessor
 """
 
-import re
-import utils, lexer
-
 from source.oloc.exceptions import *
-from lexer import *
+from source.oloc.lexer import *
 
 
 class Preprocessor:
@@ -46,38 +43,70 @@ class Preprocessor:
 
     def _symbol_mapper(self) -> None:
         r"""
-        读取符号映射表,并依次遍历进行映射;对于函数名称中的符号,不进行替换处理
+        读取符号映射表,并依次遍历进行映射;对于函数名称中的符号,以及自定义长无理数中的符号,不进行替换处理
         :return: None
         """
         symbol_mapping_table = utils.get_symbol_mapping_table()
         function_name_list = utils.get_function_name_list()
 
-        function_name_set = set(function_name_list)
+        # 创建反向映射表：将值映射到键
+        reverse_mapping = {}
+        for key, values in symbol_mapping_table.items():
+            for value in values:
+                reverse_mapping[value] = key
 
-        expression_chars = list(self.expression)
-        length = len(expression_chars)
+        def replace_symbols(text: str) -> str:
+            # 找到 "<" 和 ">" 的范围，并记录这些区域
+            angle_bracket_ranges = []
+            inside_angle_brackets = False
+            start_index = 0
+            for i, char in enumerate(text):
+                if char == "<":
+                    inside_angle_brackets = True
+                    start_index = i
+                elif char == ">" and inside_angle_brackets:
+                    inside_angle_brackets = False
+                    angle_bracket_ranges.append((start_index, i))
 
-        for target, sources in symbol_mapping_table.items():
-            for source in sources:
-                index = 0
-                while index <= length - len(source):  # 确保不越界
-                    if ''.join(expression_chars[index:index + len(source)]) == source:
-                        is_function_part = False
-                        for func in function_name_set:
-                            if ''.join(expression_chars[index:index + len(func)]) == func:
-                                is_function_part = True
-                                break
+            # 遍历符号映射表，进行替换，但跳过 "<...>" 和函数名
+            replaced_text = []
+            i = 0
+            while i < len(text):
+                # 检查当前字符是否在 "<...>" 范围内
+                if any(start <= i <= end for start, end in angle_bracket_ranges):
+                    replaced_text.append(text[i])
+                    i += 1
+                    continue
 
-                        if not is_function_part:
-                            expression_chars[index:index + len(source)] = list(target)
-                            length = len(expression_chars)
-                            index += len(target)
-                        else:
-                            index += len(source)
-                    else:
-                        index += 1
+                # 检查是否匹配函数名（完整匹配）
+                is_function_name = False
+                for func_name in function_name_list:
+                    if text[i:i + len(func_name)] == func_name and (
+                            i + len(func_name) == len(text) or not text[i + len(func_name)].isalnum()
+                    ):
+                        replaced_text.append(func_name)
+                        i += len(func_name)
+                        is_function_name = True
+                        break
+                if is_function_name:
+                    continue
 
-        self.expression = ''.join(expression_chars)
+                # 检查是否匹配符号映射表
+                matched = False
+                for value, key in reverse_mapping.items():
+                    if text[i:i + len(value)] == value:
+                        replaced_text.append(key)
+                        i += len(value)
+                        matched = True
+                        break
+                if not matched:
+                    replaced_text.append(text[i])
+                    i += 1
+
+            return "".join(replaced_text)
+
+        # 替换 self.expression
+        self.expression = replace_symbols(self.expression)
 
     def _formal_elimination(self) -> None:
         r"""
@@ -171,6 +200,17 @@ class Preprocessor:
         :return: None
         """
         symbol_mapping_table = utils.get_symbol_mapping_table()
+        function_names = utils.get_function_name_list()
+        protect = []
+        for func in function_names:
+            start = 0
+            while True:
+                index = self.expression.find(func, start)
+                if index == -1:
+                    break
+                protect.extend(range(index, index + len(func)))
+                start = index + len(func)
+
         reserved_symbols = set(symbol_mapping_table.keys())
 
         left_brackets = '([{'
@@ -179,9 +219,14 @@ class Preprocessor:
         result = []
         in_custom_irrational = False
 
-        i = 0
-        while i < len(self.expression):
-            current_char = self.expression[i]
+        index = 0
+        while index < len(self.expression):
+            current_char = self.expression[index]
+
+            if index in protect:
+                result.append(current_char)
+                index += 1
+                continue
 
             if current_char == '<':
                 in_custom_irrational = True
@@ -190,8 +235,8 @@ class Preprocessor:
 
             result.append(current_char)
 
-            if i < len(self.expression) - 1:
-                next_char = self.expression[i + 1]
+            if index < len(self.expression) - 1:
+                next_char = self.expression[index + 1]
 
                 if not in_custom_irrational:
                     is_current_short_irrational = current_char.isalpha() and current_char not in reserved_symbols
@@ -219,7 +264,7 @@ class Preprocessor:
                                 is_next_irrational or next_char == '<'):
                             result.append('*')
 
-            i += 1
+            index += 1
 
         self.expression = ''.join(result)
 
@@ -361,13 +406,16 @@ class Preprocessor:
             :param percentage: 待转换的百分数，例如"12.5%"
             :return: 转换后的小数字符串，例如"0.125"
             """
+            # 去掉百分号
             percentage = percentage[:-1]
 
+            # 检查是否包含小数点，确保分割操作不会出错
             if '.' not in percentage:
                 percentage += '.0'
 
             integer_part, decimal_part = percentage.split('.')
 
+            # 根据整数部分长度调整小数点位置
             if integer_part == '0':
                 percentage = '0.00' + decimal_part
             elif len(integer_part) == 1:
@@ -382,7 +430,7 @@ class Preprocessor:
             if percentage.endswith('.'):
                 percentage = percentage[:-1]
 
-            return _convert_finite_decimal(percentage)
+            return percentage if '.' not in percentage else _convert_finite_decimal(percentage)
 
         def _convert_mix_fraction(mix_fraction: str) -> str:
             r"""
@@ -462,6 +510,24 @@ class Preprocessor:
 
 """test"""
 if __name__ == '__main__':
+    import simpsave as ss
+    import time
+    start = time.time()
+    count = 0
+    test_cases = ss.read("test_cases", file="./data/olocconfig.ini")
+    for test in test_cases:
+        try:
+            result = Preprocessor(test)
+            result.execute()
+            print(f"{test}\t=>\t{result.expression}")
+        except Exception as error:
+            print("\n\n\n============\n", end="Expression: ")
+            print(test)
+            print(error)
+            print("" * 3)
+        count += 1
+    print(f"Test {count} tests in {time.time() - start}" + "" * 10)
+
     while True:
         try:
             result = Preprocessor(input(">>"))

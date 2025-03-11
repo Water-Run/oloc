@@ -4,6 +4,7 @@ r"""
 :file: core.py
 :description: Core of oloc
 """
+import time
 
 from result import OlocResult
 from exceptions import *
@@ -21,10 +22,11 @@ def _execute_calculation(expression: str, result_queue: Queue):
     """
     """test"""
     try:
+
         preprocess = Preprocessor(expression)
         preprocess.execute()
         result = preprocess # temp
-
+        time.sleep(1)
         lexer = Lexer(preprocess.expression)
         lexer.execute()
 
@@ -99,10 +101,4 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
 
 """test"""
 if __name__ == "__main__":
-    while True:
-        try:
-            user_input = input('>>')
-            result = calculate(user_input, time_limit=0)
-            print("Result:", result.expression)
-        except Exception as error:
-            print(error)
+    calculate("123", time_limit=0.5)

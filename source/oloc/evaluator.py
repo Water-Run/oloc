@@ -7,6 +7,7 @@
 
 import lexer
 
+
 class Function:
     r"""
     函数
@@ -15,6 +16,7 @@ class Function:
     r"""
     代数函数
     """
+
     @staticmethod
     def abs(number: lexer.Token) -> lexer.Token:
         ...
@@ -32,4 +34,3 @@ class Evaluator:
     @staticmethod
     def simplify(fraction: lexer.Token) -> lexer.Token:
         ...
-

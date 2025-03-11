@@ -58,7 +58,9 @@ class OlocException(ABC, Exception):
             f"{formatted_message}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
-            f"Hint: {self.exception_type.value[1]}"
+            f"Hint: {self.exception_type.value[1]}\n"
+            f"--------------------------------------------------------------------------------------------\n"
+            f"Try visit https://github.com/Water-Run/oloc for more information on oloc related tutorials :)"
         )
 
     def _generate_marker_line(self) -> str:
@@ -216,12 +218,14 @@ class OlocInvalidTokenException(OlocException):
 
         INVALID_MIXED_FRACTION = (
             "OlocInvalidTokenException: Invalid mixed-fraction number `{token_content}`",
-            r"A mixed-fraction must consist of an integer followed by the symbol `\` and then a fraction. e.g. 4\2/3"
+            r"A mixed-fraction must consist of an integer followed by the symbol `\` and then an unsigned fraction. "
+            r"e.g. 4\2/3"
         )
 
         INVALID_FRACTION = (
             "OlocInvalidTokenException: Invalid fraction number `{token_content}`",
-            r"A fraction must be composed of a fraction line consisting of `/` and integers before and after. e.g. 2/3"
+            r"A fraction must be composed of a fraction line consisting of `/` and unsigned integers before and "
+            r"after. e.g. 2/3"
         )
 
         INVALID_INFINITE_DECIMAL = (
@@ -243,7 +247,7 @@ class OlocInvalidTokenException(OlocException):
 
         INVALID_NATIVE_IRRATIONAL = (
             "OlocInvalidTokenException: Invalid native-irrational number `{token_content}`",
-            "A primitive irrational number must be one of π or 𝑒."
+            "A primitive irrational number must be one of `π` or `𝑒`."
         )
 
         INVALID_SHORT_CUSTOM_IRRATIONAL = (
@@ -299,4 +303,39 @@ class OlocInvalidTokenException(OlocException):
         self.message = f"{main_message} {suggestion}"
 
         # 调用父类初始化
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocIrrationalNumberException(OlocException):
+    r"""
+    当长自定义无理数存在问题时引发的异常
+    """
+
+    class ExceptionType(Enum):
+        r"""
+        定义 OlocCommentException 的异常类型的枚举类。
+        """
+        MISMATCH_LONG_LEFT_SIGN = (
+            "OlocIrrationalNumberException: Mismatch '<' detected",
+            "When declaring a custom long irrational number, `<` must match `>`. Check your expressions."
+        )
+
+        MISMATCH_LONG_RIGHT_SIGN = (
+            "OlocIrrationalNumberException: Mismatch '>' detected",
+            "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
+        )
+
+        IMPOSSIBLE_LONG = (
+            "OlocIrrationalNumberException: Impossible to a legal custom long irrational number in this expression",
+            "A long custom irrational number must consist of a `<` and a paired `>` (at least two characters)."
+        )
+
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+        r"""
+        初始化 OlocIrrationalNumberException。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        """
         super().__init__(exception_type, expression, positions)
