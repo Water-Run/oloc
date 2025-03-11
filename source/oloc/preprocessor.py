@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-10
+:date: 2025-03-11
 :file: preprocessor.py
 :description: Oloc preprocessor
 """
@@ -253,17 +253,106 @@ class Preprocessor:
 
             fraction = f"{numerator}/{denominator}"
 
-            simplified_fraction = utils.str_fraction_simplifier(fraction)
-
-            return simplified_fraction
+            return fraction
 
         def _convert_infinite_decimal(infinite_decimal: str) -> str:
             r"""
-            将无限小数转为分数
+            将无限循环小数转为分数
             :param infinite_decimal: 待转换的无限小数
             :return: 转换后的分数
             """
-            return ""
+
+            def _spilt_decimal_parts(process_decimal: str) -> list[str, str]:
+                r"""
+                切分无限循环小数中重复的部分和有限小数部分
+                :param process_decimal: 待查找的无限循环小数
+                :return: 一个字符串列表, 第一项是查找到的重复部分, 第二项是移除重复部分后的有限小数
+                """
+                # 处理结尾有点号的情况
+                if '.' in process_decimal and process_decimal.count('.') > 1:
+                    # 移除结尾的所有点号
+                    base_number = process_decimal.rstrip('.')
+
+                    # 分离整数和小数部分
+                    integer_part, decimal_part = base_number.split('.')
+
+                    # 最后一位数字是循环部分
+                    if decimal_part:
+                        repeat_part = decimal_part[-1]
+                        finite_part = integer_part + "." + decimal_part[:-1]
+                    else:
+                        # 如果没有小数部分，默认循环部分为0
+                        repeat_part = "0"
+                        finite_part = integer_part + ".0"
+
+                    return [repeat_part, finite_part]
+
+                # 处理显式声明循环部分的情况（使用:分隔）
+                if ':' in process_decimal:
+                    base_number, repeat_part = process_decimal.split(':')
+
+                    if '.' in base_number:
+                        integer_part, decimal_part = base_number.split('.')
+                        finite_part = integer_part + "." + decimal_part
+                    else:
+                        # 如果基数部分没有小数点，加上.0
+                        finite_part = base_number + ".0"
+
+                    return [repeat_part, finite_part]
+
+                # 默认情况：不应该进入此分支，因为输入保证是循环小数
+                return ["", process_decimal]
+
+            def _fraction_from_parts(repeat_part: str, finite_part: str) -> str:
+                r"""
+                根据循环部分和有限部分计算分数形式
+                :param repeat_part: 循环部分
+                :param finite_part: 有限部分
+                :return: 分数字符串
+                """
+                # 分解有限部分
+                if '.' in finite_part:
+                    integer_str, decimal_str = finite_part.split('.')
+                else:
+                    integer_str, decimal_str = finite_part, '0'
+
+                # 将整数部分转为整数
+                integer_value = int(integer_str) if integer_str else 0
+
+                # 计算分母：循环部分产生的分母是9的乘积
+                denominator = int('9' * len(repeat_part))
+
+                # 如果有限小数部分非空，需要将循环部分乘以适当的因子
+                if decimal_str:
+                    denominator = denominator * (10 ** len(decimal_str))
+
+                # 计算分子
+                numerator = 0
+
+                # 处理整数部分
+                if integer_value:
+                    numerator += integer_value * denominator
+
+                # 处理有限小数部分
+                if decimal_str:
+                    numerator += int(decimal_str) * int('9' * len(repeat_part))
+
+                # 处理循环部分
+                if repeat_part:
+                    numerator += int(repeat_part)
+
+                # 返回分数形式
+                return f"{numerator}/{denominator}"
+
+            # 主函数逻辑
+            parts = _spilt_decimal_parts(infinite_decimal)
+            repeat_part, finite_part = parts[0], parts[1]
+
+            # 计算分数
+            fraction = _fraction_from_parts(repeat_part, finite_part)
+
+            # 调用化简函数
+            return fraction
 
         def _convert_percentage(percentage: str) -> str:
             r"""
@@ -300,7 +389,28 @@ class Preprocessor:
             :param mix_fraction: 待转换的带分数
             :return: 转换后的分数
             """
-            return ""
+            # 分割带分数的整数部分和分数部分
+            parts = mix_fraction.split('\\')
+
+            # 获取整数部分
+            integer_part = parts[0]
+
+            # 获取分数部分
+            fraction_part = parts[1]
+
+            # 分割分子和分母
+            numerator, denominator = fraction_part.split('/')
+
+            # 将整数部分转换为同分母的分数
+            integer_as_fraction_numerator = int(integer_part) * int(denominator)
+
+            # 计算最终的分子
+            final_numerator = integer_as_fraction_numerator + int(numerator)
+
+            # 构建最终的分数字符串
+            final_fraction = f"{final_numerator}/{denominator}"
+
+            return final_fraction
 
         fraction_expression = ""
 
@@ -317,7 +427,7 @@ class Preprocessor:
                         fraction_expression += _convert_percentage(temp_token.value)
             else:
                 fraction_expression += temp_token.value
-        self.expression = fraction_expression
+        self.expression = utils.str_fraction_simplifier(fraction_expression)
 
     def execute(self) -> None:
         r"""

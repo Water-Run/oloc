@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-10
+:date: 2025-03-11
 :file: lexer.py
 :description: Oloc lexer
 """
