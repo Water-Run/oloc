@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-10
+:date: 2025-03-11
 :file: exceptions.py
 :description: Oloc exceptions
 """
@@ -43,13 +43,19 @@ class OlocException(ABC, Exception):
 
     def __str__(self):
         r"""
-        生成异常的详细字符串表示。
+        生成异常的详细字符串表示，动态解析模板中的占位符。
 
         :return: 描述错误的格式化字符串
         """
+        # 动态获取实例属性，填充模板中的占位符
+        try:
+            formatted_message = self.exception_type.value[0].format(**self.__dict__)
+        except KeyError as e:
+            raise KeyError(f"Missing required attribute for exception formatting: {e}")
+
         marker_line = self._generate_marker_line()
         return (
-            f"{self.exception_type.value[0].format(time_limit=getattr(self, 'time_limit', 0))}\n"
+            f"{formatted_message}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
             f"Hint: {self.exception_type.value[1]}"
@@ -276,22 +282,21 @@ class OlocInvalidTokenException(OlocException):
             "the parameter separator can only be ';'."
         )
 
-    def __init__(self, exception_type: ExceptionType, token_content: str):
+    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], token_content: str):
         r"""
         初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。
 
         :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
         :param token_content: 引发异常的 Token 内容
         """
-        self.exception_type = exception_type
         self.token_content = token_content
 
-        # 动态生成异常消息
         main_message = exception_type.value[0].format(token_content=token_content)
         suggestion = exception_type.value[1]
 
-        # 设置完整的异常消息
         self.message = f"{main_message} {suggestion}"
 
         # 调用父类初始化
-        super().__init__(self.message)
+        super().__init__(exception_type, expression, positions)

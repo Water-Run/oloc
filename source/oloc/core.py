@@ -102,7 +102,7 @@ if __name__ == "__main__":
     while True:
         try:
             user_input = input('>>')
-            result = calculate(user_input)
+            result = calculate(user_input, time_limit=0)
             print("Result:", result.expression)
         except Exception as error:
             print(error)

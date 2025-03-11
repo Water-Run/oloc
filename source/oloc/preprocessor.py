@@ -9,6 +9,7 @@ import re
 import utils, lexer
 
 from source.oloc.exceptions import *
+from lexer import *
 
 
 class Preprocessor:
@@ -228,13 +229,13 @@ class Preprocessor:
         :return: None
         """
 
-        temp_tokens = lexer.Lexer.tokenizer(self.expression)
+        temp_tokens = Lexer.tokenizer(self.expression)
 
         convert_num_types = [
-            lexer.Token.TYPE.PERCENTAGE,
-            lexer.Token.TYPE.MIXED_FRACTION,
-            lexer.Token.TYPE.FINITE_DECIMAL,
-            lexer.Token.TYPE.INFINITE_DECIMAL,
+            Token.TYPE.PERCENTAGE,
+            Token.TYPE.MIXED_FRACTION,
+            Token.TYPE.FINITE_DECIMAL,
+            Token.TYPE.INFINITE_DECIMAL,
         ]
 
         def _convert_finite_decimal(finite_decimal: str) -> str:
@@ -412,22 +413,39 @@ class Preprocessor:
 
             return final_fraction
 
-        fraction_expression = ""
+        fractionalized_expression = ""
 
         for temp_token in temp_tokens:
             if (convert_type := temp_token.type) in convert_num_types:
+
+                EXCEPTION_TYPE_MAPPING_DICT:dict = {
+                    Token.TYPE.MIXED_FRACTION: OlocInvalidTokenException.ExceptionType.INVALID_MIXED_FRACTION,
+                    Token.TYPE.PERCENTAGE: OlocInvalidTokenException.ExceptionType.INVALID_PERCENTAGE,
+                    Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
+                    Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
+                }
+                if not temp_token.is_legal:
+                    raise OlocInvalidTokenException(
+                        exception_type=EXCEPTION_TYPE_MAPPING_DICT[temp_token.type],
+                        expression=self.expression,
+                        positions=temp_token.range,
+                        token_content=temp_token.value if temp_token else "",
+                    )
+
+                token_fractionalized = ""
                 match convert_type:
-                    case lexer.Token.TYPE.MIXED_FRACTION:
-                        fraction_expression += _convert_mix_fraction(temp_token.value)
-                    case lexer.Token.TYPE.FINITE_DECIMAL:
-                        fraction_expression += _convert_finite_decimal(temp_token.value)
-                    case lexer.Token.TYPE.INFINITE_DECIMAL:
-                        fraction_expression += _convert_infinite_decimal(temp_token.value)
-                    case lexer.Token.TYPE.PERCENTAGE:
-                        fraction_expression += _convert_percentage(temp_token.value)
+                    case Token.TYPE.MIXED_FRACTION:
+                        token_fractionalized = _convert_mix_fraction(temp_token.value)
+                    case Token.TYPE.FINITE_DECIMAL:
+                        token_fractionalized = _convert_finite_decimal(temp_token.value)
+                    case Token.TYPE.INFINITE_DECIMAL:
+                        token_fractionalized = _convert_infinite_decimal(temp_token.value)
+                    case Token.TYPE.PERCENTAGE:
+                        token_fractionalized = _convert_percentage(temp_token.value)
+                fractionalized_expression += utils.str_fraction_simplifier(token_fractionalized)
             else:
-                fraction_expression += temp_token.value
-        self.expression = utils.str_fraction_simplifier(fraction_expression)
+                fractionalized_expression += temp_token.value
+        self.expression = fractionalized_expression
 
     def execute(self) -> None:
         r"""
@@ -445,6 +463,9 @@ class Preprocessor:
 """test"""
 if __name__ == '__main__':
     while True:
-        result = Preprocessor(input(">>"))
-        result.execute()
-        print(result.expression)
+        try:
+            result = Preprocessor(input(">>"))
+            result.execute()
+            print(result.expression)
+        except Exception as error:
+            print(error)

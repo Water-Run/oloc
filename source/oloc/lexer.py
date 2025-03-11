@@ -38,8 +38,6 @@ class Token:
 
         # 运算符
         OPERATOR = 'operator'  # 运算符: +, -, *, /等
-
-        # 分组符号
         LBRACKET = 'left bracket'  # 左括号: (, [, {
         RBRACKET = 'right bracket'  # 右括号: ), ], }
 
@@ -50,7 +48,7 @@ class Token:
         # 未知类型
         UNKNOWN = 'unknown'  # 无法识别的字符
 
-    def __init__(self, token_type: TYPE, token_range: list, token_value: str = None):
+    def __init__(self, token_type: TYPE, token_range: list[int, int], token_value: str = None):
         self.type = token_type
         self.range = token_range
         self.value = token_value if token_value is not None else None
@@ -231,7 +229,6 @@ class Token:
         except ImportError:
             # 处理utils模块导入失败的情况
             return False
-
 
 
 class Lexer:
