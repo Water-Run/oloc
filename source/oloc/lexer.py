@@ -36,6 +36,9 @@ class Token:
         SHORT_CUSTOM = 'short custom irrational'  # 短自定义无理数: x, y
         LONG_CUSTOM = 'long custom irrational'  # 长自定义无理数: <name>
 
+        # 无理数参数类型
+        IRRATIONAL_PARAM = 'irrational param'
+
         # 运算符
         OPERATOR = 'operator'  # 运算符: +, -, *, /等
         LBRACKET = 'left bracket'  # 左括号: (, [, {
@@ -180,10 +183,6 @@ class Token:
         """
         if self.value in {'π', '𝑒'}:
             return True
-        if self.value.startswith(('π', '𝑒')) and self.value.endswith('?'):
-            middle_part = self.value[1:-1]
-            if middle_part.isdigit():
-                return True
         return False
 
     def _check_short_custom(self) -> bool:
@@ -191,17 +190,7 @@ class Token:
         检查自定义短无理数类型的Token的合法性
         :return: 是否合法
         """
-        if self.value.endswith("?"):
-            if len(self.value) <= 2:
-                return False
-            short_irrational = self.value[0]
-            convert_param = self.value[1:-1]
-            if convert_param[0] in "+-":
-                if len(convert_param) > 1 and not Lexer.is_str_a_number(convert_param[1:]):
-                    return False
-        else:
-            short_irrational = self.value
-        if len(short_irrational) != 1 or short_irrational in set(utils.get_symbol_mapping_table().keys()):
+        if self.value in set(utils.get_symbol_mapping_table().keys()):
             return False
         return True
 
@@ -210,20 +199,9 @@ class Token:
         检查自定义长无理数类型的Token的合法性
         :return: 是否合法
         """
-        if not self.value.startswith("<") or (not self.value.endswith(">") and not self.value.endswith("?")):
-            return False
-
-        if self.value.endswith(">"):
+        if not self.value.startswith("<") and self.value.endswith(">"):
             return True
-
-        convert_param = self.value[self.value.rindex('>') + 1:len(self.value) - 1]
-        if not convert_param:
-            return False
-
-        if convert_param[0] in "+-":
-            return len(convert_param) > 1 and Lexer.is_str_a_number(convert_param[1:])
-
-        return Lexer.is_str_a_number(convert_param)
+        return False
 
     def _check_operator(self) -> bool:
         r"""
@@ -267,6 +245,12 @@ class Token:
 
         function_list = utils.get_function_name_list()
         return self.value in function_list
+
+    def _check_irrational_param(self) -> bool:
+        r"""
+        检查无理数参数类型的Token的合法性
+        :return: 是否合法
+        """
 
 
 class Lexer:
@@ -543,13 +527,131 @@ class Lexer:
 
         mark_list = [Token.TYPE.UNKNOWN for _ in range(len(expression))]
 
+        """
+        模块标记
+        """
+
+        # 标记自定义长无理数
+        for index, char in enumerate(expression):
+            # 已经标记过的跳过
+            if index > 0 and mark_list[index - 1] == Token.TYPE.LONG_CUSTOM:
+                continue
+
+            if char == '>':
+                raise OlocIrrationalNumberException(
+                    exception_type=OlocIrrationalNumberException.ExceptionType.MISMATCH_LONG_RIGHT_SIGN,
+                    expression=expression,
+                    positions=[index, index],
+                )
+
+            if char == '<':
+                # 单个左尖括号是错误的
+                if index == len(expression) - 1:
+                    raise OlocIrrationalNumberException(
+                        exception_type=OlocIrrationalNumberException.ExceptionType.MISMATCH_LONG_LEFT_SIGN,
+                        expression=expression,
+                        positions=[index, index],
+                    )
+
+                # 查找匹配的右尖括号
+                right_bracket_index = None
+                for i in range(index + 1, len(expression)):
+                    if expression[i] == '>':
+                        right_bracket_index = i
+                        break
+
+                # 如果没找到匹配的右尖括号，抛出异常
+                if right_bracket_index is None:
+                    raise OlocIrrationalNumberException(
+                        exception_type=OlocIrrationalNumberException.ExceptionType.MISMATCH_LONG_LEFT_SIGN,
+                        expression=expression,
+                        positions=[index, index],
+                    )
+
+                # 标记整个范围为LONG_CUSTOM
+                for i in range(index, right_bracket_index + 1):
+                    mark_list[i] = Token.TYPE.LONG_CUSTOM
+
+        # 标记无理数参数
+        for index, char in enumerate(expression):
+            if char == "?":
+                # 记录当前 ? 的索引并初始化索引列表
+                irrational_param_index_list = [index]
+
+                # 开始向前扫描
+                find_dot = False
+
+                for scan_index in range(index - 1, -1, -1):  # 从当前索引向前遍历
+                    scan_char = expression[scan_index]
+
+                    if scan_char.isdigit() or scan_char in {".", "+", "-"}:
+                        irrational_param_index_list.append(scan_index)
+                        if scan_char == ".":
+                            if find_dot:  # 如果已经遇到过小数点，停止扫描
+                                break
+                            find_dot = True
+                        elif scan_char in {"+", "-"}:  # 遇到加号或减号，停止扫描
+                            break
+                    else:  # 非数字、非符号直接停止
+                        break
+
+                # 标记所有相关索引为 IRRATIONAL_PARAM
+                for irrational_index in irrational_param_index_list:
+                    mark_list[irrational_index] = Token.TYPE.IRRATIONAL_PARAM
+
+        for func_name in function_names:
+            start = 0
+            func_len = len(func_name)
+
+            # 在表达式中查找函数名
+            while (index := expression.find(func_name, start)) != -1:
+                end_index = index + func_len
+                # 标记匹配范围内的字符为 FUNCTION，不再检查前后字符
+                for i in range(index, end_index):
+                    mark_list[i] = Token.TYPE.FUNCTION
+
+                # 更新查找的起始位置，避免重复匹配
+                start = end_index
+
+        # 标记数字
+
+        """
+        逐字符扫描
+        """
         # 逐字符扫描
         for index, unit in enumerate(zip(expression, mark_list)):
-            unit_char = unit[0]
+            unit_char:str = unit[0]
             unit_type = unit[1]
 
+            # 已经标记过
             if unit_type != Token.TYPE.UNKNOWN:
-                ...
+                continue
+
+            # 标记函数参数分隔符
+            if unit_char in ";,":
+                mark_list[index] = Token.TYPE.PARAM_SEPARATOR
+
+            # 标记括号
+            if unit_char in "{[(":
+                mark_list[index] = Token.TYPE.LBRACKET
+                continue
+            if unit_char in ")]}":
+                mark_list[index] = Token.TYPE.RBRACKET
+                continue
+
+            # 标记非数字
+            if unit_char in ["π", "𝑒"]:
+                mark_list[index] = Token.TYPE.NATIVE_IRRATIONAL
+                continue
+
+            if unit_char in symbol_mapping_table.keys():
+                mark_list[index] = Token.TYPE.OPERATOR
+                continue
+            else:
+                mark_list[index] = Token.TYPE.SHORT_CUSTOM
+                continue
+
+
 
         token_flow = []  # 结果的Token流
 
@@ -573,23 +675,6 @@ if __name__ == '__main__':
 
     while True:
         try:
-            tests = [
-                [Token.TYPE.LONG_CUSTOM, "<>>"],
-                [Token.TYPE.LONG_CUSTOM, "<12313>"],
-                [Token.TYPE.LONG_CUSTOM, "12312>"],
-                [Token.TYPE.LONG_CUSTOM, "<11>?"],
-                [Token.TYPE.LONG_CUSTOM, "<11>+?"],
-                [Token.TYPE.LONG_CUSTOM, "<11>-1?"],
-                [Token.TYPE.LONG_CUSTOM, "<11>+0.92514?"],
-                [Token.TYPE.LONG_CUSTOM, "<abadad>+?"],
-                [Token.TYPE.LONG_CUSTOM, "<11adada>+ad?"],
-                [Token.TYPE.LONG_CUSTOM, "<11>+?123"],
-                [Token.TYPE.LONG_CUSTOM, "<11>123?"],
-                [Token.TYPE.LONG_CUSTOM, "<11>0.55?"],
-            ]
-            for test in tests:
-                test_token = Token(test[0], test[1])
-                print(f"{test_token.value} {test_token.is_legal}")
+            Lexer.tokenizer(input(">>>"))
         except Exception as error:
             print(error)
-        input(">>>>")

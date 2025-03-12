@@ -280,6 +280,12 @@ class OlocInvalidTokenException(OlocException):
             "the parameter separator can only be ';'."
         )
 
+        INVALID_IRRATIONAL_PARAM = (
+            "OlocInvalidTokenException: Invalid irrational param `{token_content}`",
+            "An irrational number parameter expression can only be an integer or a signed or unsigned integer or "
+            "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
+        )
+
     def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], token_content: str):
         r"""
         初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。
@@ -302,7 +308,7 @@ class OlocInvalidTokenException(OlocException):
 
 class OlocIrrationalNumberException(OlocException):
     r"""
-    当长自定义无理数存在问题时引发的异常
+    当存在无理数相关问题时引发的异常
     """
 
     class ExceptionType(Enum):
@@ -317,11 +323,6 @@ class OlocIrrationalNumberException(OlocException):
         MISMATCH_LONG_RIGHT_SIGN = (
             "OlocIrrationalNumberException: Mismatch '>' detected",
             "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
-        )
-
-        IMPOSSIBLE_LONG = (
-            "OlocIrrationalNumberException: Impossible to a legal custom long irrational number in this expression",
-            "A long custom irrational number must consist of a `<` and a paired `>` (at least two characters)."
         )
 
     def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
