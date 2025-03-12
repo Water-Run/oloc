@@ -6,6 +6,7 @@ r"""
 """
 
 import utils
+import evaluator
 
 import re
 from exceptions import *
@@ -50,9 +51,11 @@ class Token:
     def __init__(self, token_type: TYPE, token_value: str = "", token_range: list[int, int] = None):
         if token_range is None:
             token_range = [0, 0]
+        self.value = token_value
+        if self.value == "":
+            self.type = Token.TYPE.UNKNOWN
         self.type = token_type
         self.range = token_range
-        self.value = token_value if token_value is not None else None
         self.is_legal = False
         self._check_legal()
 
@@ -89,14 +92,13 @@ class Token:
         """
         # 根据Token类型调用相应的检查方法
         checker_method_name = f"_check_{self.type.name.lower()}"
-        if hasattr(self, checker_method_name) and self.value is not None:
+        if hasattr(self, checker_method_name):
             checker_method = getattr(self, checker_method_name)
             self.is_legal = checker_method()
         else:
             self.is_legal = False
         return self.is_legal
 
-    # 各种检查方法定义，现在它们是实例方法而不是类方法
     def _check_integer(self) -> bool:
         r"""
         检查整数类型的Token的合法性
@@ -109,7 +111,11 @@ class Token:
         检查有限小数类型的Token的合法性
         :return: 是否合法
         """
-        return bool(re.match(r'^\d+\.\d+$', self.value))
+        if '.' in self.value:
+            parts = self.value.split('.')
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                return True
+        return False
 
     def _check_infinite_decimal(self) -> bool:
         r"""
@@ -117,107 +123,120 @@ class Token:
         :return: 是否合法
         """
         # 情况1: 以3-6个点结尾，如 3.14...
-        if re.search(r'\.\d+\.{3,6}$', self.value):
-            base = re.sub(r'\.{3,6}$', '', self.value)
-            return bool(re.match(r'^\d+\.\d+$', base))
+        if '.' in self.value and self.value.endswith(('...', '....', '.....', '......')):
+            base = self.value.rstrip('.')
+            if '.' in base:
+                parts = base.split('.')
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                    return True
 
         # 情况2: 以:加整数结尾，如 2.3:4
         if ':' in self.value:
-            match = re.match(r'^(\d+\.\d+):(\d+)$', self.value)
-            return bool(match)
+            parts = self.value.split(':')
+            if len(parts) == 2:
+                decimal_part, integer_part = parts
+                if '.' in decimal_part:
+                    decimal_parts = decimal_part.split('.')
+                    if len(decimal_parts) == 2 and decimal_parts[0].isdigit() and decimal_parts[1].isdigit():
+                        if integer_part.isdigit():
+                            return True
 
         return False
-
-    def _check_fraction(self) -> bool:
-        r"""
-        检查分数类型的Token的合法性
-        :return: 是否合法
-        """
-        return bool(re.match(r'^\d+/\d+$', self.value))
 
     def _check_mixed_fraction(self) -> bool:
         r"""
         检查带分数类型的Token的合法性
         :return: 是否合法
         """
-        return bool(re.match(r'^\d+\\\d+/\d+$', self.value))
+        if '\\' in self.value and '/' in self.value:
+            parts = self.value.split('\\')
+            if len(parts) == 2:
+                integer_part, fraction_part = parts
+                if integer_part.isdigit():
+                    fraction_parts = fraction_part.split('/')
+                    if len(fraction_parts) == 2 and all(p.isdigit() for p in fraction_parts):
+                        return True
+        return False
 
     def _check_percentage(self) -> bool:
         r"""
         检查百分数类型的Token的合法性
         :return: 是否合法
         """
-        return bool(re.match(r'^\d+(\.\d+)?%$', self.value))
+        if self.value.endswith('%'):
+            number_part = self.value[:-1]
+            if '.' in number_part:
+                parts = number_part.split('.')
+                if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                    return True
+            elif number_part.isdigit():
+                return True
+        return False
 
     def _check_native_irrational(self) -> bool:
         r"""
         检查原生无理数类型的Token的合法性
         :return: 是否合法
         """
-        return bool(re.match(r'^[πe𝑒](\d+\?)?$', self.value))
+        if self.value in {'π', '𝑒'}:
+            return True
+        if self.value.startswith(('π', '𝑒')) and self.value.endswith('?'):
+            middle_part = self.value[1:-1]
+            if middle_part.isdigit():
+                return True
+        return False
 
     def _check_short_custom(self) -> bool:
         r"""
         检查自定义短无理数类型的Token的合法性
         :return: 是否合法
         """
-        try:
-            from utils import get_symbol_mapping_table
-
-            symbol_mapping_table = get_symbol_mapping_table()
-
-            # 检查第一个字符是否是自定义短无理数（不在映射表的键中）
-            if len(self.value) < 1 or self.value[0] in symbol_mapping_table.keys():
+        if self.value.endswith("?"):
+            if len(self.value) <= 2:
                 return False
-
-            # 如果只有一个字符，是合法的
-            if len(self.value) == 1:
-                return True
-
-            # 检查结尾是否有?
-            if self.value.endswith('?'):
-                # 去掉第一个字符和?后检查剩余部分
-                remaining = self.value[1:-1]
-
-                # 使用正则表达式检查剩余部分
-                return bool(re.match(r'^[+-]$|^[+-]?\d+(\.\d+)?$', remaining))
-
-            # 否则不合法
+            short_irrational = self.value[0]
+            convert_param = self.value[1:-1]
+            if convert_param[0] in "+-":
+                if len(convert_param) > 1 and not Lexer.is_str_a_number(convert_param[1:]):
+                    return False
+        else:
+            short_irrational = self.value
+        if len(short_irrational) != 1 or short_irrational in set(utils.get_symbol_mapping_table().keys()):
             return False
-        except ImportError:
-            # 处理utils模块导入失败的情况
-            return False
+        return True
 
     def _check_long_custom(self) -> bool:
         r"""
         检查自定义长无理数类型的Token的合法性
         :return: 是否合法
         """
-        # 使用正则表达式检查长自定义无理数格式
-        base_match = re.match(r'^<([^<>]+)>([+-]|\d+(\.\d+)?|[+-]\d+(\.\d+)?)?\?$', self.value)
-        if base_match:
+        if not self.value.startswith("<") or (not self.value.endswith(">") and not self.value.endswith("?")):
+            return False
+
+        if self.value.endswith(">"):
             return True
 
-        # 简单格式 <name>
-        return bool(re.match(r'^<[^<>]+>$', self.value))
+        convert_param = self.value[self.value.rindex('>') + 1:len(self.value) - 1]
+        if not convert_param:
+            return False
+
+        if convert_param[0] in "+-":
+            return len(convert_param) > 1 and Lexer.is_str_a_number(convert_param[1:])
+
+        return Lexer.is_str_a_number(convert_param)
 
     def _check_operator(self) -> bool:
         r"""
         检查运算符类型的Token的合法性
         :return: 是否合法
         """
-        try:
-            from utils import get_symbol_mapping_table
 
-            symbol_mapping_table = get_symbol_mapping_table()
-            # 排除分组运算符
-            brackets = ['(', ')', '[', ']', '{', '}']
+        symbol_mapping_table = utils.get_symbol_mapping_table()
+        # 排除分组运算符
+        brackets = ['(', ')', '[', ']', '{', '}']
 
-            # 检查是否在符号映射表中且不是括号
-            return self.value in symbol_mapping_table.keys() and self.value not in brackets
-        except ImportError:
-            # 处理utils模块导入失败的情况
-            return False
+        # 检查是否在符号映射表中且不是括号
+        return self.value in symbol_mapping_table.keys() and self.value not in brackets
 
     def _check_lbracket(self) -> bool:
         r"""
@@ -245,14 +264,9 @@ class Token:
         检查函数类型的Token的合法性
         :return: 是否合法
         """
-        try:
-            from utils import get_function_name_list
 
-            function_list = get_function_name_list()
-            return self.value in function_list
-        except ImportError:
-            # 处理utils模块导入失败的情况
-            return False
+        function_list = utils.get_function_name_list()
+        return self.value in function_list
 
 
 class Lexer:
@@ -265,7 +279,7 @@ class Lexer:
         self.expression = expression
         self.tokens = []
 
-    def _convert_token_flow(self):
+    def _convert_token_flow(self) -> None:
         r"""
         将表达式转为Token流,并检查Token的合法性
         :return: None
@@ -280,22 +294,20 @@ class Lexer:
                     token_content=token.value if token else "",
                 )
 
-    def _convert_fraction(self):
+    def _formal_elimination_complement(self) -> None:
+        r"""
+        消除表达式中的一些特殊形式.包括数字分隔符,括号化简,正负号消除,并补全表达式中的一些可省略的特殊形式.包括隐式的乘法符号
+        :return: None
+        :raise OlocNumberSeparatorException: 检测到数字分隔符不合法
+        """
+
+    def _fractionalization(self) -> None:
         r"""
         将表达式Token流中的各种数字转换为分数
         :return: None
         """
 
-        temp_tokens = Lexer.tokenizer(self.expression)
-
-        convert_num_types = [
-            Token.TYPE.PERCENTAGE,
-            Token.TYPE.MIXED_FRACTION,
-            Token.TYPE.FINITE_DECIMAL,
-            Token.TYPE.INFINITE_DECIMAL,
-        ]
-
-        def _convert_finite_decimal(finite_decimal: str) -> str:
+        def _convert_finite_decimal(finite_decimal: Token) -> [Token, Token, Token]:
             r"""
             将有限小数转为分数
             :param finite_decimal: 待转换的有限小数
@@ -313,7 +325,7 @@ class Lexer:
 
             return fraction
 
-        def _convert_infinite_decimal(infinite_decimal: str) -> str:
+        def _convert_infinite_decimal(infinite_decimal: Token) -> [Token, Token, Token]:
             r"""
             将无限循环小数转为分数
             :param infinite_decimal: 待转换的无限小数
@@ -412,7 +424,7 @@ class Lexer:
             # 调用化简函数
             return fraction
 
-        def _convert_percentage(percentage: str) -> str:
+        def _convert_percentage(percentage: Token) -> [Token, Token, Token]:
             r"""
             将百分数转为小数
             :param percentage: 待转换的百分数，例如"12.5%"
@@ -444,7 +456,7 @@ class Lexer:
 
             return percentage if '.' not in percentage else _convert_finite_decimal(percentage)
 
-        def _convert_mix_fraction(mix_fraction: str) -> str:
+        def _convert_mix_fraction(mix_fraction: Token) -> [Token, Token, Token]:
             r"""
             将带分数转为分数
             :param mix_fraction: 待转换的带分数
@@ -473,33 +485,37 @@ class Lexer:
 
             return final_fraction
 
-        fractionalized_expression = ""
+        temp_tokens = Lexer.tokenizer(self.expression)
+        fractionalized_tokens = []
 
+        convert_num_types = [
+            Token.TYPE.PERCENTAGE,
+            Token.TYPE.MIXED_FRACTION,
+            Token.TYPE.FINITE_DECIMAL,
+            Token.TYPE.INFINITE_DECIMAL,
+        ]
+
+        token_fractionalized = []
         for temp_token in temp_tokens:
             if (convert_type := temp_token.type) in convert_num_types:
-
-                EXCEPTION_TYPE_MAPPING_DICT:dict = {
-                    Token.TYPE.MIXED_FRACTION: OlocInvalidTokenException.ExceptionType.INVALID_MIXED_FRACTION,
-                    Token.TYPE.PERCENTAGE: OlocInvalidTokenException.ExceptionType.INVALID_PERCENTAGE,
-                    Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
-                    Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
-                }
-
-
-                token_fractionalized = ""
                 match convert_type:
                     case Token.TYPE.MIXED_FRACTION:
-                        token_fractionalized = _convert_mix_fraction(temp_token.value)
+                        token_fractionalized = _convert_mix_fraction(temp_token)
                     case Token.TYPE.FINITE_DECIMAL:
-                        token_fractionalized = _convert_finite_decimal(temp_token.value)
+                        token_fractionalized = _convert_finite_decimal(temp_token)
                     case Token.TYPE.INFINITE_DECIMAL:
-                        token_fractionalized = _convert_infinite_decimal(temp_token.value)
+                        token_fractionalized = _convert_infinite_decimal(temp_token)
                     case Token.TYPE.PERCENTAGE:
-                        token_fractionalized = _convert_percentage(temp_token.value)
-                fractionalized_expression += utils.str_fraction_simplifier(token_fractionalized)
+                        token_fractionalized = _convert_percentage(temp_token)
+                fractionalized_tokens += evaluator.Evaluator.simplify(token_fractionalized)
             else:
-                fractionalized_expression += temp_token.value
-        self.expression = fractionalized_expression
+                fractionalized_tokens += temp_token
+
+    def _function_conversion(self) -> None:
+        r"""
+        根据函数转换表进行函数转换
+        :return: None
+        """
 
     def execute(self):
         r"""
@@ -508,66 +524,12 @@ class Lexer:
         """
 
         self._convert_token_flow()
+        self._formal_elimination_complement()
+        self._fractionalization()
 
     """
     静态方法
     """
-
-    @staticmethod
-    def _is_native_irrational(to_check: str) -> bool:
-        r"""
-        判断是否为原生无理数
-        :param to_check: 待检查的字符
-        :return: 如果是原生无理数(π或e)则返回True，否则返回False
-        """
-        return to_check in ["π", "𝑒"]
-
-    @staticmethod
-    def _is_operator(to_check: str) -> bool:
-        r"""
-        判断是否为运算符
-        :param to_check: 待检查的字符
-        :return: 如果是运算符则返回True，否则返回False
-        """
-        operators = list(utils.get_symbol_mapping_table().keys())
-        operators = [op for op in operators if op and op not in "()[]{}<>"]  # 不包含分组运算符
-        return to_check in operators
-
-    @staticmethod
-    def _is_bracket(to_check: str) -> bool:
-        r"""
-        判断是否为括号
-        :param to_check: 待检查的字符
-        :return: 如果是括号则返回True，否则返回False
-        """
-        return to_check in "()[]{}"
-
-    @staticmethod
-    def _is_separator(to_check: str) -> bool:
-        r"""
-        判断是否为函数参数分隔符(预处理阶段已消除数字分隔符)
-        :param to_check: 待检查的字符
-        :return: 如果是函数参数分隔符则返回True，否则返回False
-        """
-        return to_check in ",;"
-
-    @staticmethod
-    def _is_digit(to_check: str) -> bool:
-        r"""
-        判断是否为数字字符
-        :param to_check: 待检查的字符
-        :return: 如果是数字或小数点则返回True，否则返回False
-        """
-        return to_check.isdigit() or to_check == '.'
-
-    @staticmethod
-    def _is_identifier_char(to_check: str) -> bool:
-        r"""
-        判断是否为标识符字符
-        :param to_check: 待检查的字符
-        :return: 如果是标识符字符(字母、数字或下划线)则返回True，否则返回False
-        """
-        return to_check.isalnum()
 
     @staticmethod
     def tokenizer(expression: str) -> list[Token]:
@@ -576,19 +538,58 @@ class Lexer:
         :param expression: 待分词的表达式
         :return: 分词后的Token列表
         """
-        tokens = []
         function_names = utils.get_function_name_list()
+        symbol_mapping_table = utils.get_symbol_mapping_table()
 
-        index = 0
-        while index < len(expression):
-            ...
+        mark_list = [Token.TYPE.UNKNOWN for _ in range(len(expression))]
+
+        # 逐字符扫描
+        for index, unit in enumerate(zip(expression, mark_list)):
+            unit_char = unit[0]
+            unit_type = unit[1]
+
+            if unit_type != Token.TYPE.UNKNOWN:
+                ...
+
+        token_flow = []  # 结果的Token流
+
+    @staticmethod
+    def is_str_a_number(number: str) -> bool:
+        r"""
+        检查对应的字符串数字是否是数字(整数,或有限小数)
+        :param number: 待判断的数字字符串
+        :return: 是否是数字
+        """
+        if '.' in number:
+            number_parts = number.split('.')
+            if not 1 <= len(number_parts) <= 2:
+                return False
+            number = "".join(number_parts)
+        return number.isdigit()
 
 
 """test"""
 if __name__ == '__main__':
+
     while True:
         try:
-            print(Lexer.tokenizer(input(">>>")))
+            tests = [
+                [Token.TYPE.LONG_CUSTOM, "<>>"],
+                [Token.TYPE.LONG_CUSTOM, "<12313>"],
+                [Token.TYPE.LONG_CUSTOM, "12312>"],
+                [Token.TYPE.LONG_CUSTOM, "<11>?"],
+                [Token.TYPE.LONG_CUSTOM, "<11>+?"],
+                [Token.TYPE.LONG_CUSTOM, "<11>-1?"],
+                [Token.TYPE.LONG_CUSTOM, "<11>+0.92514?"],
+                [Token.TYPE.LONG_CUSTOM, "<abadad>+?"],
+                [Token.TYPE.LONG_CUSTOM, "<11adada>+ad?"],
+                [Token.TYPE.LONG_CUSTOM, "<11>+?123"],
+                [Token.TYPE.LONG_CUSTOM, "<11>123?"],
+                [Token.TYPE.LONG_CUSTOM, "<11>0.55?"],
+            ]
+            for test in tests:
+                test_token = Token(test[0], test[1])
+                print(f"{test_token.value} {test_token.is_legal}")
         except Exception as error:
             print(error)
-
+        input(">>>>")

@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-10
+:date: 2025-03-12
 :file: utils.py
 :description: Oloc utils
 """
@@ -37,3 +37,7 @@ def get_function_name_list() -> list:
                 function_names.append(func.split('(')[0])  # 提取函数名
 
     return list(set(function_names))
+
+"""test"""
+if __name__ == '__main__':
+    print(get_function_name_list())

@@ -1,11 +1,29 @@
 r"""
 :author: WaterRun
-:date: 2025-03-09
+:date: 2025-03-12
 :file: result.py
 :description: Oloc result
 """
 from typing import List, Any
 from fractions import Fraction
+import lexer
+
+
+# class OutputFilter:
+#     r"""
+#     格式化输出过滤器
+#
+#     :param tokens: 待过滤输出的token流
+#     """
+#
+#     def __init__(self, tokens: lexer.Token):
+#         self.tokens = tokens
+#
+#     def build_string(self) -> str:
+#         r"""
+#         根据token流和格式化参数生成结果
+#         :return: 生成后的结果表达式字符串
+#         """
 
 
 class OlocResult:
@@ -13,7 +31,7 @@ class OlocResult:
     表达oloc计算结果的类，具有不可变性。
     一旦实例化,OlocResult 的属性无法修改或删除。
 
-    :param expression: 要计算的表达式
+    :param expression: 要计算的原始表达式
     :param result: 表达式计算结果的字符串列表
     :raises TypeError: 如果输入的参数类型不正确
     """
