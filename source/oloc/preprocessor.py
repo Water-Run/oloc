@@ -5,7 +5,7 @@ r"""
 :description: Oloc preprocessor
 """
 
-from source.oloc.lexer import *
+from lexer import *
 
 
 class Preprocessor:

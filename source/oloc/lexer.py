@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-12
+:date: 2025-03-13
 :file: lexer.py
 :description: Oloc lexer
 """
@@ -26,7 +26,6 @@ class Token:
         """
         # 数字类型
         PERCENTAGE = 'percentage'  # 百分数: 100%
-        MIXED_FRACTION = 'mixed fraction'  # 带分数: 3\1/2
         INFINITE_DECIMAL = 'infinite recurring decimal'  # 无限小数: 3.3... 或 2.3:4
         FINITE_DECIMAL = 'finite decimal'  # 有限小数: 3.14
         INTEGER = 'integer'  # 整数: 42
@@ -72,7 +71,6 @@ class Token:
         """
         mapping = {
             Token.TYPE.PERCENTAGE: OlocInvalidTokenException.ExceptionType.INVALID_PERCENTAGE,
-            Token.TYPE.MIXED_FRACTION: OlocInvalidTokenException.ExceptionType.INVALID_MIXED_FRACTION,
             Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_INFINITE_DECIMAL,
             Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
             Token.TYPE.INTEGER: OlocInvalidTokenException.ExceptionType.INVALID_INTEGER,
@@ -84,9 +82,10 @@ class Token:
             Token.TYPE.RBRACKET: OlocInvalidTokenException.ExceptionType.INVALID_BRACKET,
             Token.TYPE.FUNCTION: OlocInvalidTokenException.ExceptionType.INVALID_FUNCTION,
             Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.ExceptionType.INVALID_PARAM_SEPARTOR,
+            Token.TYPE.IRRATIONAL_PARAM: OlocInvalidTokenException.ExceptionType.INVALID_IRRATIONAL_PARAM,
             Token.TYPE.UNKNOWN: OlocInvalidTokenException.ExceptionType.UNKNOWN_TOKEN,
         }
-        return mapping[self.TYPE]
+        return mapping[self.type]
 
     def _check_legal(self) -> bool:
         r"""
@@ -146,21 +145,6 @@ class Token:
 
         return False
 
-    def _check_mixed_fraction(self) -> bool:
-        r"""
-        检查带分数类型的Token的合法性
-        :return: 是否合法
-        """
-        if '\\' in self.value and '/' in self.value:
-            parts = self.value.split('\\')
-            if len(parts) == 2:
-                integer_part, fraction_part = parts
-                if integer_part.isdigit():
-                    fraction_parts = fraction_part.split('/')
-                    if len(fraction_parts) == 2 and all(p.isdigit() for p in fraction_parts):
-                        return True
-        return False
-
     def _check_percentage(self) -> bool:
         r"""
         检查百分数类型的Token的合法性
@@ -200,8 +184,8 @@ class Token:
         :return: 是否合法
         """
         if not self.value.startswith("<") and self.value.endswith(">"):
-            return True
-        return False
+            return False
+        return True
 
     def _check_operator(self) -> bool:
         r"""
@@ -251,6 +235,31 @@ class Token:
         检查无理数参数类型的Token的合法性
         :return: 是否合法
         """
+        if len(self.value) <= 1:
+            return False
+
+        # 检查值是否以 "?" 结尾
+        if not self.value.endswith("?"):
+            return False
+
+        # 初始化小数点标志
+        find_decimal_point = False
+        # 检查首字符是否为 "+" 或 "-"
+        start_index = 1 if self.value[0] in "+-" else 0
+
+        # 遍历字符串中的每个字符（跳过首字符如果是符号）
+        for c in self.value[start_index:-1]:
+            if c == '.':
+                # 如果已经找到一个小数点，则返回 False
+                if find_decimal_point:
+                    return False
+                # 标记找到小数点
+                find_decimal_point = True
+            elif not c.isdigit():
+                # 如果字符不是数字，则返回 False
+                return False
+
+        return True
 
 
 class Lexer:
@@ -274,7 +283,7 @@ class Lexer:
                 raise OlocInvalidTokenException(
                     exception_type=token.get_exception_type(),
                     expression=self.expression,
-                    positions=token.range,
+                    positions=list(range(*[token.range[0], token.range[1]])),
                     token_content=token.value if token else "",
                 )
 
@@ -440,41 +449,11 @@ class Lexer:
 
             return percentage if '.' not in percentage else _convert_finite_decimal(percentage)
 
-        def _convert_mix_fraction(mix_fraction: Token) -> [Token, Token, Token]:
-            r"""
-            将带分数转为分数
-            :param mix_fraction: 待转换的带分数
-            :return: 转换后的分数
-            """
-            # 分割带分数的整数部分和分数部分
-            parts = mix_fraction.split('\\')
-
-            # 获取整数部分
-            integer_part = parts[0]
-
-            # 获取分数部分
-            fraction_part = parts[1]
-
-            # 分割分子和分母
-            numerator, denominator = fraction_part.split('/')
-
-            # 将整数部分转换为同分母的分数
-            integer_as_fraction_numerator = int(integer_part) * int(denominator)
-
-            # 计算最终的分子
-            final_numerator = integer_as_fraction_numerator + int(numerator)
-
-            # 构建最终的分数字符串
-            final_fraction = f"{final_numerator}/{denominator}"
-
-            return final_fraction
-
         temp_tokens = Lexer.tokenizer(self.expression)
         fractionalized_tokens = []
 
         convert_num_types = [
             Token.TYPE.PERCENTAGE,
-            Token.TYPE.MIXED_FRACTION,
             Token.TYPE.FINITE_DECIMAL,
             Token.TYPE.INFINITE_DECIMAL,
         ]
@@ -483,8 +462,6 @@ class Lexer:
         for temp_token in temp_tokens:
             if (convert_type := temp_token.type) in convert_num_types:
                 match convert_type:
-                    case Token.TYPE.MIXED_FRACTION:
-                        token_fractionalized = _convert_mix_fraction(temp_token)
                     case Token.TYPE.FINITE_DECIMAL:
                         token_fractionalized = _convert_finite_decimal(temp_token)
                     case Token.TYPE.INFINITE_DECIMAL:
@@ -508,8 +485,6 @@ class Lexer:
         """
 
         self._convert_token_flow()
-        self._formal_elimination_complement()
-        self._fractionalization()
 
     """
     静态方法
@@ -534,17 +509,12 @@ class Lexer:
         # 标记自定义长无理数
         for index, char in enumerate(expression):
             # 已经标记过的跳过
+
             if index > 0 and mark_list[index - 1] == Token.TYPE.LONG_CUSTOM:
                 continue
 
-            if char == '>':
-                raise OlocIrrationalNumberException(
-                    exception_type=OlocIrrationalNumberException.ExceptionType.MISMATCH_LONG_RIGHT_SIGN,
-                    expression=expression,
-                    positions=[index, index],
-                )
-
             if char == '<':
+
                 # 单个左尖括号是错误的
                 if index == len(expression) - 1:
                     raise OlocIrrationalNumberException(
@@ -614,13 +584,89 @@ class Lexer:
                 start = end_index
 
         # 标记数字
+        for index, char in enumerate(expression):
 
-        """
+            # 如果当前索引已经处理过，则跳过
+            if mark_list[index] != Token.TYPE.UNKNOWN:
+                continue
+
+            # 处理数字
+            if char.isdigit():
+                mode = Token.TYPE.INTEGER  # 默认模式为整数
+                attempt_index = index
+                digit_index_range_list = [index]  # 保存数字索引范围
+                find_decimal_point = False  # 是否找到小数点
+                is_infinite_decimal = False  # 是否为无限小数
+
+                while attempt_index + 1 < len(expression):
+                    attempt_index += 1
+                    current_char = expression[attempt_index]
+
+                    # 处理百分号 (%)
+                    if current_char == "%":
+                        if attempt_index + 1 < len(expression) and expression[attempt_index + 1] in ["+", "-", "*", "/",
+                                                                                                     "^"]:
+                            mode = Token.TYPE.PERCENTAGE
+                            digit_index_range_list.append(attempt_index)
+                            break
+                        else:
+                            digit_index_range_list.pop()  # 移除当前索引
+                            break
+
+                    # 处理小数点
+                    if current_char == ".":
+                        if find_decimal_point:  # 如果已经找到过小数点，检查是否为无限小数
+                            # 检查是否为无限循环小数
+                            next_char_index = attempt_index + 1
+                            if next_char_index < len(expression) and expression[next_char_index] == ".":
+                                is_infinite_decimal = True
+                                mode = Token.TYPE.INFINITE_DECIMAL
+                                digit_index_range_list.append(attempt_index)  # 将当前点加入标注范围
+                                param_index = attempt_index + 1
+                                point_count = 1  # 记录连续点的数量
+
+                                while param_index < len(expression):
+                                    if expression[param_index] == ".":
+                                        point_count += 1
+                                        digit_index_range_list.append(param_index)  # 将点加入标注范围
+                                    else:
+                                        break  # 遇到非点字符时退出
+                                    param_index += 1
+
+                                if not 6 <= point_count <= 3:
+                                    break
+
+                                # 确保最后一个点也被标记
+                                attempt_index = param_index - 1
+                                continue
+                            else:
+                                break  # 如果不是无限小数，退出
+                        find_decimal_point = True
+                        mode = Token.TYPE.FINITE_DECIMAL
+                        digit_index_range_list.append(attempt_index)  # 将小数点加入标注范围
+                        continue
+
+                    # 处理数字字符
+                    if current_char.isdigit():
+                        digit_index_range_list.append(attempt_index)
+                    else:
+                        break
+
+                # 如果当前是无限小数，将所有标记为 INFINITE_DECIMAL
+                if is_infinite_decimal:
+                    mode = Token.TYPE.INFINITE_DECIMAL
+
+                # 更新标记列表
+                for digit_index in digit_index_range_list:
+                    if 0 <= digit_index < len(mark_list):  # 确保索引合法
+                        mark_list[digit_index] = mode
+
+        r"""
         逐字符扫描
         """
         # 逐字符扫描
         for index, unit in enumerate(zip(expression, mark_list)):
-            unit_char:str = unit[0]
+            unit_char: str = unit[0]
             unit_type = unit[1]
 
             # 已经标记过
@@ -651,30 +697,67 @@ class Lexer:
                 mark_list[index] = Token.TYPE.SHORT_CUSTOM
                 continue
 
-
-
-        token_flow = []  # 结果的Token流
-
-    @staticmethod
-    def is_str_a_number(number: str) -> bool:
-        r"""
-        检查对应的字符串数字是否是数字(整数,或有限小数)
-        :param number: 待判断的数字字符串
-        :return: 是否是数字
         """
-        if '.' in number:
-            number_parts = number.split('.')
-            if not 1 <= len(number_parts) <= 2:
-                return False
-            number = "".join(number_parts)
-        return number.isdigit()
+        合并Token
+        """
+        tokens = []  # 最终生成的 Token 列表
+        current_type = None  # 当前正在处理的 Token 类型
+        current_value = ""  # 当前正在构造的 Token 值
+        current_start = 0  # 当前 Token 的起始索引
+
+        # 需要合并的 Token 类型
+        mergeable_types = {
+            Token.TYPE.PERCENTAGE,
+            Token.TYPE.INFINITE_DECIMAL,
+            Token.TYPE.FINITE_DECIMAL,
+            Token.TYPE.INTEGER,
+            Token.TYPE.LONG_CUSTOM,
+            Token.TYPE.IRRATIONAL_PARAM,
+            Token.TYPE.FUNCTION,
+            Token.TYPE.UNKNOWN,
+        }
+
+        for i, (char, token_type) in enumerate(zip(expression, mark_list)):
+            if current_type is None:  # 初始化第一个 Token
+                current_type = token_type
+                current_value = char
+                current_start = i
+            elif token_type == current_type and token_type in mergeable_types:  # 如果类型相同且可合并，继续合并
+                current_value += char
+            else:  # 遇到不同类型的 Token，保存当前 Token，并开始新的 Token
+                tokens.append(Token(current_type, current_value, [current_start, i]))
+                current_type = token_type
+                current_value = char
+                current_start = i
+
+        # 处理最后一个 Token
+        if current_type is not None:
+            tokens.append(Token(current_type, current_value, [current_start, len(expression)]))
+
+        return tokens
 
 
 """test"""
 if __name__ == '__main__':
+    import preprocessor
 
     while True:
-        try:
-            Lexer.tokenizer(input(">>>"))
-        except Exception as error:
-            print(error)
+
+        import simpsave as ss
+
+        from time import time
+        tests = ss.read("test_cases", file="./data/olocconfig.ini")
+        start = time()
+        for test in tests:
+            try:
+                preprocess = preprocessor.Preprocessor(test)
+                preprocess.execute()
+                print(preprocess.expression, end=" => ")
+                lexer = Lexer(preprocess.expression)
+                lexer.execute()
+                for token in lexer.tokens:
+                    print(token.value, end=" ")
+                print()
+            except Exception as error:
+                print(f"\n\n\n========\n{error}\n\n\n")
+        input(f"Run {len(tests)} in {time() - start} >>>")
