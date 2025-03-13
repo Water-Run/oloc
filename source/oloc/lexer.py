@@ -595,16 +595,13 @@ class Lexer:
                     attempt_index += 1
                     current_char = expression[attempt_index]
 
-                    # 处理百分号 (%)
-                    if current_char == "%":
-                        if attempt_index + 1 < len(expression) and expression[attempt_index + 1] in ["+", "-", "*", "/",
-                                                                                                     "^"]:
-                            mode = Token.TYPE.PERCENTAGE
-                            digit_index_range_list.append(attempt_index)
+                    if current_char == "%" and mode in [Token.TYPE.INTEGER, Token.TYPE.FINITE_DECIMAL]:
+                        if attempt_index + 1 < len(expression) and expression[attempt_index + 1] not in ["+", "-", "*", "/",
+                                                                                                 "^", "%", "|"]:
                             break
-                        else:
-                            digit_index_range_list.pop()  # 移除当前索引
-                            break
+                        mode = Token.TYPE.PERCENTAGE
+                        digit_index_range_list.append(attempt_index)
+                        break
 
                     # 处理小数点
                     if current_char == ".":
@@ -734,23 +731,35 @@ class Lexer:
 if __name__ == '__main__':
     import preprocessor
 
+
+
+    import simpsave as ss
+
+    from time import time
+    tests = ss.read("test_cases", file="./data/olocconfig.ini")
+    start = time()
+    for test in tests:
+        try:
+            preprocess = preprocessor.Preprocessor(test)
+            preprocess.execute()
+            #print(preprocess.expression, end=" => ")
+            lexer = Lexer(preprocess.expression)
+            lexer.execute()
+            for token in lexer.tokens:
+                ...
+                #print(token.value, end=" ")
+            #print()
+        except Exception as error:
+            print(f"\n\n\n========\n\n{error}\n\n\n")
+    print(f"Run {len(tests)} in {time() - start}")
+
     while True:
-
-        import simpsave as ss
-
-        from time import time
-        tests = ss.read("test_cases", file="./data/olocconfig.ini")
-        start = time()
-        for test in tests:
-            try:
-                preprocess = preprocessor.Preprocessor(test)
-                preprocess.execute()
-                print(preprocess.expression, end=" => ")
-                lexer = Lexer(preprocess.expression)
-                lexer.execute()
-                for token in lexer.tokens:
-                    print(token.value, end=" ")
-                print()
-            except Exception as error:
-                print(f"\n\n\n========\n{error}\n\n\n")
-        input(f"Run {len(tests)} in {time() - start} >>>")
+        try:
+            preprocess = preprocessor.Preprocessor(input(">>>"))
+            preprocess.execute()
+            lexer = Lexer(preprocess.expression)
+            lexer.execute()
+            for token in lexer.tokens:
+                print(token.value, end=" ")
+        except Exception as error:
+            print(error)
