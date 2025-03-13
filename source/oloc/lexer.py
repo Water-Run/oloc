@@ -270,7 +270,7 @@ class Lexer:
 
     def __init__(self, expression: str):
         self.expression = expression
-        self.tokens = []
+        self.tokens: list[Token] = []
 
     def _convert_token_flow(self) -> None:
         r"""
@@ -278,14 +278,91 @@ class Lexer:
         :return: None
         """
         self.tokens = Lexer.tokenizer(self.expression)
-        for token in self.tokens:
-            if not token.is_legal:
+        for check_token in self.tokens:
+            if not check_token.is_legal:
                 raise OlocInvalidTokenException(
-                    exception_type=token.get_exception_type(),
+                    exception_type=check_token.get_exception_type(),
                     expression=self.expression,
-                    positions=list(range(*[token.range[0], token.range[1]])),
-                    token_content=token.value if token else "",
+                    positions=list(range(*[check_token.range[0], check_token.range[1]])),
+                    token_content=check_token.value if check_token else "",
                 )
+
+    def _update_range(self) -> None:
+        r"""
+        刷新表达式中Token的下标
+        :return:
+        """
+        re_range_index = len(self.tokens)  # 标记从哪个Token开始要重写下标
+        for index, process_token in enumerate(self.tokens):
+            if index == 0:
+                continue
+            previous_token = self.tokens[index - 1]
+            if not previous_token.range[1] == process_token.range[0]:
+                re_range_index = index
+                break
+
+        self.tokens, re_mark_tokens = self.tokens[:re_range_index], self.tokens[re_range_index:]
+
+        if len(re_mark_tokens) != 0:
+            ...
+
+
+    def _formal_complementation(self) -> None:
+        r"""
+        补全表达式中的一些特殊形式,如被省略的乘号
+        :return: None
+        """
+
+        # 定义数字和无理数的类型集合
+        NUMBERS = {
+            Token.TYPE.FINITE_DECIMAL,
+            Token.TYPE.INFINITE_DECIMAL,
+            Token.TYPE.PERCENTAGE,
+            Token.TYPE.INTEGER,
+            Token.TYPE.NATIVE_IRRATIONAL,
+            Token.TYPE.SHORT_CUSTOM,
+            Token.TYPE.LONG_CUSTOM
+        }
+
+        IRRATIONALS = {
+            Token.TYPE.LONG_CUSTOM,
+            Token.TYPE.SHORT_CUSTOM,
+            Token.TYPE.NATIVE_IRRATIONAL
+        }
+
+        # 遍历 Token 列表
+        index = 0
+        while index < len(self.tokens) - 1:
+            current_token = self.tokens[index]
+            next_token = self.tokens[index + 1]
+
+            # 情况 1: 数字后接 (
+            if current_token.type in NUMBERS and next_token.type == Token.TYPE.LBRACKET:
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+
+            # 情况 2: 无理数参数后接 (
+            elif current_token.type == Token.TYPE.IRRATIONAL_PARAM and next_token.type == Token.TYPE.LBRACKET:
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+
+            # 情况 3: ) 后接数字
+            elif current_token.type == Token.TYPE.RBRACKET and next_token.type in NUMBERS:
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+
+            # 情况 4: 无理数后接无理数
+            elif current_token.type in IRRATIONALS and next_token.type in IRRATIONALS:
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+
+            # 情况 5: 数字后接无理数
+            elif current_token.type in NUMBERS and next_token.type in IRRATIONALS:
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+
+            # 情况 6: 无理数后接数字
+            elif current_token.type in IRRATIONALS and next_token.type in NUMBERS:
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+
+            # 前进到下一个 Token
+            index += 1
+        self._update_range()
 
     def _fractionalization(self) -> None:
         r"""
@@ -315,7 +392,7 @@ class Lexer:
             r"""
             将无限循环小数转为分数
             :param infinite_decimal: 待转换的无限小数
-            :return: 转换后的分数
+            :return: 转换后的分数, 依次为分子, 分数线, 分母
             """
 
             def _spilt_decimal_parts(process_decimal: str) -> list[str, str]:
@@ -478,6 +555,7 @@ class Lexer:
         """
 
         self._convert_token_flow()
+        self._formal_complementation()
 
     """
     静态方法
@@ -742,13 +820,13 @@ if __name__ == '__main__':
         try:
             preprocess = preprocessor.Preprocessor(test)
             preprocess.execute()
-            #print(preprocess.expression, end=" => ")
+            print(test, end=" => ")
             lexer = Lexer(preprocess.expression)
             lexer.execute()
             for token in lexer.tokens:
-                ...
-                #print(token.value, end=" ")
-            #print()
+                ... # debug
+                print(token.value, end=" ")
+            print()
         except Exception as error:
             print(f"\n\n\n========\n\n{error}\n\n\n")
     print(f"Run {len(tests)} in {time() - start}")

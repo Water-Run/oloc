@@ -13,7 +13,7 @@ from preprocessor import Preprocessor
 from lexer import Lexer
 
 
-def _execute_calculation(expression: str, result_queue: Queue):
+def _execute_calculation(expression: str, result_queue: Queue) -> None:
     r"""
     oloc实际执行计算的函数
 

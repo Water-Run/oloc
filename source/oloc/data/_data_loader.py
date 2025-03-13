@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-12
+:date: 2025-03-13
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -25,7 +25,7 @@ Type: dict
 Description: This dictionary maps symbols (keys) to a list of possible conversions (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right.
 Warning: Note the order of substitution: top to bottom, left to right
 """
-symbol_mapping_table: dict[str, list[str]] = {
+symbol_mapping_table: dict[dict[str:list[str]]] = {
     "": [" ", "=", "_", "equal", "equals", "eq", "is", "are", "=>", "->", "rad", "radians", "等", "于", "以", "是", "个"],
     "√": ["√", "┌", "根号"],
     "°": ["°", "degree", "deg", "^o", "度"],
@@ -71,7 +71,7 @@ Function conversion table
 Type: dict
 Description: This dictionary maps function names (keys) to a list of possible equivalent representations (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right. The standard function name is the function name before the parentheses, and these names will be protected during the symbol mapping phase.
 """
-function_conversion_table: dict[str, list[str]] = {
+function_conversion_table: dict[dict[str:list[str]]] = {
     "sqrt(x)": ["sqrt(x)", "x^(1/2)", "√x", "pow(x,1/2)"],
     "square(x)": ["square(x)", "x^2", "pow(x,2)", "sq(x)"],
     "cube(x)": ["cube(x)", "x^3", "pow(x,3)", "cub(x)"],
@@ -92,9 +92,10 @@ Formatting Output Function Options Table
 Type: Dict
 Description: Configure each function setting of the formatted output filter
 """
-formatting_output_function_options_table: dict[str, any] = {
+formatting_output_function_options_table: dict[dict[str:any]] = {
     "space_between_tokens": True,
     "number separators add thresholds": -1,
+    "number separator interval": 3,
     "scientific notation adding thresholds": -1,
     "operator form functions": True,
     "retain irrational param": True,

@@ -76,12 +76,15 @@ class Preprocessor:
                 标注表达式中的长自定义无理数下标
                 :return: 标注后的下标列表
                 """
-                import re
-                # 捕获自定义长无理数的完整范围
-                pattern = r"<.*?>[+-]?\d*\.?\d*\?"
+                long_custom_start_stack = []
                 custom_indices = []
-                for match in re.finditer(pattern, expression):
-                    custom_indices.append((match.start(), match.end()))
+                for index, char in enumerate(expression):
+                    if char == '<':
+                        long_custom_start_stack.append(index)
+                    if char == '>':
+                        if len(long_custom_start_stack) == 1:
+                            custom_indices.append([long_custom_start_stack[0], index])
+                        long_custom_start_stack.pop()
                 return custom_indices
 
             def _is_protected(index: int) -> bool:
@@ -237,12 +240,9 @@ class Preprocessor:
                     # 数字分隔符，检查是否有效
                     if i == 0 or i == len(self.expression) - 1:
                         invalid_positions.append(i)
-                    elif self.expression[i - 1] in [',', '.'] or self.expression[i + 1] in [',', '.']:
+                    elif not self.expression[i - 1].isdigit():
                         invalid_positions.append(i)
-                    elif ((not self.expression[i - 1].isdigit()) and self.expression[
-                        i - 1] in symbol_mapping_table.keys()) or (
-                            (not self.expression[i + 1].isdigit()) and self.expression[
-                        i + 1] in symbol_mapping_table.keys()):
+                    elif i + 1 < len(self.expression) and not self.expression[i + 1].isdigit():
                         invalid_positions.append(i)
                     # 有效的数字分隔符，不添加到结果（即移除）
 
