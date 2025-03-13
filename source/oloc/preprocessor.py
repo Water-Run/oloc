@@ -162,56 +162,105 @@ class Preprocessor:
 
         function_names = utils.get_function_name_list()
         symbol_mapping_table = utils.get_symbol_mapping_table()
-        inside_function = False
-        parentheses_stack = []
-        invalid_positions = []
-        remove_seperator_result_list = []
-        i = 0
 
+        # 使用栈跟踪括号和函数嵌套
+        # 栈元素格式: [类型, 层级, 函数名(如果是函数的话)]
+        # 类型: 'F' 表示函数直接参数层, 'E' 表示表达式层
+        stack = []
+        invalid_positions = []
+        result = []
+
+        i = 0
         while i < len(self.expression):
             char = self.expression[i]
 
-            if not inside_function and any(
-                self.expression[i:i+len(fn)] == fn for fn in function_names
-            ):
-                fn_length = next(len(fn) for fn in function_names if self.expression[i:i+len(fn)] == fn)
-                if i + fn_length < len(self.expression) and self.expression[i + fn_length] == '(':
-                    inside_function = True
-                    parentheses_stack.append('(')
-                    remove_seperator_result_list.append(self.expression[i:i + fn_length])
-                    i += fn_length
-                    continue
+            # 检查是否是函数名开始
+            is_function_start = False
+            matched_fn = None
+            for fn in function_names:
+                if (i + len(fn) <= len(self.expression) and
+                        self.expression[i:i + len(fn)] == fn and
+                        i + len(fn) < len(self.expression) and
+                        self.expression[i + len(fn)] == '('):
+                    is_function_start = True
+                    matched_fn = fn
+                    break
 
-            if char == '(' and inside_function:
-                parentheses_stack.append('(')
-            elif char == ')' and inside_function:
-                parentheses_stack.pop()
-                if not parentheses_stack:
-                    inside_function = False
+            if is_function_start:
+                result.append(matched_fn)
+                # 跳过函数名
+                i += len(matched_fn)
+                continue
 
+            # 处理左括号
+            if char == '(':
+                # 判断这个左括号是否是函数调用的开始
+                is_function_bracket = False
+                if i > 0:
+                    for fn in function_names:
+                        if i >= len(fn) and self.expression[i - len(fn):i] == fn:
+                            is_function_bracket = True
+                            stack.append(['F', len(stack), fn])  # 函数直接参数层
+                            break
+
+                # 如果不是函数调用的开始，则是普通表达式
+                if not is_function_bracket:
+                    stack.append(['E', len(stack), None])  # 表达式层
+
+                result.append(char)
+                i += 1
+                continue
+
+            # 处理右括号
+            if char == ')':
+                if stack:
+                    stack.pop()
+                result.append(char)
+                i += 1
+                continue
+
+            # 处理逗号
             if char == ',':
-                if inside_function:
-                    remove_seperator_result_list.append(char)
+                # 判断这个逗号是函数参数分隔符还是数字分隔符
+                is_function_separator = False
+
+                # 逗号是函数参数分隔符的条件:
+                # 1. 栈不为空
+                # 2. 栈顶是函数参数层('F')
+                if stack and stack[-1][0] == 'F':
+                    is_function_separator = True
+
+                if is_function_separator:
+                    # 函数参数分隔符，保留
+                    result.append(char)
                 else:
+                    # 数字分隔符，检查是否有效
                     if i == 0 or i == len(self.expression) - 1:
                         invalid_positions.append(i)
                     elif self.expression[i - 1] in [',', '.'] or self.expression[i + 1] in [',', '.']:
                         invalid_positions.append(i)
-                    elif (not self.expression[i-1].isdigit() and self.expression[i - 1] in symbol_mapping_table.keys()) or (not self.expression[i+1].isdigit() and self.expression[i + 1] in symbol_mapping_table.keys()):
+                    elif ((not self.expression[i - 1].isdigit()) and self.expression[
+                        i - 1] in symbol_mapping_table.keys()) or (
+                            (not self.expression[i + 1].isdigit()) and self.expression[
+                        i + 1] in symbol_mapping_table.keys()):
                         invalid_positions.append(i)
-            else:
-                remove_seperator_result_list.append(char)
+                    # 有效的数字分隔符，不添加到结果（即移除）
 
+                i += 1
+                continue
+
+            # 其他字符直接添加
+            result.append(char)
             i += 1
 
         if invalid_positions:
             raise OlocNumberSeparatorException(
-                exception_type=OlocNumberSeparatorException.EXCEPTION_TYPE['INVALID_SEPARATOR'],
+                exception_type=OlocNumberSeparatorException.EXCEPTION_TYPE.INVALID_SEPARATOR,
                 expression=self.expression,
                 positions=invalid_positions
             )
 
-        self.expression = ''.join(remove_seperator_result_list)
+        self.expression = ''.join(result)
 
     def execute(self) -> None:
         r"""
