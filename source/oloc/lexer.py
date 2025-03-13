@@ -64,26 +64,26 @@ class Token:
     def __repr__(self):
         return f"Token({self.type.value}, '{self.value}, {self.range}')"
 
-    def get_exception_type(self) -> OlocInvalidTokenException.ExceptionType:
+    def get_exception_type(self) -> OlocInvalidTokenException.EXCEPTION_TYPE:
         r"""
         返回对应的OlocInvalidTokenException.ExceptionType类型
         :return:
         """
         mapping = {
-            Token.TYPE.PERCENTAGE: OlocInvalidTokenException.ExceptionType.INVALID_PERCENTAGE,
-            Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_INFINITE_DECIMAL,
-            Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.ExceptionType.INVALID_FINITE_DECIMAL,
-            Token.TYPE.INTEGER: OlocInvalidTokenException.ExceptionType.INVALID_INTEGER,
-            Token.TYPE.NATIVE_IRRATIONAL: OlocInvalidTokenException.ExceptionType.INVALID_NATIVE_IRRATIONAL,
-            Token.TYPE.SHORT_CUSTOM: OlocInvalidTokenException.ExceptionType.INVALID_SHORT_CUSTOM_IRRATIONAL,
-            Token.TYPE.LONG_CUSTOM: OlocInvalidTokenException.ExceptionType.INVALID_LONG_CUSTOM_IRRATIONAL,
-            Token.TYPE.OPERATOR: OlocInvalidTokenException.ExceptionType.INVALID_OPERATOR,
-            Token.TYPE.LBRACKET: OlocInvalidTokenException.ExceptionType.INVALID_BRACKET,
-            Token.TYPE.RBRACKET: OlocInvalidTokenException.ExceptionType.INVALID_BRACKET,
-            Token.TYPE.FUNCTION: OlocInvalidTokenException.ExceptionType.INVALID_FUNCTION,
-            Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.ExceptionType.INVALID_PARAM_SEPARTOR,
-            Token.TYPE.IRRATIONAL_PARAM: OlocInvalidTokenException.ExceptionType.INVALID_IRRATIONAL_PARAM,
-            Token.TYPE.UNKNOWN: OlocInvalidTokenException.ExceptionType.UNKNOWN_TOKEN,
+            Token.TYPE.PERCENTAGE: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_PERCENTAGE,
+            Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_INFINITE_DECIMAL,
+            Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_FINITE_DECIMAL,
+            Token.TYPE.INTEGER: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_INTEGER,
+            Token.TYPE.NATIVE_IRRATIONAL: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_NATIVE_IRRATIONAL,
+            Token.TYPE.SHORT_CUSTOM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_SHORT_CUSTOM_IRRATIONAL,
+            Token.TYPE.LONG_CUSTOM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_LONG_CUSTOM_IRRATIONAL,
+            Token.TYPE.OPERATOR: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_OPERATOR,
+            Token.TYPE.LBRACKET: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_BRACKET,
+            Token.TYPE.RBRACKET: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_BRACKET,
+            Token.TYPE.FUNCTION: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_FUNCTION,
+            Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_PARAM_SEPARTOR,
+            Token.TYPE.IRRATIONAL_PARAM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_IRRATIONAL_PARAM,
+            Token.TYPE.UNKNOWN: OlocInvalidTokenException.EXCEPTION_TYPE.UNKNOWN_TOKEN,
         }
         return mapping[self.type]
 
@@ -286,13 +286,6 @@ class Lexer:
                     positions=list(range(*[token.range[0], token.range[1]])),
                     token_content=token.value if token else "",
                 )
-
-    def _formal_elimination_complement(self) -> None:
-        r"""
-        消除表达式中的一些特殊形式.包括数字分隔符,括号化简,正负号消除,并补全表达式中的一些可省略的特殊形式.包括隐式的乘法符号
-        :return: None
-        :raise OlocNumberSeparatorException: 检测到数字分隔符不合法
-        """
 
     def _fractionalization(self) -> None:
         r"""
@@ -518,7 +511,7 @@ class Lexer:
                 # 单个左尖括号是错误的
                 if index == len(expression) - 1:
                     raise OlocIrrationalNumberException(
-                        exception_type=OlocIrrationalNumberException.ExceptionType.MISMATCH_LONG_LEFT_SIGN,
+                        exception_type=OlocIrrationalNumberException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
                         expression=expression,
                         positions=[index, index],
                     )
@@ -533,7 +526,7 @@ class Lexer:
                 # 如果没找到匹配的右尖括号，抛出异常
                 if right_bracket_index is None:
                     raise OlocIrrationalNumberException(
-                        exception_type=OlocIrrationalNumberException.ExceptionType.MISMATCH_LONG_LEFT_SIGN,
+                        exception_type=OlocIrrationalNumberException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
                         expression=expression,
                         positions=[index, index],
                     )

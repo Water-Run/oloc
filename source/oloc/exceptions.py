@@ -19,7 +19,7 @@ class OlocException(ABC, Exception):
     """
 
     @abstractmethod
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         异常类型的抽象内部类。
 
@@ -90,7 +90,7 @@ class OlocTimeOutException(OlocException):
     当函数执行时间超出设定的最大时间时引发的异常
     """
 
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         定义 OlocTimeOutException 的异常类型的枚举类。
         """
@@ -99,7 +99,7 @@ class OlocTimeOutException(OlocException):
             "Check your expression or modify time_limit to a larger value."
         )
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], time_limit: float,
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], time_limit: float,
                  elapsed_time: float):
         r"""
         初始化 OlocTimeOutException，包含时间限制和实际耗时。
@@ -129,7 +129,7 @@ class OlocCommentException(OlocException):
     当注释的格式不匹配时引发的异常
     """
 
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         定义 OlocCommentException 的异常类型的枚举类。
         """
@@ -138,7 +138,7 @@ class OlocCommentException(OlocException):
             "The content of free comments should be wrapped in a before and after '#'."
         )
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
         r"""
         初始化 OlocCommentException。
 
@@ -154,7 +154,7 @@ class OlocNumberSeparatorException(OlocException):
     当数字分隔符规则被违反时引发的异常
     """
 
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         定义 OlocNumberSeparatorException 的异常类型的枚举类。
         """
@@ -164,7 +164,7 @@ class OlocNumberSeparatorException(OlocException):
             "the start, end, or consecutively."
         )
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
         r"""
         初始化 OlocNumberSeparatorException。
 
@@ -180,7 +180,7 @@ class OlocResultException(OlocException):
     当结果中存在异常(即尝试读取OlocResult中的指定信息时)引发的异常
     """
 
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         定义 OlocResultException 的异常类型的枚举类。
         """
@@ -200,7 +200,7 @@ class OlocInvalidTokenException(OlocException):
     当Token不合法(即,Token的is_legal为False时)在静态检查流程中引发的异常
     """
 
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         定义 OlocInvalidTokenException 的异常类型的枚举类。
         """
@@ -280,7 +280,7 @@ class OlocInvalidTokenException(OlocException):
             "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
         )
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int], token_content: str):
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
         r"""
         初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。
 
@@ -305,7 +305,7 @@ class OlocIrrationalNumberException(OlocException):
     当存在无理数相关问题时引发的异常
     """
 
-    class ExceptionType(Enum):
+    class EXCEPTION_TYPE(Enum):
         r"""
         定义 OlocCommentException 的异常类型的枚举类。
         """
@@ -319,7 +319,7 @@ class OlocIrrationalNumberException(OlocException):
             "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
         )
 
-    def __init__(self, exception_type: ExceptionType, expression: str, positions: List[int]):
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
         r"""
         初始化 OlocIrrationalNumberException。
 

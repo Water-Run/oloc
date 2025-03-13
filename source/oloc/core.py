@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-10
+:date: 2025-03-13
 :file: core.py
 :description: Core of oloc
 """
@@ -83,7 +83,7 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
             process.terminate()
             process.join()
             raise OlocTimeOutException(
-                exception_type=OlocTimeOutException.ExceptionType.TIMEOUT,
+                exception_type=OlocTimeOutException.EXCEPTION_TYPE.TIMEOUT,
                 expression=expression,
                 positions=list(range(len(expression))),
                 time_limit=time_limit,
