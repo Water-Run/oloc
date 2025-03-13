@@ -306,7 +306,6 @@ class Lexer:
         if len(re_mark_tokens) != 0:
             ...
 
-
     def _formal_complementation(self) -> None:
         r"""
         补全表达式中的一些特殊形式,如被省略的乘号
@@ -338,27 +337,33 @@ class Lexer:
 
             # 情况 1: 数字后接 (
             if current_token.type in NUMBERS and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                                                                                                            index + 1:]
 
             # 情况 2: 无理数参数后接 (
             elif current_token.type == Token.TYPE.IRRATIONAL_PARAM and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                                                                                                            index + 1:]
 
             # 情况 3: ) 后接数字
             elif current_token.type == Token.TYPE.RBRACKET and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                                                                                                            index + 1:]
 
             # 情况 4: 无理数后接无理数
             elif current_token.type in IRRATIONALS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                                                                                                            index + 1:]
 
             # 情况 5: 数字后接无理数
             elif current_token.type in NUMBERS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                                                                                                            index + 1:]
 
             # 情况 6: 无理数后接数字
             elif current_token.type in IRRATIONALS and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[index + 1:]
+                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                                                                                                            index + 1:]
 
             # 前进到下一个 Token
             index += 1
@@ -714,6 +719,17 @@ class Lexer:
                         digit_index_range_list.append(attempt_index)  # 将小数点加入标注范围
                         continue
 
+                    # 处理显式标注的无理数
+                    if current_char == ":" and find_decimal_point:
+                        is_infinite_decimal = True
+                        digit_index_range_list.append(attempt_index)
+                        next_index = attempt_index + 1
+                        while next_index < len(expression):
+                            if not expression[next_index].isdigit():
+                                break
+                            digit_index_range_list.append(next_index)
+                            next_index += 1
+
                     # 处理数字字符
                     if current_char.isdigit():
                         digit_index_range_list.append(attempt_index)
@@ -809,27 +825,25 @@ class Lexer:
 if __name__ == '__main__':
     import preprocessor
 
-
-
-    import simpsave as ss
-
-    from time import time
-    tests = ss.read("test_cases", file="./data/olocconfig.ini")
-    start = time()
-    for test in tests:
-        try:
-            preprocess = preprocessor.Preprocessor(test)
-            preprocess.execute()
-            print(test, end=" => ")
-            lexer = Lexer(preprocess.expression)
-            lexer.execute()
-            for token in lexer.tokens:
-                ... # debug
-                print(token.value, end=" ")
-            print()
-        except Exception as error:
-            print(f"\n\n\n========\n\n{error}\n\n\n")
-    print(f"Run {len(tests)} in {time() - start}")
+    # import simpsave as ss
+    #
+    # from time import time
+    # tests = ss.read("test_cases", file="./data/olocconfig.ini")
+    # start = time()
+    # for test in tests:
+    #     try:
+    #         preprocess = preprocessor.Preprocessor(test)
+    #         preprocess.execute()
+    #         print(test, end=" => ")
+    #         lexer = Lexer(preprocess.expression)
+    #         lexer.execute()
+    #         for token in lexer.tokens:
+    #             ... # debug
+    #             print(token.value, end=" ")
+    #         print()
+    #     except Exception as error:
+    #         print(f"\n\n\n========\n\n{error}\n\n\n")
+    # print(f"Run {len(tests)} in {time() - start}")
 
     while True:
         try:

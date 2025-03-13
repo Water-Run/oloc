@@ -51,6 +51,7 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "?": ["?", "def", "dflt", "default", "指定"],
     ",": [","],
     ";": [";"],
+    ":": [":"],
     "|": ["|"],
     "\\": ["\\"],
     "0": ["0", "zero", "零", "〇"],
