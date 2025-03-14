@@ -1,29 +1,20 @@
 r"""
 :author: WaterRun
-:date: 2025-03-12
+:date: 2025-03-14
 :file: oloc_result.py
 :description: Oloc result
 """
 from typing import List, Any
 from fractions import Fraction
-import oloc_lexer
+from oloc_token import Token
 
 
-# class OutputFilter:
-#     r"""
-#     格式化输出过滤器
-#
-#     :param tokens: 待过滤输出的token流
-#     """
-#
-#     def __init__(self, tokens: Token):
-#         self.tokens = tokens
-#
-#     def build_string(self) -> str:
-#         r"""
-#         根据token流和格式化参数生成结果
-#         :return: 生成后的结果表达式字符串
-#         """
+def output_filter(tokens: list[Token]) -> list[Token]:
+    r"""
+    格式化过滤Token流并输出
+    :param tokens: 待过滤输出的token流
+    :return: 过滤后的Token流
+    """
 
 
 class OlocResult:

@@ -21,7 +21,7 @@ def get_symbol_mapping_table() -> dict:
     try:
         result: dict = ss.read('symbol_mapping_table', file='./data/olocconfig.ini')
     except (KeyError, ValueError, FileNotFoundError):
-        raise RuntimeError("olocdata.ini is not accessible or has the wrong format. Visit "
+        raise RuntimeError("olocdata.ini is not accessible or has the wrong format (losing `symbol_mapping_table`). \nVisit "
                            "https://github.com/Water-Run/oloc for documentation to fix.")
 
     if not (
@@ -43,7 +43,7 @@ def get_function_conversion_table() -> dict:
     try:
         result = ss.read('function_conversion_table', file='./data/olocconfig.ini')
     except (KeyError, ValueError, FileNotFoundError):
-        raise RuntimeError("olocdata.ini is not accessible or has the wrong format. Visit "
+        raise RuntimeError("olocdata.ini is not accessible or has the wrong format (losing `function_conversion_table`). \nVisit "
                            "https://github.com/Water-Run/oloc for documentation to fix.")
     if not (
             all(isinstance(key, str) for key in result.keys()) and
@@ -70,6 +70,20 @@ def get_function_name_list() -> list:
     return list(set(function_names))
 
 
+def get_formatting_output_function_options_table() -> dict:
+    r"""
+    Read formatting output function options_table from ./data/olocconfig.ini
+    :return: Readout table
+    :raise RuntimeError: If table cannot be read or there is an error in the table contents
+    """
+    try:
+        result = ss.read('formatting_output_function_options_table', file='./data/olocconfig.ini')
+    except (KeyError, ValueError, FileNotFoundError):
+        raise RuntimeError("olocdata.ini is not accessible or has the wrong format (losing `formatting_output_function_options_table`). \nVisit "
+                           "https://github.com/Water-Run/oloc for documentation to fix.")
+    return result
+
+
 """test"""
 if __name__ == '__main__':
-    print(get_function_name_list())
+    print(get_formatting_output_function_options_table())

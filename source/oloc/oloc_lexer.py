@@ -40,38 +40,6 @@ class Lexer:
                     token_content=check_token.value if check_token else "",
                 )
 
-    def _update(self) -> None:
-        r"""
-        刷新表达式及Token的下标
-        :return:
-        """
-        # 清空表达式和起始下标
-        self.expression = ""
-        start_index = 0
-
-        # 遍历所有Token，拼接表达式并检查下标连续性
-        for index, token in enumerate(self.tokens):
-            # 拼接表达式
-            self.expression += token.value
-
-            # 如果是第一个Token，直接设置其下标
-            if index == 0:
-                token.range = [start_index, start_index + len(token.value)]
-                start_index = token.range[1]
-                continue
-
-            # 检查当前Token和前一个Token的下标连续性
-            previous_token = self.tokens[index - 1]
-            if previous_token.range[1] != token.range[0]:
-                # 下标不连续，重新分配当前Token及后续Token的下标
-                token.range = [start_index, start_index + len(token.value)]
-            else:
-                # 下标连续，保持当前下标
-                token.range = [previous_token.range[1], previous_token.range[1] + len(token.value)]
-
-            # 更新起始下标
-            start_index = token.range[1]
-
     def _formal_complementation(self) -> None:
         r"""
         补全表达式中的一些特殊形式,如被省略的乘号
@@ -139,7 +107,7 @@ class Lexer:
 
             # 前进到下一个 Token
             index += 1
-        self._update()
+        self.tokens, self.expression = Lexer.update(self.tokens)
 
     def _check_denominator(self, check_tokens: list[Token, Token, Token]) -> list[Token, Token, Token]:
         r"""
@@ -378,11 +346,17 @@ class Lexer:
             index += 1
 
         self.tokens = fractionalized_tokens
-        self._update()
+        self.tokens, self.expression = Lexer.update(self.tokens)
 
     def _function_conversion(self) -> None:
         r"""
         根据函数转换表进行函数转换
+        :return: None
+        """
+
+    def _static_check(self) -> None:
+        r"""
+        对表达式执行静态检查
         :return: None
         """
 
@@ -657,6 +631,40 @@ class Lexer:
             tokens.append(Token(current_type, current_value, [current_start, len(expression)]))
 
         return tokens
+
+    @staticmethod
+    def update(tokens: list[Token]) -> [list[Token], str]:
+        r"""
+        更新输入的Token流
+        :return: 一个列表,第一项是更新后的Token流,第二项是表达式字符串
+        """
+        # 清空表达式和起始下标
+        expression = ""
+        start_index = 0
+
+        # 遍历所有Token，拼接表达式并检查下标连续性
+        for index, process_token in enumerate(tokens):
+            # 拼接表达式
+            expression += process_token.value
+
+            # 如果是第一个Token，直接设置其下标
+            if index == 0:
+                process_token.range = [start_index, start_index + len(process_token.value)]
+                start_index = process_token.range[1]
+                continue
+
+            # 检查当前Token和前一个Token的下标连续性
+            previous_token = tokens[index - 1]
+            if previous_token.range[1] != process_token.range[0]:
+                # 下标不连续，重新分配当前Token及后续Token的下标
+                process_token.range = [start_index, start_index + len(process_token.value)]
+            else:
+                # 下标连续，保持当前下标
+                process_token.range = [previous_token.range[1], previous_token.range[1] + len(process_token.value)]
+
+            # 更新起始下标
+            start_index = process_token.range[1]
+        return [tokens, expression]
 
 
 """test"""
