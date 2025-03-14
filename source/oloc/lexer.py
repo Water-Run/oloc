@@ -5,11 +5,13 @@ r"""
 :description: Oloc lexer
 """
 
-import utils
 import re
+import time
+import utils
 from evaluator import Evaluator
 from oloc_exceptions import *
 from oloc_token import Token
+
 
 class Lexer:
     r"""
@@ -20,6 +22,7 @@ class Lexer:
     def __init__(self, expression: str):
         self.expression = expression
         self.tokens: list[Token] = []
+        self.time_cost = -1
 
     def _convert_token_flow(self) -> None:
         r"""
@@ -99,51 +102,74 @@ class Lexer:
 
             # 情况 1: 数字后接 (
             if current_token.type in NUMBERS and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                                                            index + 1:]
+                self.tokens = self.tokens[:index + 1] + [
+                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
+                                                                               index + 1:]
 
             # 情况 2: 无理数参数后接 (
             elif current_token.type == Token.TYPE.IRRATIONAL_PARAM and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                                                            index + 1:]
+                self.tokens = self.tokens[:index + 1] + [
+                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
+                                                                               index + 1:]
 
             # 情况 3: ) 后接数字
             elif current_token.type == Token.TYPE.RBRACKET and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                                                            index + 1:]
+                self.tokens = self.tokens[:index + 1] + [
+                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
+                                                                               index + 1:]
 
             # 情况 4: 无理数后接无理数
             elif current_token.type in IRRATIONALS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                                                            index + 1:]
+                self.tokens = self.tokens[:index + 1] + [
+                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
+                                                                               index + 1:]
 
             # 情况 5: 数字后接无理数
             elif current_token.type in NUMBERS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                                                            index + 1:]
+                self.tokens = self.tokens[:index + 1] + [
+                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
+                                                                               index + 1:]
 
             # 情况 6: 无理数后接数字
             elif current_token.type in IRRATIONALS and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                                                            index + 1:]
+                self.tokens = self.tokens[:index + 1] + [
+                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
+                                                                               index + 1:]
 
             # 前进到下一个 Token
             index += 1
         self._update()
 
+    def _check_denominator(self, check_tokens: list[Token, Token, Token]) -> list[Token, Token, Token]:
+        r"""
+        检查传入的分数流(分子,分数线,分母)中的分母是否合法
+        :param check_tokens: 被检查的Token
+        :raise OlocInvalidCalculationException: 如果分母为0
+        :return: 原样返回
+        """
+        if int(check_tokens[2].value) == 0:
+            raise OlocInvalidCalculationException(
+                exception_type=OlocInvalidCalculationException.EXCEPTION_TYPE.DIVIDE_BY_ZERO,
+                expression=self.expression,
+                positions=list(range(*[check_tokens[0].range[0], check_tokens[2].range[1]])),
+                computing_unit=check_tokens[0].value + check_tokens[1].value + check_tokens[2].value,
+            )
+        return check_tokens
+
     def _fractionalization(self) -> None:
         r"""
         将表达式Token流中的各种数字转换为分数
         :return: None
+        :raise OlocInvalidCalculationException: 如果转换后的分数分母为0
         """
 
         def _convert_finite_decimal(finite_decimal: Token) -> [Token, Token, Token]:
             r"""
             将有限小数转为分数
             :param finite_decimal: 待转换的有限小数
-            :return: 转换后的分数
+            :return: 转换后的分数Token流(分子,分数线,分母)
             """
-            integer_part, decimal_part = finite_decimal.split('.')
+            integer_part, decimal_part = finite_decimal.value.split('.')
 
             numerator = int(integer_part + decimal_part)
             denominator = 10 ** len(decimal_part)
@@ -151,7 +177,21 @@ class Lexer:
             if int(integer_part) < 0:
                 numerator = -numerator
 
-            fraction = f"{numerator}/{denominator}"
+            fraction = [Token(Token.TYPE.INTEGER,
+                              str(numerator),
+                              [finite_decimal.range[0], finite_decimal.range[0] + len(str(numerator))]
+                              ),
+                        Token(Token.TYPE.OPERATOR,
+                              "/",
+                              [finite_decimal.range[0] + len(str(numerator)) + 1,
+                               finite_decimal.range[0] + len(str(numerator)) + 2]
+                              ),
+                        Token(Token.TYPE.INTEGER,
+                              str(denominator),
+                              [finite_decimal.range[0] + len(str(numerator)) + 2,
+                               finite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
+                              ),
+                        ]
 
             return fraction
 
@@ -188,7 +228,7 @@ class Lexer:
                     return [repeat_part, finite_part]
 
                 # 处理显式声明循环部分的情况（使用:分隔）
-                if ':' in process_decimal:
+                else:
                     base_number, repeat_part = process_decimal.split(':')
 
                     if '.' in base_number:
@@ -200,15 +240,12 @@ class Lexer:
 
                     return [repeat_part, finite_part]
 
-                # 默认情况：不应该进入此分支，因为输入保证是循环小数
-                return ["", process_decimal]
-
-            def _fraction_from_parts(repeat_part: str, finite_part: str) -> str:
+            def _fraction_from_parts(repeat_part: str, finite_part: str) -> list[Token, Token, Token]:
                 r"""
                 根据循环部分和有限部分计算分数形式
                 :param repeat_part: 循环部分
                 :param finite_part: 有限部分
-                :return: 分数字符串
+                :return: 转换后的分数Token流(分子,分数线,分母)
                 """
                 # 分解有限部分
                 if '.' in finite_part:
@@ -242,10 +279,26 @@ class Lexer:
                     numerator += int(repeat_part)
 
                 # 返回分数形式
-                return f"{numerator}/{denominator}"
+                fraction = [Token(Token.TYPE.INTEGER,
+                                  str(numerator),
+                                  [infinite_decimal.range[0], infinite_decimal.range[0] + len(str(numerator))]
+                                  ),
+                            Token(Token.TYPE.OPERATOR,
+                                  "/",
+                                  [infinite_decimal.range[0] + len(str(numerator)) + 1,
+                                   infinite_decimal.range[0] + len(str(numerator)) + 2]
+                                  ),
+                            Token(Token.TYPE.INTEGER,
+                                  str(denominator),
+                                  [infinite_decimal.range[0] + len(str(numerator)) + 2,
+                                   infinite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
+                                  ),
+                            ]
+                return fraction
 
             # 主函数逻辑
-            parts = _spilt_decimal_parts(infinite_decimal)
+            infinite_decimal_str = infinite_decimal.value
+            parts = _spilt_decimal_parts(infinite_decimal_str)
             repeat_part, finite_part = parts[0], parts[1]
 
             # 计算分数
@@ -257,36 +310,40 @@ class Lexer:
         def _convert_percentage(percentage: Token) -> [Token, Token, Token]:
             r"""
             将百分数转为小数
-            :param percentage: 待转换的百分数，例如"12.5%"
+            :param percentage: 待转换的百分数
             :return: 转换后的小数字符串，例如"0.125"
             """
             # 去掉百分号
-            percentage = percentage[:-1]
+            percentage_str = percentage.value
+            percentage_str = percentage_str[:-1]
 
             # 检查是否包含小数点，确保分割操作不会出错
-            if '.' not in percentage:
-                percentage += '.0'
+            if '.' not in percentage_str:
+                percentage_str += '.0'
 
-            integer_part, decimal_part = percentage.split('.')
+            integer_part, decimal_part = percentage_str.split('.')
 
             # 根据整数部分长度调整小数点位置
             if integer_part == '0':
-                percentage = '0.00' + decimal_part
+                percentage_str = '0.00' + decimal_part
             elif len(integer_part) == 1:
-                percentage = '0.0' + integer_part + decimal_part
+                percentage_str = '0.0' + integer_part + decimal_part
             elif len(integer_part) == 2:
-                percentage = '0.' + integer_part + decimal_part
+                percentage_str = '0.' + integer_part + decimal_part
             else:
                 decimal_point_pos = len(integer_part) - 2
-                percentage = integer_part[:decimal_point_pos] + '.' + integer_part[decimal_point_pos:] + decimal_part
+                percentage_str = integer_part[:decimal_point_pos] + '.' + integer_part[decimal_point_pos:] + decimal_part
 
-            percentage = percentage.rstrip('0')
-            if percentage.endswith('.'):
-                percentage = percentage[:-1]
+            percentage_str = percentage_str.rstrip('0')
+            if percentage_str.endswith('.'):
+                percentage_str = percentage_str[:-1]
 
-            return percentage if '.' not in percentage else _convert_finite_decimal(percentage)
+            return [Token(Token.TYPE.INTEGER, percentage_str, [percentage.range[0], percentage.range[0] + len(percentage_str)]),
+                    Token(Token.TYPE.OPERATOR, "/", [percentage.range[0] + len(percentage_str), percentage.range[0] + len(percentage_str) + 1]),
+                    Token(Token.TYPE.INTEGER, "1",
+                          [percentage.range[0] + len(percentage_str) + 1, percentage.range[0] + len(percentage_str) + 2]),
+                    ] if '.' not in percentage_str else _convert_finite_decimal(Token(Token.TYPE.FINITE_DECIMAL, percentage_str, [percentage.range[0], percentage.range[0] + len(percentage_str)]))
 
-        temp_tokens = Lexer.tokenizer(self.expression)
         fractionalized_tokens = []
 
         convert_num_types = [
@@ -295,19 +352,32 @@ class Lexer:
             Token.TYPE.INFINITE_DECIMAL,
         ]
 
-        tokens_fractionalized: list[Token] = []
-        for temp_token in temp_tokens:
-            if (convert_type := temp_token.type) in convert_num_types:
+        tokens_to_fractionalized: list[Token] = []
+        index = 0
+        while index < len(self.tokens):
+            temp_token = self.tokens[index]
+            if (convert_type := temp_token.type) == Token.TYPE.INTEGER and \
+                    index + 2 < len(self.tokens) and \
+                    self.tokens[index + 1].value == "/" and \
+                    self.tokens[index + 2].type == Token.TYPE.INTEGER:
+                fractionalized_tokens += Evaluator.simplify(
+                    self._check_denominator([temp_token, self.tokens[index + 1], self.tokens[index + 2]]))
+                index += 3
+            elif convert_type in convert_num_types:
                 match convert_type:
                     case Token.TYPE.FINITE_DECIMAL:
-                        tokens_fractionalized = _convert_finite_decimal(temp_token)
+                        tokens_to_fractionalized = self._check_denominator(_convert_finite_decimal(temp_token))
                     case Token.TYPE.INFINITE_DECIMAL:
-                        tokens_fractionalized = _convert_infinite_decimal(temp_token)
+                        tokens_to_fractionalized = self._check_denominator(_convert_infinite_decimal(temp_token))
                     case Token.TYPE.PERCENTAGE:
-                        tokens_fractionalized = _convert_percentage(temp_token)
-                fractionalized_tokens += Evaluator.simplify(tokens_fractionalized)
+                        tokens_to_fractionalized = self._check_denominator(_convert_percentage(temp_token))
+                fractionalized_tokens += Evaluator.simplify(tokens_to_fractionalized)
             else:
-                fractionalized_tokens += temp_token
+                fractionalized_tokens += [temp_token]
+            index += 1
+
+        self.tokens = fractionalized_tokens
+        self._update()
 
     def _function_conversion(self) -> None:
         r"""
@@ -321,8 +391,11 @@ class Lexer:
         :return: None
         """
 
+        start_time = time.time()
         self._convert_token_flow()
         self._formal_complementation()
+        self._fractionalization()
+        self.time_cost = time.time() - start_time
 
     """
     静态方法
@@ -441,8 +514,10 @@ class Lexer:
                     current_char = expression[attempt_index]
 
                     if current_char == "%" and mode in [Token.TYPE.INTEGER, Token.TYPE.FINITE_DECIMAL]:
-                        if attempt_index + 1 < len(expression) and expression[attempt_index + 1] not in ["+", "-", "*", "/",
-                                                                                                 "^", "%", "|", ")", "]", "}"]:
+                        if attempt_index + 1 < len(expression) and expression[attempt_index + 1] not in ["+", "-", "*",
+                                                                                                         "/",
+                                                                                                         "^", "%", "|",
+                                                                                                         ")", "]", "}"]:
                             break
                         mode = Token.TYPE.PERCENTAGE
                         digit_index_range_list.append(attempt_index)
@@ -589,23 +664,25 @@ if __name__ == '__main__':
 
     import simpsave as ss
 
-    from time import time
     tests = ss.read("test_cases", file="./data/olocconfig.ini")
-    start = time()
+    # input(f"{len(tests)}>>>")
+    start = time.time()
     for test in tests:
         try:
             preprocess = preprocessor.Preprocessor(test)
             preprocess.execute()
-            print(test, end=" => ")
+            # print(test, end=" => ")
             lexer = Lexer(preprocess.expression)
             lexer.execute()
             for token in lexer.tokens:
                 ... # debug
-                print(token.value, end=" ")
-            print()
+            #     print(token.value, end=" ")
+            # print()
+        except (TypeError, ZeroDivisionError) as t_error:
+            raise t_error
         except Exception as error:
             print(f"\n\n\n========\n\n{error}\n\n\n")
-    print(f"Run {len(tests)} in {time() - start}")
+    print(f"Run {len(tests)} in {time.time() - start}")
 
     while True:
         try:
@@ -616,5 +693,16 @@ if __name__ == '__main__':
             print(lexer.tokens)
             for token in lexer.tokens:
                 print(token.value, end=" ")
+            print(f"\nIn {preprocess.time_cost} + {lexer.time_cost} = {preprocess.time_cost + lexer.time_cost} s")
+        except (TypeError, ZeroDivisionError) as t_error:
+            raise t_error
         except Exception as error:
             print(error)
+
+    # preprocess = preprocessor.Preprocessor(input(">>>"))
+    # preprocess.execute()
+    # lexer = Lexer(preprocess.expression)
+    # lexer.execute()
+    # print(lexer.tokens)
+    # for token in lexer.tokens:
+    #     print(token.value, end=" ")

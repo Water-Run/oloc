@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-13
+:date: 2025-03-14
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -292,6 +292,41 @@ class OlocInvalidTokenException(OlocException):
         self.token_content = token_content
 
         main_message = exception_type.value[0].format(token_content=token_content)
+        suggestion = exception_type.value[1]
+
+        self.message = f"{main_message} {suggestion}"
+
+        # 调用父类初始化
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocInvalidCalculationException(OlocException):
+    r"""
+    当出现不合法的计算时抛出此异常
+    """
+
+    class EXCEPTION_TYPE(Enum):
+        r"""
+        定义 OlocInvalidTokenException 的异常类型的枚举类。
+        """
+
+        DIVIDE_BY_ZERO = (
+            "OlocInvalidCalculationException: Divide-by-zero detected in the computational expression `{computing_unit}`",
+            "The divisor or denominator may not be zero. Check the expression."
+        )
+
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], computing_unit: str):
+        r"""
+        初始化 OlocInvalidCalculationException，包含异常类型和 Token 内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param computing_unit: 引发异常的计算单元内容
+        """
+        self.computing_unit = computing_unit
+
+        main_message = exception_type.value[0].format(computing_unit=computing_unit)
         suggestion = exception_type.value[1]
 
         self.message = f"{main_message} {suggestion}"

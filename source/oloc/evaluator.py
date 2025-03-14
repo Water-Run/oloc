@@ -7,6 +7,7 @@
 
 from math import gcd
 from oloc_token import Token
+from oloc_exceptions import *
 
 
 class Function:
@@ -37,6 +38,7 @@ class Evaluator:
         """
         numerator = int(fraction_tokens[0].value)  # 分子
         denominator = int(fraction_tokens[2].value)  # 分母
+
 
         # 计算分子和分母的最大公约数
         divisor = gcd(numerator, denominator)
@@ -77,7 +79,10 @@ class Evaluator:
             )
         ]
 
+
 """test"""
-print(Evaluator.simplify([Token(Token.TYPE.INTEGER, "20", [0,2]),
-                          Token(Token.TYPE.OPERATOR, "/", [2,3]),
-                          Token(Token.TYPE.INTEGER, "10", [3,5])]))
+if __name__ == '__main__':
+
+    print(Evaluator.simplify([Token(Token.TYPE.INTEGER, "20", [0,2]),
+                              Token(Token.TYPE.OPERATOR, "/", [2,3]),
+                              Token(Token.TYPE.INTEGER, "40", [3,5])]))

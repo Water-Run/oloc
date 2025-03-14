@@ -6,6 +6,8 @@ r"""
 """
 
 from lexer import *
+import time
+
 
 class Preprocessor:
     r"""
@@ -15,6 +17,7 @@ class Preprocessor:
 
     def __init__(self, expression: str):
         self.expression = expression
+        self.time_cost = -1
 
     def _remove_comment(self) -> None:
         r"""
@@ -267,9 +270,11 @@ class Preprocessor:
         :return: None
         """
 
+        start_time = time.time()
         self._remove_comment()
         self._symbol_mapper()
         self._formal_elimination()
+        self.time_cost = time.time() - start_time
 
 
 """test"""
@@ -280,6 +285,7 @@ if __name__ == '__main__':
     start = time.time()
     count = 0
     test_cases = ss.read("test_cases", file="./data/olocconfig.ini")
+
     for test in test_cases:
         try:
             result = Preprocessor(test)
