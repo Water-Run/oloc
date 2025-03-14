@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-13
+:date: 2025-03-14
 :file: lexer.py
 :description: Oloc lexer
 """
@@ -287,24 +287,37 @@ class Lexer:
                     token_content=check_token.value if check_token else "",
                 )
 
-    def _update_range(self) -> None:
+    def _update(self) -> None:
         r"""
-        刷新表达式中Token的下标
+        刷新表达式及Token的下标
         :return:
         """
-        re_range_index = len(self.tokens)  # 标记从哪个Token开始要重写下标
-        for index, process_token in enumerate(self.tokens):
+        # 清空表达式和起始下标
+        self.expression = ""
+        start_index = 0
+
+        # 遍历所有Token，拼接表达式并检查下标连续性
+        for index, token in enumerate(self.tokens):
+            # 拼接表达式
+            self.expression += token.value
+
+            # 如果是第一个Token，直接设置其下标
             if index == 0:
+                token.range = [start_index, start_index + len(token.value)]
+                start_index = token.range[1]
                 continue
+
+            # 检查当前Token和前一个Token的下标连续性
             previous_token = self.tokens[index - 1]
-            if not previous_token.range[1] == process_token.range[0]:
-                re_range_index = index
-                break
+            if previous_token.range[1] != token.range[0]:
+                # 下标不连续，重新分配当前Token及后续Token的下标
+                token.range = [start_index, start_index + len(token.value)]
+            else:
+                # 下标连续，保持当前下标
+                token.range = [previous_token.range[1], previous_token.range[1] + len(token.value)]
 
-        self.tokens, re_mark_tokens = self.tokens[:re_range_index], self.tokens[re_range_index:]
-
-        if len(re_mark_tokens) != 0:
-            ...
+            # 更新起始下标
+            start_index = token.range[1]
 
     def _formal_complementation(self) -> None:
         r"""
@@ -337,37 +350,37 @@ class Lexer:
 
             # 情况 1: 数字后接 (
             if current_token.type in NUMBERS and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
                                                                                                             index + 1:]
 
             # 情况 2: 无理数参数后接 (
             elif current_token.type == Token.TYPE.IRRATIONAL_PARAM and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
                                                                                                             index + 1:]
 
             # 情况 3: ) 后接数字
             elif current_token.type == Token.TYPE.RBRACKET and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
                                                                                                             index + 1:]
 
             # 情况 4: 无理数后接无理数
             elif current_token.type in IRRATIONALS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
                                                                                                             index + 1:]
 
             # 情况 5: 数字后接无理数
             elif current_token.type in NUMBERS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
                                                                                                             index + 1:]
 
             # 情况 6: 无理数后接数字
             elif current_token.type in IRRATIONALS and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index] + [Token(Token.TYPE.OPERATOR, "*", [index, index + 1])] + self.tokens[
+                self.tokens = self.tokens[:index + 1] + [Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
                                                                                                             index + 1:]
 
             # 前进到下一个 Token
             index += 1
-        self._update_range()
+        self._update()
 
     def _fractionalization(self) -> None:
         r"""
@@ -533,17 +546,17 @@ class Lexer:
             Token.TYPE.INFINITE_DECIMAL,
         ]
 
-        token_fractionalized = []
+        tokens_fractionalized: list[Token] = []
         for temp_token in temp_tokens:
             if (convert_type := temp_token.type) in convert_num_types:
                 match convert_type:
                     case Token.TYPE.FINITE_DECIMAL:
-                        token_fractionalized = _convert_finite_decimal(temp_token)
+                        tokens_fractionalized = _convert_finite_decimal(temp_token)
                     case Token.TYPE.INFINITE_DECIMAL:
-                        token_fractionalized = _convert_infinite_decimal(temp_token)
+                        tokens_fractionalized = _convert_infinite_decimal(temp_token)
                     case Token.TYPE.PERCENTAGE:
-                        token_fractionalized = _convert_percentage(temp_token)
-                fractionalized_tokens += evaluator.Evaluator.simplify(token_fractionalized)
+                        tokens_fractionalized = _convert_percentage(temp_token)
+                fractionalized_tokens += evaluator.Evaluator.simplify(tokens_fractionalized)
             else:
                 fractionalized_tokens += temp_token
 
@@ -680,7 +693,7 @@ class Lexer:
 
                     if current_char == "%" and mode in [Token.TYPE.INTEGER, Token.TYPE.FINITE_DECIMAL]:
                         if attempt_index + 1 < len(expression) and expression[attempt_index + 1] not in ["+", "-", "*", "/",
-                                                                                                 "^", "%", "|"]:
+                                                                                                 "^", "%", "|", ")", "]", "}"]:
                             break
                         mode = Token.TYPE.PERCENTAGE
                         digit_index_range_list.append(attempt_index)
@@ -825,25 +838,25 @@ class Lexer:
 if __name__ == '__main__':
     import preprocessor
 
-    # import simpsave as ss
-    #
-    # from time import time
-    # tests = ss.read("test_cases", file="./data/olocconfig.ini")
-    # start = time()
-    # for test in tests:
-    #     try:
-    #         preprocess = preprocessor.Preprocessor(test)
-    #         preprocess.execute()
-    #         print(test, end=" => ")
-    #         lexer = Lexer(preprocess.expression)
-    #         lexer.execute()
-    #         for token in lexer.tokens:
-    #             ... # debug
-    #             print(token.value, end=" ")
-    #         print()
-    #     except Exception as error:
-    #         print(f"\n\n\n========\n\n{error}\n\n\n")
-    # print(f"Run {len(tests)} in {time() - start}")
+    import simpsave as ss
+
+    from time import time
+    tests = ss.read("test_cases", file="./data/olocconfig.ini")
+    start = time()
+    for test in tests:
+        try:
+            preprocess = preprocessor.Preprocessor(test)
+            preprocess.execute()
+            print(test, end=" => ")
+            lexer = Lexer(preprocess.expression)
+            lexer.execute()
+            for token in lexer.tokens:
+                ... # debug
+                print(token.value, end=" ")
+            print()
+        except Exception as error:
+            print(f"\n\n\n========\n\n{error}\n\n\n")
+    print(f"Run {len(tests)} in {time() - start}")
 
     while True:
         try:
@@ -851,6 +864,7 @@ if __name__ == '__main__':
             preprocess.execute()
             lexer = Lexer(preprocess.expression)
             lexer.execute()
+            print(lexer.tokens)
             for token in lexer.tokens:
                 print(token.value, end=" ")
         except Exception as error:
