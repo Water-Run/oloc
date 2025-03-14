@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
 :date: 2025-03-11
-:file: parser.py
+:file: oloc_parser.py
 :description: Oloc parser
 """

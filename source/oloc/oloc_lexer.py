@@ -1,14 +1,14 @@
 r"""
 :author: WaterRun
 :date: 2025-03-14
-:file: lexer.py
+:file: oloc_lexer.py
 :description: Oloc lexer
 """
 
 import re
 import time
-import utils
-from evaluator import Evaluator
+import oloc_utils
+from oloc_evaluator import Evaluator
 from oloc_exceptions import *
 from oloc_token import Token
 
@@ -28,6 +28,7 @@ class Lexer:
         r"""
         将表达式转为Token流,并检查Token的合法性
         :return: None
+        :raise OlocInvalidTokenException: 如果Token不合法
         """
         self.tokens = Lexer.tokenizer(self.expression)
         for check_token in self.tokens:
@@ -408,8 +409,8 @@ class Lexer:
         :param expression: 待分词的表达式
         :return: 分词后的Token列表
         """
-        function_names = utils.get_function_name_list()
-        symbol_mapping_table = utils.get_symbol_mapping_table()
+        function_names = oloc_utils.get_function_name_list()
+        symbol_mapping_table = oloc_utils.get_symbol_mapping_table()
 
         mark_list = [Token.TYPE.UNKNOWN for _ in range(len(expression))]
 
@@ -660,7 +661,7 @@ class Lexer:
 
 """test"""
 if __name__ == '__main__':
-    import preprocessor
+    import oloc_preprocessor as preprocessor
 
     import simpsave as ss
 
@@ -671,38 +672,38 @@ if __name__ == '__main__':
         try:
             preprocess = preprocessor.Preprocessor(test)
             preprocess.execute()
-            # print(test, end=" => ")
+            print(test, end=" => ")
             lexer = Lexer(preprocess.expression)
             lexer.execute()
             for token in lexer.tokens:
                 ... # debug
-            #     print(token.value, end=" ")
-            # print()
+                print(token.value, end=" ")
+            print()
         except (TypeError, ZeroDivisionError) as t_error:
             raise t_error
         except Exception as error:
             print(f"\n\n\n========\n\n{error}\n\n\n")
     print(f"Run {len(tests)} in {time.time() - start}")
+    #
+    # while True:
+    #     try:
+    #         preprocess = preprocessor.Preprocessor(input(">>>"))
+    #         preprocess.execute()
+    #         lexer = Lexer(preprocess.expression)
+    #         lexer.execute()
+    #         print(lexer.tokens)
+    #         for token in lexer.tokens:
+    #             print(token.value, end=" ")
+    #         print(f"\nIn {preprocess.time_cost} + {lexer.time_cost} = {preprocess.time_cost + lexer.time_cost} s")
+    #     except (TypeError, ZeroDivisionError) as t_error:
+    #         raise t_error
+    #     except Exception as error:
+    #         print(error)
 
-    while True:
-        try:
-            preprocess = preprocessor.Preprocessor(input(">>>"))
-            preprocess.execute()
-            lexer = Lexer(preprocess.expression)
-            lexer.execute()
-            print(lexer.tokens)
-            for token in lexer.tokens:
-                print(token.value, end=" ")
-            print(f"\nIn {preprocess.time_cost} + {lexer.time_cost} = {preprocess.time_cost + lexer.time_cost} s")
-        except (TypeError, ZeroDivisionError) as t_error:
-            raise t_error
-        except Exception as error:
-            print(error)
-
-    # preprocess = preprocessor.Preprocessor(input(">>>"))
-    # preprocess.execute()
-    # lexer = Lexer(preprocess.expression)
-    # lexer.execute()
-    # print(lexer.tokens)
-    # for token in lexer.tokens:
-    #     print(token.value, end=" ")
+    preprocess = preprocessor.Preprocessor(input(">>>"))
+    preprocess.execute()
+    lexer = Lexer(preprocess.expression)
+    lexer.execute()
+    print(lexer.tokens)
+    for token in lexer.tokens:
+        print(token.value, end=" ")

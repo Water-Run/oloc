@@ -1,12 +1,12 @@
 r"""
 :author: WaterRun
 :date: 2025-03-12
-:file: result.py
+:file: oloc_result.py
 :description: Oloc result
 """
 from typing import List, Any
 from fractions import Fraction
-import lexer
+import oloc_lexer
 
 
 # class OutputFilter:

@@ -5,7 +5,7 @@ r"""
 :description: oloc token
 """
 
-import utils
+import oloc_utils as utils
 from oloc_exceptions import *
 
 

@@ -1,16 +1,16 @@
 r"""
 :author: WaterRun
 :date: 2025-03-13
-:file: core.py
+:file: oloc_core.py
 :description: Core of oloc
 """
 import time
 
-from result import OlocResult
+from oloc_result import OlocResult
 from oloc_exceptions import *
 from multiprocessing import Process, Queue
-from preprocessor import Preprocessor
-from lexer import Lexer
+from oloc_preprocessor import Preprocessor
+from oloc_lexer import Lexer
 
 
 def _execute_calculation(expression: str, result_queue: Queue) -> None:
@@ -25,7 +25,7 @@ def _execute_calculation(expression: str, result_queue: Queue) -> None:
 
         preprocess = Preprocessor(expression)
         preprocess.execute()
-        result = preprocess # temp
+        result = preprocess  # temp
         time.sleep(1)
         lexer = Lexer(preprocess.expression)
         lexer.execute()
