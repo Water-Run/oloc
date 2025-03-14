@@ -7,7 +7,7 @@ r"""
 import time
 
 from result import OlocResult
-from exceptions import *
+from oloc_exceptions import *
 from multiprocessing import Process, Queue
 from preprocessor import Preprocessor
 from lexer import Lexer

@@ -16,7 +16,7 @@ import lexer
 #     :param tokens: 待过滤输出的token流
 #     """
 #
-#     def __init__(self, tokens: lexer.Token):
+#     def __init__(self, tokens: Token):
 #         self.tokens = tokens
 #
 #     def build_string(self) -> str:
