@@ -94,13 +94,14 @@ Type: Dict
 Description: Configure each function setting of the formatted output filter
 """
 formatting_output_function_options_table: dict[dict[str:any]] = {
-    "space_between_tokens": True,
+    "space between tokens": True,
     "number separators add thresholds": -1,
     "number separator interval": 3,
+    "underline-style number separator": False,
     "scientific notation adding thresholds": -1,
     "operator form functions": True,
-    "retain irrational param": True,
-    "native irrational mode": True,
+    "retain irrational param": False,
+    "non-english character form native irrational": True,
     "superscript": True
 }
 

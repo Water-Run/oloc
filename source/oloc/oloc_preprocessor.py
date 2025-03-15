@@ -49,7 +49,7 @@ class Preprocessor:
         读取符号映射表,并依次遍历进行映射;对于函数名称中的符号,以及自定义长无理数中的符号,不进行替换处理
         :return: None
         """
-        symbol_mapping_table = oloc_utils.get_symbol_mapping_table()
+        symbol_mapping_table = utils.get_symbol_mapping_table()
 
         def _replace_symbols(expression: str) -> str:
             r"""
@@ -63,7 +63,7 @@ class Preprocessor:
                 标注表达式中的函数的下标
                 :return: 标注后的下标列表
                 """
-                function_names = oloc_utils.get_function_name_list()
+                function_names = utils.get_function_name_list()
                 function_indices = []
                 for func in function_names:
                     start = 0
@@ -166,8 +166,8 @@ class Preprocessor:
         if self.expression.startswith('+'):
             self.expression = self.expression[1:]
 
-        function_names = oloc_utils.get_function_name_list()
-        symbol_mapping_table = oloc_utils.get_symbol_mapping_table()
+        function_names = utils.get_function_name_list()
+        symbol_mapping_table = utils.get_symbol_mapping_table()
 
         # 使用栈跟踪括号和函数嵌套
         # 栈元素格式: [类型, 层级, 函数名(如果是函数的话)]

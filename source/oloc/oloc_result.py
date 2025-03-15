@@ -1,12 +1,13 @@
 r"""
 :author: WaterRun
-:date: 2025-03-14
+:date: 2025-03-15
 :file: oloc_result.py
 :description: Oloc result
 """
 from typing import List, Any
 from fractions import Fraction
 from oloc_token import Token
+import oloc_utils as utils
 
 
 def output_filter(tokens: list[Token]) -> list[Token]:
@@ -15,6 +16,7 @@ def output_filter(tokens: list[Token]) -> list[Token]:
     :param tokens: 待过滤输出的token流
     :return: 过滤后的Token流
     """
+    configs = utils.get_formatting_output_function_options_table()
 
 
 class OlocResult:

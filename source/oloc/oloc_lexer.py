@@ -7,7 +7,7 @@ r"""
 
 import re
 import time
-import oloc_utils
+import oloc_utils as utils
 from oloc_evaluator import Evaluator
 from oloc_exceptions import *
 from oloc_token import Token
@@ -383,8 +383,8 @@ class Lexer:
         :param expression: 待分词的表达式
         :return: 分词后的Token列表
         """
-        function_names = oloc_utils.get_function_name_list()
-        symbol_mapping_table = oloc_utils.get_symbol_mapping_table()
+        function_names = utils.get_function_name_list()
+        symbol_mapping_table = utils.get_symbol_mapping_table()
 
         mark_list = [Token.TYPE.UNKNOWN for _ in range(len(expression))]
 
