@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-14
+:date: 2025-03-15
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -129,7 +129,6 @@ class Lexer:
         r"""
         将表达式Token流中的各种数字转换为分数
         :return: None
-        :raise OlocInvalidCalculationException: 如果转换后的分数分母为0
         """
 
         def _convert_finite_decimal(finite_decimal: Token) -> [Token, Token, Token]:
@@ -348,6 +347,83 @@ class Lexer:
         self.tokens = fractionalized_tokens
         self.tokens, self.expression = Lexer.update(self.tokens)
 
+    def _bracket_checking_harmonisation(self) -> None:
+        """
+        括号检查与统一化
+        :raise OlocInvalidBracketException: 如果括号出现层级错误或不匹配
+        :return: None
+        """
+        # 定义括号的层级优先级
+        BRACKET_PRIORITY = {'(': 1, '[': 2, '{': 3, ')': 1, ']': 2, '}': 3}
+        # 定义括号的左右匹配关系
+        BRACKET_MATCH = {'(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{'}
+
+        # 栈结构用于匹配括号
+        stack = []
+
+        for temp_token in self.tokens:
+            if temp_token.type == Token.TYPE.LBRACKET:  # 左括号
+                # 检查层级是否合法
+                if stack and BRACKET_PRIORITY[temp_token.value] > BRACKET_PRIORITY[stack[-1][0]]:
+                    raise OlocInvalidBracketException(
+                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.INCORRECT_BRACKET_HIERARCHY,
+                        expression=self.expression,
+                        positions=[temp_token.range[0]],
+                        err_bracket=temp_token.value
+                    )
+
+                # 将左括号压入栈 (括号值, 起始位置, 优先级)
+                stack.append((temp_token.value, temp_token.range[0], BRACKET_PRIORITY[temp_token.value]))
+
+            elif temp_token.type == Token.TYPE.RBRACKET:  # 右括号
+                # 栈为空时，左括号缺失
+                if not stack:
+                    raise OlocInvalidBracketException(
+                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_RIGHT_BRACKET,
+                        expression=self.expression,
+                        positions=[temp_token.range[0]],
+                        err_bracket=temp_token.value
+                    )
+
+                # 弹出栈顶元素
+                last_left_bracket, last_position, last_priority = stack.pop()
+
+                # 检查括号是否匹配
+                if BRACKET_MATCH[last_left_bracket] != temp_token.value:
+                    raise OlocInvalidBracketException(
+                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_LEFT_BRACKET,
+                        expression=self.expression,
+                        positions=[last_position],
+                        err_bracket=last_left_bracket
+                    )
+
+                # 检查层级是否合法
+                if BRACKET_PRIORITY[last_left_bracket] != BRACKET_PRIORITY[temp_token.value]:
+                    raise OlocInvalidBracketException(
+                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.INCORRECT_BRACKET_HIERARCHY,
+                        expression=self.expression,
+                        positions=[last_position],
+                        err_bracket=last_left_bracket
+                    )
+
+        # 检查是否有未匹配的左括号
+        if stack:
+            last_left_bracket, last_position, _ = stack.pop()
+            raise OlocInvalidBracketException(
+                exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_LEFT_BRACKET,
+                expression=self.expression,
+                positions=[last_position],
+                err_bracket=last_left_bracket
+            )
+
+        for bracket_token in self.tokens:
+            if bracket_token.type == Token.TYPE.LBRACKET:
+                bracket_token.value = '('
+            elif bracket_token.type == Token.TYPE.RBRACKET:
+                bracket_token.value = ')'
+
+        self.update(self.tokens)
+
     def _function_conversion(self) -> None:
         r"""
         根据函数转换表进行函数转换
@@ -370,6 +446,7 @@ class Lexer:
         self._convert_token_flow()
         self._formal_complementation()
         self._fractionalization()
+        self._bracket_checking_harmonisation()
         self.time_cost = time.time() - start_time
 
     """
@@ -381,6 +458,7 @@ class Lexer:
         r"""
         分词器
         :param expression: 待分词的表达式
+        :raise OlocIrrationalNumberException: 如果无理数形式不合法
         :return: 分词后的Token列表
         """
         function_names = utils.get_function_name_list()
@@ -492,7 +570,8 @@ class Lexer:
                         if attempt_index + 1 < len(expression) and expression[attempt_index + 1] not in ["+", "-", "*",
                                                                                                          "/",
                                                                                                          "^", "%", "|",
-                                                                                                         ")", "]", "}"]:
+                                                                                                         ")", "]", "}",
+                                                                                                         ",", ";"]:
                             break
                         mode = Token.TYPE.PERCENTAGE
                         digit_index_range_list.append(attempt_index)

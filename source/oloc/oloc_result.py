@@ -10,11 +10,11 @@ from oloc_token import Token
 import oloc_utils as utils
 
 
-def output_filter(tokens: list[Token]) -> list[Token]:
+def output_filter(tokens: list[Token]) -> str:
     r"""
     格式化过滤Token流并输出
     :param tokens: 待过滤输出的token流
-    :return: 过滤后的Token流
+    :return: 过滤后的生成的表达式字符串
     """
     configs = utils.get_formatting_output_function_options_table()
 
@@ -42,7 +42,6 @@ class OlocResult:
     def expression(self) -> str:
         r"""
         获取表达式字符串。
-
         :return: 表达式字符串
         """
         return self._expression
@@ -51,7 +50,6 @@ class OlocResult:
     def result(self) -> List[str]:
         r"""
         获取表达式计算结果的字符串列表。
-
         :return: 结果字符串列表
         """
         return self._result
@@ -59,7 +57,6 @@ class OlocResult:
     def __str__(self) -> str:
         r"""
         将 OlocResult 转换为字符串，返回 result 列表的最后一项。
-
         :return: result 列表的最后一项。如果列表为空，返回空字符串
         """
         return self._result[-1] if self._result else ""
@@ -67,7 +64,6 @@ class OlocResult:
     def __repr__(self) -> str:
         r"""
         返回 OlocResult 对象的字符串表示形式。
-
         :return: 对象的字符串表示形式
         """
         return f"OlocResult(expression={self._expression!r}, result={self._result!r})"
@@ -75,21 +71,25 @@ class OlocResult:
     def __float__(self) -> float:
         r"""
         转换为浮点型。
-
-        :raises TypeError: 如果无法进行转换
+        :raises OlocFloatationError: 如果无法进行转换(如缺失无理数参数的无理数)
+        :return: 转化后的浮点数
         """
 
     def __int__(self) -> int:
         r"""
-        转换为整型。
+        转换为整型。(先转化为浮点)
+        :return: 转化后的整数
+        """
 
-        :raises TypeError: 如果无法进行转换
+    def get_fraction(self) -> Fraction:
+        r"""
+        转化为Python原生的Fraction类型。(先转化为浮点)
+        :return: Fraction类型的结果
         """
 
     def __setattr__(self, name: str, value: Any) -> None:
         r"""
         禁止修改 OlocResult 的属性。
-
         :raises AttributeError: 如果尝试修改已存在的属性
         """
         if hasattr(self, name):
@@ -99,14 +99,6 @@ class OlocResult:
     def __delattr__(self, name: str) -> None:
         r"""
         禁止删除 OlocResult 的属性。
-
         :raises AttributeError: 如果尝试删除属性
         """
         raise AttributeError(f"OlocResult is immutable. Cannot delete attribute '{name}'.")
-
-    def get_fraction(self) -> Fraction:
-        r"""
-        转化为Python原生的Fraction类型
-
-        :return: Fraction类型的结果
-        """

@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-14
+:date: 2025-03-15
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -311,7 +311,8 @@ class OlocInvalidCalculationException(OlocException):
         """
 
         DIVIDE_BY_ZERO = (
-            "OlocInvalidCalculationException: Divide-by-zero detected in the computational expression `{computing_unit}`",
+            "OlocInvalidCalculationException: Divide-by-zero detected in the computational expression `{"
+            "computing_unit}`",
             "The divisor or denominator may not be zero. Check the expression."
         )
 
@@ -342,7 +343,7 @@ class OlocIrrationalNumberException(OlocException):
 
     class EXCEPTION_TYPE(Enum):
         r"""
-        定义 OlocCommentException 的异常类型的枚举类。
+        定义 OlocIrrationalNumberException 的异常类型的枚举类。
         """
         MISMATCH_LONG_LEFT_SIGN = (
             "OlocIrrationalNumberException: Mismatch '<' detected",
@@ -362,4 +363,48 @@ class OlocIrrationalNumberException(OlocException):
         :param expression: 触发异常的原始表达式
         :param positions: 表示问题位置的列表
         """
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocInvalidBracketException(OlocException):
+    r"""
+    当存在括号相关问题时引发的异常
+    """
+
+    class EXCEPTION_TYPE(Enum):
+        r"""
+        定义 OlocInvalidBracketException 的异常类型的枚举类。
+        """
+        MISMATCH_LEFT_BRACKET = (
+            "OlocInvalidBracketException: Mismatch `{err_bracket}` detected",
+            "The left bracket must be matched by an identical right bracket. Check your expressions."
+        )
+
+        MISMATCH_RIGHT_BRACKET = (
+            "OlocInvalidBracketException: Mismatch `{err_bracket}` detected",
+            "The right bracket must be matched by an identical left bracket. Check your expressions."
+        )
+
+        INCORRECT_BRACKET_HIERARCHY = (
+            "OlocInvalidBracketException: Bracket `{err_bracket}` hierarchy error",
+            "Parentheses must follow the hierarchy: `()` `[]` `{}` in descending order."
+        )
+
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_bracket: str):
+        r"""
+        初始化 OlocInvalidCalculationException，包含异常类型和 Token 内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param computing_unit: 引发异常的计算单元内容
+        """
+        self.err_bracket = err_bracket
+
+        main_message = exception_type.value[0].format(err_bracket=err_bracket)
+        suggestion = exception_type.value[1]
+
+        self.message = f"{main_message} {suggestion}"
+
+        # 调用父类初始化
         super().__init__(exception_type, expression, positions)
