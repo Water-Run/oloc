@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-14
+:date: 2025-03-16
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
@@ -8,16 +8,6 @@
 from math import gcd
 from oloc_token import Token
 from oloc_exceptions import *
-
-
-class Function:
-    r"""
-    函数
-    """
-
-    r"""
-    代数函数
-    """
 
 
 class Evaluator:
@@ -29,6 +19,44 @@ class Evaluator:
     静态方法
     """
 
+    # 四则运算
+    @staticmethod
+    def addition(augend: list[Token, Token, Token], addend: list[Token, Token, Token]) -> list[Token]:
+        r"""
+        计算加法
+        :param augend: 被加数
+        :param addend: 加数
+        :return: 加法运算的结果
+        """
+
+    @staticmethod
+    def subtraction(minuend: list[Token, Token, Token], subtrahend: list[Token, Token, Token]) -> list[Token]:
+        r"""
+        计算减法
+        :param minuend: 被减数
+        :param subtrahend: 减数
+        :return: 加法运算的结果
+        """
+
+    @staticmethod
+    def multiplication(factor_1: list[Token, Token, Token], factor_2: list[Token, Token, Token]) -> list[Token]:
+        r"""
+        计算乘法
+        :param factor_1: 因数1
+        :param factor_2: 因数2
+        :return: 乘法运算的结果
+        """
+
+    @staticmethod
+    def division(dividend: list[Token, Token, Token], divisor: list[Token, Token, Token]) -> list[Token]:
+        r"""
+        计算除法
+        :param dividend: 被除数
+        :param divisor: 除数
+        :return: 除法运算的结果
+        """
+
+    # 分数化简
     @staticmethod
     def simplify(fraction_tokens: list[Token, Token, Token]) -> list[Token] or list[Token, Token, Token]:
         r"""
@@ -77,6 +105,19 @@ class Evaluator:
                  fraction_tokens[0].range[0] + len(str(simplified_numerator)) + 1 + len(str(simplified_denominator))]
             )
         ]
+
+    class Functions:
+        r"""
+        函数
+        """
+
+        """
+        代数函数
+        """
+
+        """
+        超越函数
+        """
 
 
 """test"""

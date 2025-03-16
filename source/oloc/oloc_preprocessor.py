@@ -44,6 +44,25 @@ class Preprocessor:
         pattern = r'#(.*?)#'
         self.expression = re.sub(pattern, '', self.expression).strip()
 
+    def _normalize_superscript_symbols(self) -> None:
+        r"""
+        对表达式中角标形式的指数进行转化为统一形式
+        :return: None
+        """
+        superscripts = {'¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
+                        '⁰': '0'}
+
+        normalized = ""
+        for index, char in enumerate(self.expression):
+            if char in superscripts.keys():
+                if index > 0 and self.expression[index - 1] in superscripts.keys():
+                    normalized += superscripts[char]
+                else:
+                    normalized += "^" + superscripts[char]
+            else:
+                normalized += self.expression[index]
+        self.expression = normalized
+
     def _symbol_mapper(self) -> None:
         r"""
         读取符号映射表,并依次遍历进行映射;对于函数名称中的符号,以及自定义长无理数中的符号,不进行替换处理
@@ -287,12 +306,13 @@ class Preprocessor:
         :return: None
         """
 
-        start_time = time.time()
+        start_time = time.time_ns()
         self._remove_comment()
+        self._normalize_superscript_symbols()
         self._symbol_mapper()
         self._equals_sign_elimination()
         self._formal_elimination()
-        self.time_cost = time.time() - start_time
+        self.time_cost = time.time_ns() - start_time
 
 
 """test"""

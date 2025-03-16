@@ -397,7 +397,7 @@ class OlocInvalidBracketException(OlocException):
         :param exception_type: 异常的类型 (Enum)
         :param expression: 触发异常的原始表达式
         :param positions: 表示问题位置的列表
-        :param computing_unit: 引发异常的计算单元内容
+        :param err_bracket: 引发异常的括号
         """
         self.err_bracket = err_bracket
 
@@ -432,4 +432,40 @@ class OlocInvalidEqualSignException(OlocException):
         :param expression: 触发异常的原始表达式
         :param positions: 表示问题位置的列表
         """
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocFunctionParameterException(OlocException):
+    r"""
+    当存在函数参数相关问题时引发的异常
+    """
+
+    class EXCEPTION_TYPE(Enum):
+        r"""
+        定义 OlocFunctionParameterException 的异常类型的枚举类。
+        """
+        POWER = (
+            "OlocFunctionParameterException: The parameter `{err_param}` in the pow() is incorrect ({err_info})",
+            "Check the documentation for the parameter description of pow()."
+        )
+
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_param: str, err_info: str):
+        r"""
+        初始化 OlocFunctionParameterException，包含异常类型和 Token 内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param err_param: 引发异常的参数内容
+        :param err_info: 引发异常的信息内容
+        """
+        self.err_bracket = err_param
+        self.err_info = err_info
+
+        main_message = exception_type.value[0].format(err_param=err_param, err_info=err_info)
+        suggestion = exception_type.value[1]
+
+        self.message = f"{main_message} {suggestion}"
+
+        # 调用父类初始化
         super().__init__(exception_type, expression, positions)

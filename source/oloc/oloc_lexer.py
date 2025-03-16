@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-15
+:date: 2025-03-16
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -442,12 +442,12 @@ class Lexer:
         :return: None
         """
 
-        start_time = time.time()
+        start_time = time.time_ns()
         self._convert_token_flow()
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
-        self.time_cost = time.time() - start_time
+        self.time_cost = time.time_ns() - start_time
 
     """
     静态方法
@@ -765,7 +765,7 @@ if __name__ == '__main__':
             for token in lexer.tokens:
                 ... # debug
                 print(token.value, end=" ")
-            print()
+            print(f"\t {preprocess.time_cost / 1000000} {lexer.time_cost / 1000000}")
         except (TypeError, ZeroDivisionError) as t_error:
             raise t_error
         except Exception as error:

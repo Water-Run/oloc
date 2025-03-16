@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-13
+:date: 2025-03-16
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -26,12 +26,10 @@ Description: This dictionary maps symbols (keys) to a list of possible conversio
 Warning: Note the order of substitution: top to bottom, left to right
 """
 symbol_mapping_table: dict[dict[str:list[str]]] = {
-    "": [" ", "_", "rad", "radians", "个"],
+    "": [" ", "_", "rad", "radians", "个", "的", "'s"],
     "=": ["==", "=", "equal", "equals", "eq", "is", "are", "=>", "->", "等于", "是"],
     "√": ["√", "┌", "根号"],
     "°": ["°", "degree", "deg", "^o", "度"],
-    "^1": ["¹"],
-    "^2": ["²"],
     "^": ["^", "**"],
     "+": ["+", "plus", "add", "加", "\\"],
     "-": ["-", "minus", "sub",  "减"],
@@ -65,21 +63,15 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "7": ["7", "seven", "七"],
     "8": ["8", "eight", "八"],
     "9": ["9", "nine", "九"],
-    "10": ["10", "ten", "十"],
 }
 
-r"""
-Function conversion table
-Type: dict
-Description: This dictionary maps function names (keys) to a list of possible equivalent representations (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right. The standard function name is the function name before the parentheses, and these names will be protected during the symbol mapping phase.
-"""
 function_conversion_table: dict[dict[str:list[str]]] = {
     "sqrt(x)": ["sqrt(x)", "x^(1/2)", "√x", "pow(x,1/2)"],
     "square(x)": ["square(x)", "x^2", "pow(x,2)", "sq(x)"],
     "cube(x)": ["cube(x)", "x^3", "pow(x,3)", "cub(x)"],
     "reciprocal(x)": ["reciprocal(x)", "x^-1", "pow(x,-1)", "rec(x)"],
     "pow(x,y)": ["pow(x,y)", "x^y", "x**y", "power(x,y)"],
-    "exp(x)": ["exp(x)", "pow(e,x)"],
+    "exp(x)": ["exp(x)", "pow(𝑒,x)"],
     "mod(x,y)": ["mod(x,y)", "x%y", "modulo(x,y)"],
     "fact(x)": ["fact(x)", "x!", "factorial(x)"],
     "abs(x)": ["abs(x)", "|x|"],
@@ -88,7 +80,27 @@ function_conversion_table: dict[dict[str:list[str]]] = {
     "gcd(x,y)": ["gcd(x,y)"],
     "lcm(x,y)": ["lcm(x,y)"],
     "round(x)": ["round(x)", "rd(x)"],
+    "lg(x)": ["lg(x)", "log(10,x)"],
+    "ln(x)": ["ln(x)", "log(𝑒,x)"],
+    "log(x,y)": ["log(x,y)"],
+    "floor(x)": ["floor(x)", "⌊x⌋"],
+    "ceil(x)": ["ceil(x)", "⌈x⌉"],
+    "trunc(x)": ["trunc(x)"],
+    "sin(x)": ["sin(x)", "sine(x)"],
+    "cos(x)": ["cos(x)", "cosine(x)"],
+    "tan(x)": ["tan(x)", "tangent(x)"],
+    "cosec(x)": ["cosec(x)", "csc(x)", "1/sin(x)", "1/sine(x)"],
+    "sec(x)": ["sec(x)", "1/cos(x)"],
+    "cot(x)": ["cot(x)", "1/tan(x)"],
+    "asin(x)": ["asin(x)", "arcsin(x)", "sin^(-1)(x)"],
+    "acos(x)": ["acos(x)", "arccos(x)", "cos^(-1)(x)"],
+    "atan(x)": ["atan(x)", "arctan(x)", "tan^(-1)(x)"],
+    "acosec(x)": ["acosec(x)", "arccosec(x)", "cosec^(-1)(x)"],
+    "asec(x)": ["asec(x)", "arcsec(x)", "sec^(-1)(x)"],
+    "acot(x)": ["acot(x)", "arccot(x)", "cot^(-1)(x)"],
 }
+
+
 
 r"""
 Formatting Output Function Options Table
@@ -2492,7 +2504,7 @@ test_case4 = [
     "pow(x+y,z)",  # 函数与多层括号嵌套
 
     # 13. 特殊符号与括号冲突
-    "√(π+e)",  # 开方与括号混合
+    "√(π+=e)",  # 开方与括号混合
     "abs({1+2})",  # 绝对值与括号混合
     "|x+y|",  # 绝对值符号与括号
     "(1+2)|3",  # 括号后绝对值符号
@@ -2630,7 +2642,26 @@ test_case5 = [
     "({[(1+2)*3]/4}+5)",  # 多层混合嵌套
 ]
 
-test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5
+test_cases6 = [
+    "x¹ + y²",  # 简单的上标数字
+    "a³ * b⁴",  # 两个不同的变量与角标数字
+    "x² + y³ + z⁴",  # 多个角标数字的加法
+    "(x²⁵y)³⁵",  # 括号内的角标运算
+    "pow(x³⁵, 2)",  # 函数嵌套中使用角标
+    "((x²)³)⁴",  # 多层次的角标嵌套
+    "x⁴ + y⁵⁵ + z⁶",  # 多个不同的角标数字
+    "a³ * b²",  # 乘法表达式中的角标
+    "x⁶ + y⁷³³",  # 多个角标数字加法
+    "pow(x², ³)",  # 角标内的指数
+    "x⁵ + y⁶ - z⁷",  # 复杂的加减法结合角标
+    "(x⁵ + y⁶)²",  # 括号内的加法与角标
+    "sqrt(x⁴)",  # 函数与角标结合
+    "log(x²)",  # 函数与角标结合
+    "sin(x³) + cos(y²)",  # 多个角标与函数结合
+]
+
+
+test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6
 
 # Write Data
 pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])

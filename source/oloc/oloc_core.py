@@ -108,12 +108,14 @@ def is_preserved(symbol: str) -> bool:
     :param symbol: 被判断的符号
     :return: 如果符号不是保留字，返回 True；否则返回 False
     """
-    reserved_keywords = set(utils.get_symbol_mapping_table().values())
-    reserved_keywords.update(utils.get_function_name_list())
+    reserved_keywords = utils.get_function_name_list()
+    for value in utils.get_symbol_mapping_table().values():
+        reserved_keywords += value
 
-    return not any(keyword in symbol for keyword in reserved_keywords)
+    return any(keyword in symbol for keyword in reserved_keywords)
 
 
 """test"""
 if __name__ == "__main__":
-    calculate("123", time_limit=0.5)
+    while True:
+        print(is_preserved(input(">>>")))
