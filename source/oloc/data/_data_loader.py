@@ -26,7 +26,8 @@ Description: This dictionary maps symbols (keys) to a list of possible conversio
 Warning: Note the order of substitution: top to bottom, left to right
 """
 symbol_mapping_table: dict[dict[str:list[str]]] = {
-    "": [" ", "=", "_", "equal", "equals", "eq", "is", "are", "=>", "->", "rad", "radians", "等", "于", "以", "是", "个"],
+    "": [" ", "_", "rad", "radians", "个"],
+    "=": ["==", "=", "equal", "equals", "eq", "is", "are", "=>", "->", "等于", "是"],
     "√": ["√", "┌", "根号"],
     "°": ["°", "degree", "deg", "^o", "度"],
     "^1": ["¹"],

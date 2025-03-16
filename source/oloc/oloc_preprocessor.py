@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-13
+:date: 2025-03-16
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -131,6 +131,22 @@ class Preprocessor:
             return ''.join(result)
 
         self.expression = _replace_symbols(self.expression)
+
+    def _equals_sign_elimination(self) -> None:
+        r"""
+        消除表达式结尾的`=`
+        :raise OlocInvalidEqualSignException: 如果`=`位于非结尾的部分
+        :return: None
+        """
+        if self.expression.endswith('='):
+            self.expression = self.expression[:-1]
+        index = self.expression.find('=')
+        if index != -1:
+            raise OlocInvalidEqualSignException(
+                exception_type=OlocInvalidEqualSignException.EXCEPTION_TYPE.MISPLACED,
+                expression=self.expression,
+                positions=[index],
+            )
 
     def _formal_elimination(self) -> None:
         r"""
@@ -274,6 +290,7 @@ class Preprocessor:
         start_time = time.time()
         self._remove_comment()
         self._symbol_mapper()
+        self._equals_sign_elimination()
         self._formal_elimination()
         self.time_cost = time.time() - start_time
 

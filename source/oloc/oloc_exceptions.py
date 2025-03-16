@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-15
+:date: 2025-03-16
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -407,4 +407,29 @@ class OlocInvalidBracketException(OlocException):
         self.message = f"{main_message} {suggestion}"
 
         # 调用父类初始化
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocInvalidEqualSignException(OlocException):
+    r"""
+    当等于号位于非结尾时引发的异常
+    """
+
+    class EXCEPTION_TYPE(Enum):
+        r"""
+        定义 OlocInvalidEqualSignException 的异常类型的枚举类。
+        """
+        MISPLACED = (
+            "OlocInvalidEqualSignException: Misplaced '=' detected",
+            "The `=` can only appear in the last part of a valid expression."
+        )
+
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
+        r"""
+        初始化 OlocInvalidEqualSignException。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        """
         super().__init__(exception_type, expression, positions)
