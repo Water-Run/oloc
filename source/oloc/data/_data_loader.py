@@ -87,6 +87,7 @@ function_conversion_table: dict[dict[str:list[str]]] = {
     "rad(x)": ["rad(x)", "x°"],
     "gcd(x,y)": ["gcd(x,y)"],
     "lcm(x,y)": ["lcm(x,y)"],
+    "round(x)": ["round(x)", "rd(x)"],
 }
 
 r"""

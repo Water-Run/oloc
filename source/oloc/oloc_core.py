@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-13
+:date: 2025-03-16
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -11,6 +11,7 @@ from oloc_exceptions import *
 from multiprocessing import Process, Queue
 from oloc_preprocessor import Preprocessor
 from oloc_lexer import Lexer
+import oloc_utils as utils
 
 
 def _execute_calculation(expression: str, result_queue: Queue) -> None:
@@ -97,6 +98,20 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
         return result
 
     raise RuntimeError("Unknown exception in calculate() of oloc: result queue is empty")
+
+
+def is_preserved(symbol: str) -> bool:
+    """
+    判断指定符号是否是oloc的保留字。
+    注: oloc的保留字不可作为自定义短无理数。
+
+    :param symbol: 被判断的符号
+    :return: 如果符号不是保留字，返回 True；否则返回 False
+    """
+    reserved_keywords = set(utils.get_symbol_mapping_table().values())
+    reserved_keywords.update(utils.get_function_name_list())
+
+    return not any(keyword in symbol for keyword in reserved_keywords)
 
 
 """test"""
