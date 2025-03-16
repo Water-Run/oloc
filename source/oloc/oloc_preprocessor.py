@@ -233,56 +233,16 @@ class Preprocessor:
                 i += len(matched_fn)
                 continue
 
-            # 处理左括号
-            if char == '(':
-                # 判断这个左括号是否是函数调用的开始
-                is_function_bracket = False
-                if i > 0:
-                    for fn in function_names:
-                        if i >= len(fn) and self.expression[i - len(fn):i] == fn:
-                            is_function_bracket = True
-                            stack.append(['F', len(stack), fn])  # 函数直接参数层
-                            break
-
-                # 如果不是函数调用的开始，则是普通表达式
-                if not is_function_bracket:
-                    stack.append(['E', len(stack), None])  # 表达式层
-
-                result.append(char)
-                i += 1
-                continue
-
-            # 处理右括号
-            if char == ')':
-                if stack:
-                    stack.pop()
-                result.append(char)
-                i += 1
-                continue
-
             # 处理逗号
             if char == ',':
-                # 判断这个逗号是函数参数分隔符还是数字分隔符
-                is_function_separator = False
 
-                # 逗号是函数参数分隔符的条件:
-                # 1. 栈不为空
-                # 2. 栈顶是函数参数层('F')
-                if stack and stack[-1][0] == 'F':
-                    is_function_separator = True
-
-                if is_function_separator:
-                    # 函数参数分隔符，保留
-                    result.append(char)
-                else:
-                    # 数字分隔符，检查是否有效
-                    if i == 0 or i == len(self.expression) - 1:
-                        invalid_positions.append(i)
-                    elif not self.expression[i - 1].isdigit():
-                        invalid_positions.append(i)
-                    elif i + 1 < len(self.expression) and not self.expression[i + 1].isdigit():
-                        invalid_positions.append(i)
-                    # 有效的数字分隔符，不添加到结果（即移除）
+                if i == 0 or i == len(self.expression) - 1:
+                    invalid_positions.append(i)
+                elif not self.expression[i - 1].isdigit():
+                    invalid_positions.append(i)
+                elif i + 1 < len(self.expression) and not self.expression[i + 1].isdigit():
+                    invalid_positions.append(i)
+                # 有效的数字分隔符，不添加到结果（即移除）
 
                 i += 1
                 continue
@@ -299,6 +259,7 @@ class Preprocessor:
             )
 
         self.expression = ''.join(result)
+        self.expression = self.expression.replace(";",",") # 统一函数参数形式
 
     def execute(self) -> None:
         r"""

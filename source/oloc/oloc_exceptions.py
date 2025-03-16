@@ -161,7 +161,8 @@ class OlocNumberSeparatorException(OlocException):
         INVALID_SEPARATOR = (
             "OlocNumberSeparatorException: Invalid numeric separator detected",
             "Ensure commas are used correctly as numeric separators in rational numbers. Commas must not appear at "
-            "the start, end, or consecutively."
+            "the start, end, or consecutively. When using numeric separators in a function, only `;` can be used to "
+            "separate the arguments of the function."
         )
 
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):

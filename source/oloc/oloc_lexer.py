@@ -1,12 +1,13 @@
 r"""
 :author: WaterRun
-:date: 2025-03-16
+:date: 2025-03-17
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
 
 import re
 import time
+from enum import Enum
 import oloc_utils as utils
 from oloc_evaluator import Evaluator
 from oloc_exceptions import *
@@ -422,13 +423,100 @@ class Lexer:
             elif bracket_token.type == Token.TYPE.RBRACKET:
                 bracket_token.value = ')'
 
-        self.update(self.tokens)
+        Lexer.update(self.tokens)
 
     def _function_conversion(self) -> None:
         r"""
-        根据函数转换表进行函数转换
+        根据函数转换表，将表达式中的右侧形式替换为左侧标准形式
         :return: None
         """
+        class Expression:
+            r"""
+            表达式子单元
+            :param wrap_token_list: 构造该表达式部分的子单元
+            """
+
+            def __init__(self, wrap_token_list: list[Token]):
+                self.tokens = wrap_token_list
+
+        function_conversion_table = utils.get_function_conversion_table()
+
+        def _build_expression_token_list(token_list: list[Token]) -> list[Token | Expression]:
+            r"""
+            将Token流中表达式部分转换为Expression
+            :param token_list: 待转换的Token流
+            :return: 转换后的Token | Expression流
+            """
+
+        def _unwrap_to_token_list(process_list: list[Token | Expression]) -> list[Token]:
+            r"""
+            将Token | Expression流转换为Token流
+            :param process_list: 待转换的Token | Expression流
+            :return: 转换后的Token流
+            """
+            return []
+
+        def _build_match(match_case: str) -> list[Token | Expression]:
+            r"""
+            根据
+            :param match_case: 需要匹配的字符串形式的模式
+            :return: 一个列表,对应需要匹配的模式
+            """
+            match = []
+            for char in match_case:
+                ...
+
+        def _find_match(match_case: list[Token | Expression], token_list: list[Token | Expression]) -> int:
+            r"""
+
+            :param match_case:
+            :param token_list:
+            :return:
+            """
+
+        def _convert_match(to_convert: list[Token | Expression], convert_to: list[Token | Expression]) -> list[Token]:
+            r"""
+            将找到的匹配结构转换为convert_to的结构, 并解开Expression
+            :param to_convert:
+            :param convert_to:
+            :return:
+            """
+
+        def _has_convert(token_list: list[Token]) -> bool:
+            r"""
+            判断Token流中是否存在可转换的结构
+            :param token_list: 待转换的结构
+            :return: 是否存在
+            """
+            for convert_types in function_conversion_table.values():
+                for convert_form in convert_types:
+                    if convert_form in function_conversion_table.keys():  # 最终形式
+                        continue
+                    match_case = _build_match(convert_form)
+                    if _find_match(match_case, token_list):
+                        return True
+            return False
+
+        # 计次,避免错误
+        start = time.time()
+        TIME_LIMIT = 3
+
+        while True:
+
+            if time.time() - start > 3:
+                raise TimeoutError()
+
+            expression_list = _build_expression_token_list(self.tokens)
+
+            for converted_form, forms_to_be_converted in function_conversion_table.items():
+                convert_match = _build_match(converted_form)
+
+            self.tokens = _unwrap_to_token_list(expression_list)
+
+            Lexer.update(self.tokens)
+
+            if _has_convert(self.tokens):
+                break
 
     def _static_check(self) -> None:
         r"""
@@ -447,6 +535,7 @@ class Lexer:
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
+        self._function_conversion()
         self.time_cost = time.time_ns() - start_time
 
     """
@@ -750,28 +839,29 @@ class Lexer:
 if __name__ == '__main__':
     import oloc_preprocessor as preprocessor
 
-    import simpsave as ss
-
-    tests = ss.read("test_cases", file="./data/olocconfig.ini")
-    # input(f"{len(tests)}>>>")
-    start = time.time()
-    for test in tests:
-        try:
-            preprocess = preprocessor.Preprocessor(test)
-            preprocess.execute()
-            print(test, end=" => ")
-            lexer = Lexer(preprocess.expression)
-            lexer.execute()
-            for token in lexer.tokens:
-                ... # debug
-                print(token.value, end=" ")
-            print(f"\t {preprocess.time_cost / 1000000} {lexer.time_cost / 1000000}")
-        except (TypeError, ZeroDivisionError) as t_error:
-            raise t_error
-        except Exception as error:
-            print(f"\n\n\n========\n\n{error}\n\n\n")
-    print(f"Run {len(tests)} in {time.time() - start}")
+    # import simpsave as ss
     #
+    # tests = ss.read("test_cases", file="./data/olocconfig.ini")
+    # # input(f"{len(tests)}>>>")
+    # start = time.time()
+    # for test in tests:
+    #     try:
+    #         preprocess = preprocessor.Preprocessor(test)
+    #         preprocess.execute()
+    #         print(test, end=" => ")
+    #         lexer = Lexer(preprocess.expression)
+    #         lexer.execute()
+    #         print(lexer.tokens)
+    #         for token in lexer.tokens:
+    #             ... # debug
+    #             print(token.value, end=" ")
+    #         print(f"\t {preprocess.time_cost / 1000000} {lexer.time_cost / 1000000}")
+    #     except (TypeError, ZeroDivisionError) as t_error:
+    #         raise t_error
+    #     except Exception as error:
+    #         print(f"\n\n\n========\n\n{error}\n\n\n")
+    # print(f"Run {len(tests)} in {time.time() - start}")
+
     # while True:
     #     try:
     #         preprocess = preprocessor.Preprocessor(input(">>>"))
