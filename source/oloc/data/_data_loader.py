@@ -22,7 +22,7 @@ retain_decimal_places: int = 7
 r"""
 Symbol Mapping Table
 Type: dict
-Description: This dictionary maps symbols (keys) to a list of possible conversions (values). All strings in the list (except the preserved function names) are converted to the corresponding key. Order: from top to bottom, left to right.
+Description: This dictionary maps symbols (keys) to a list of possible conversions (values). All strings in the list (except the reserved function names) are converted to the corresponding key. Order: from top to bottom, left to right.
 Warning: Note the order of substitution: top to bottom, left to right
 """
 symbol_mapping_table: dict[dict[str:list[str]]] = {
@@ -66,38 +66,38 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
 }
 
 function_conversion_table: dict[dict[str:list[str]]] = {
-    "pow(x,1/2)": ["sqrt(x)", "x^(1/2)", "√x", "pow(x,1/2)"],
-    "pow(x,2)": ["square(x)", "x^2", "pow(x,2)", "sq(x)"],
-    "pow(x,3)": ["cube(x)", "x^3", "pow(x,3)", "cub(x)"],
-    "pow(x,-1)": ["reciprocal(x)", "x^-1", "pow(x,-1)", "rec(x)"],
-    "pow(x,y)": ["pow(x,y)", "x^y", "x**y", "power(x,y)"],
-    "exp(x)": ["exp(x)", "pow(𝑒,x)"],
-    "mod(x,y)": ["mod(x,y)", "x%y", "modulo(x,y)"],
-    "fact(x)": ["fact(x)", "x!", "factorial(x)"],
-    "abs(x)": ["abs(x)", "|x|"],
-    "sign(x)": ["sign(x)"],
-    "rad(x)": ["rad(x)", "x°"],
-    "gcd(x,y)": ["gcd(x,y)"],
-    "lcm(x,y)": ["lcm(x,y)"],
-    "round(x)": ["round(x)", "rd(x)"],
-    "log(10,x)": ["lg(x)", "log(10,x)"],
-    "log(𝑒,x)": ["ln(x)", "log(𝑒,x)"],
-    "log(x,y)": ["log(x,y)"],
-    "floor(x)": ["floor(x)", "⌊x⌋"],
-    "ceil(x)": ["ceil(x)", "⌈x⌉"],
-    "trunc(x)": ["trunc(x)"],
-    "sin(x)": ["sin(x)", "sine(x)"],
-    "cos(x)": ["cos(x)", "cosine(x)"],
-    "tan(x)": ["tan(x)", "tangent(x)"],
-    "cosec(x)": ["cosec(x)", "csc(x)", "1/sin(x)", "1/sine(x)"],
-    "sec(x)": ["sec(x)", "1/cos(x)"],
-    "cot(x)": ["cot(x)", "1/tan(x)"],
-    "asin(x)": ["asin(x)", "arcsin(x)", "sin^(-1)(x)"],
-    "acos(x)": ["acos(x)", "arccos(x)", "cos^(-1)(x)"],
-    "atan(x)": ["atan(x)", "arctan(x)", "tan^(-1)(x)"],
-    "acosec(x)": ["acosec(x)", "arccosec(x)", "cosec^(-1)(x)"],
-    "asec(x)": ["asec(x)", "arcsec(x)", "sec^(-1)(x)"],
-    "acot(x)": ["acot(x)", "arccot(x)", "cot^(-1)(x)"],
+    "pow(<__reserved_param1__>,1/2)": ["sqrt(<__reserved_param1__>)", "<__reserved_param1__>^(1/2)", "√<__reserved_param1__>", "pow(<__reserved_param1__>,1/2)"],
+    "pow(<__reserved_param1__>,2)": ["square(<__reserved_param1__>)", "<__reserved_param1__>^2", "pow(<__reserved_param1__>,2)", "sq(<__reserved_param1__>)"],
+    "pow(<__reserved_param1__>,3)": ["cube(<__reserved_param1__>)", "<__reserved_param1__>^3", "pow(<__reserved_param1__>,3)", "cub(<__reserved_param1__>)"],
+    "pow(<__reserved_param1__>,-1)": ["reciprocal(<__reserved_param1__>)", "<__reserved_param1__>^-1", "pow(<__reserved_param1__>,-1)", "rec(<__reserved_param1__>)"],
+    "pow(<__reserved_param1__>,<__reserved_param2__>)": ["pow(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>^<__reserved_param2__>", "<__reserved_param1__>**<__reserved_param2__>", "power(<__reserved_param1__>,<__reserved_param2__>)"],
+    "e<__reserved_param1__>p(<__reserved_param1__>)": ["e<__reserved_param1__>p(<__reserved_param1__>)", "pow(𝑒,<__reserved_param1__>)"],
+    "mod(<__reserved_param1__>,<__reserved_param2__>)": ["mod(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>%<__reserved_param2__>", "modulo(<__reserved_param1__>,<__reserved_param2__>)"],
+    "fact(<__reserved_param1__>)": ["fact(<__reserved_param1__>)", "<__reserved_param1__>!", "factorial(<__reserved_param1__>)"],
+    "abs(<__reserved_param1__>)": ["abs(<__reserved_param1__>)", "|<__reserved_param1__>|"],
+    "sign(<__reserved_param1__>)": ["sign(<__reserved_param1__>)"],
+    "rad(<__reserved_param1__>)": ["rad(<__reserved_param1__>)", "<__reserved_param1__>°"],
+    "gcd(<__reserved_param1__>,<__reserved_param2__>)": ["gcd(<__reserved_param1__>,<__reserved_param2__>)"],
+    "lcm(<__reserved_param1__>,<__reserved_param2__>)": ["lcm(<__reserved_param1__>,<__reserved_param2__>)"],
+    "round(<__reserved_param1__>)": ["round(<__reserved_param1__>)", "rd(<__reserved_param1__>)"],
+    "log(10,<__reserved_param1__>)": ["lg(<__reserved_param1__>)", "log(10,<__reserved_param1__>)"],
+    "log(𝑒,<__reserved_param1__>)": ["ln(<__reserved_param1__>)", "log(𝑒,<__reserved_param1__>)"],
+    "log(<__reserved_param1__>,<__reserved_param2__>)": ["log(<__reserved_param1__>,<__reserved_param2__>)"],
+    "floor(<__reserved_param1__>)": ["floor(<__reserved_param1__>)", "⌊<__reserved_param1__>⌋"],
+    "ceil(<__reserved_param1__>)": ["ceil(<__reserved_param1__>)", "⌈<__reserved_param1__>⌉"],
+    "trunc(<__reserved_param1__>)": ["trunc(<__reserved_param1__>)"],
+    "sin(<__reserved_param1__>)": ["sin(<__reserved_param1__>)", "sine(<__reserved_param1__>)"],
+    "cos(<__reserved_param1__>)": ["cos(<__reserved_param1__>)", "cosine(<__reserved_param1__>)"],
+    "tan(<__reserved_param1__>)": ["tan(<__reserved_param1__>)", "tangent(<__reserved_param1__>)"],
+    "cosec(<__reserved_param1__>)": ["cosec(<__reserved_param1__>)", "csc(<__reserved_param1__>)", "1/sin(<__reserved_param1__>)", "1/sine(<__reserved_param1__>)"],
+    "sec(<__reserved_param1__>)": ["sec(<__reserved_param1__>)", "1/cos(<__reserved_param1__>)"],
+    "cot(<__reserved_param1__>)": ["cot(<__reserved_param1__>)", "1/tan(<__reserved_param1__>)"],
+    "asin(<__reserved_param1__>)": ["asin(<__reserved_param1__>)", "arcsin(<__reserved_param1__>)", "sin^(-1)(<__reserved_param1__>)"],
+    "acos(<__reserved_param1__>)": ["acos(<__reserved_param1__>)", "arccos(<__reserved_param1__>)", "cos^(-1)(<__reserved_param1__>)"],
+    "atan(<__reserved_param1__>)": ["atan(<__reserved_param1__>)", "arctan(<__reserved_param1__>)", "tan^(-1)(<__reserved_param1__>)"],
+    "acosec(<__reserved_param1__>)": ["acosec(<__reserved_param1__>)", "arccosec(<__reserved_param1__>)", "cosec^(-1)(<__reserved_param1__>)"],
+    "asec(<__reserved_param1__>)": ["asec(<__reserved_param1__>)", "arcsec(<__reserved_param1__>)", "sec^(-1)(<__reserved_param1__>)"],
+    "acot(<__reserved_param1__>)": ["acot(<__reserved_param1__>)", "arccot(<__reserved_param1__>)", "cot^(-1)(<__reserved_param1__>)"],
 }
 
 

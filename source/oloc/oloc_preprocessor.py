@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-16
+:date: 2025-03-17
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -11,8 +11,8 @@ import time
 
 class Preprocessor:
     r"""
-    预处理器
-    :param: expression: 待处理的表达式
+    Preprocessor
+    :param: expression: The expression to be processed
     """
 
     def __init__(self, expression: str):
@@ -21,16 +21,16 @@ class Preprocessor:
 
     def _remove_comment(self) -> None:
         r"""
-        移除表达式中的@结尾注释和##包裹的自由注释
+        Removes trailing comments ending with `@` and free comments enclosed with `##` in the expression.
         :return: None
-        :raise OlocCommentException: 如果出现无法匹配的#
+        :raise OlocCommentException: If unmatched `#` occurs
         """
 
-        # 移除结尾注释
+        # Remove trailing comments
         if '@' in self.expression:
             self.expression = self.expression.split('@', 1)[0].strip()
 
-        # 移除自由注释
+        # Remove free comments
         hash_positions = [pos for pos, char in enumerate(self.expression) if char == '#']
 
         if len(hash_positions) % 2 != 0:
@@ -46,7 +46,7 @@ class Preprocessor:
 
     def _normalize_superscript_symbols(self) -> None:
         r"""
-        对表达式中角标形式的指数进行转化为统一形式
+        Converts superscript-style exponents in the expression into a uniform format.
         :return: None
         """
         superscripts = {'¹': '1', '²': '2', '³': '3', '⁴': '4', '⁵': '5', '⁶': '6', '⁷': '7', '⁸': '8', '⁹': '9',
@@ -65,22 +65,23 @@ class Preprocessor:
 
     def _symbol_mapper(self) -> None:
         r"""
-        读取符号映射表,并依次遍历进行映射;对于函数名称中的符号,以及自定义长无理数中的符号,不进行替换处理
+        Reads the symbol mapping table and maps symbols sequentially. Symbols in function names and custom long
+        irrational numbers are not replaced.
         :return: None
         """
         symbol_mapping_table = utils.get_symbol_mapping_table()
 
         def _replace_symbols(expression: str) -> str:
             r"""
-            进行符号映射
-            :param expression: 被处理的表达式
-            :return: 处理后的表达式
+            Performs symbol mapping.
+            :param expression: The expression to be processed
+            :return: The processed expression
             """
 
             def _mark_function_index() -> list[tuple[int, int]]:
                 r"""
-                标注表达式中的函数的下标
-                :return: 标注后的下标列表
+                Marks the indices of functions in the expression.
+                :return: A list of marked indices
                 """
                 function_names = utils.get_function_name_list()
                 function_indices = []
@@ -94,8 +95,8 @@ class Preprocessor:
 
             def _mark_long_custom_index() -> list[int, int]:
                 r"""
-                标注表达式中的长自定义无理数下标
-                :return: 标注后的下标列表
+                Marks the indices of custom long irrational numbers in the expression.
+                :return: A list of marked indices
                 """
                 long_custom_start_stack = []
                 custom_indices = []
@@ -110,29 +111,29 @@ class Preprocessor:
 
             def _is_protected(index: int) -> bool:
                 r"""
-                检查某个下标是否在保护区域
-                :param index: 目标下标
-                :return: 是否保护
+                Checks if a certain index is in the protected area.
+                :param index: The target index
+                :return: Whether it is protected
                 """
                 for start, end in protected_indices:
                     if start <= index < end:
                         return True
                 return False
 
-            # 标记保护区域
+            # Mark protected areas
             protected_indices = _mark_function_index() + _mark_long_custom_index()
 
-            # 替换非保护部分
+            # Replace non-protected parts
             result = []
             i = 0
             while i < len(expression):
                 if _is_protected(i):
-                    # 如果当前下标在保护区域，直接添加字符
+                    # If the current index is in a protected area, directly add the character
                     result.append(expression[i])
                     i += 1
                 else:
                     replaced = False
-                    # 遍历符号映射表，尝试替换
+                    # Traverse the symbol mapping table and attempt replacement
                     for symbol, mappings in symbol_mapping_table.items():
                         for mapping in mappings:
                             if expression.startswith(mapping, i):
@@ -143,7 +144,7 @@ class Preprocessor:
                         if replaced:
                             break
                     if not replaced:
-                        # 如果未替换，直接添加字符
+                        # If not replaced, directly add the character
                         result.append(expression[i])
                         i += 1
 
@@ -153,8 +154,8 @@ class Preprocessor:
 
     def _equals_sign_elimination(self) -> None:
         r"""
-        消除表达式结尾的`=`
-        :raise OlocInvalidEqualSignException: 如果`=`位于非结尾的部分
+        Eliminates trailing `=` in the expression.
+        :raise OlocInvalidEqualSignException: If `=` appears in a non-trailing position
         :return: None
         """
         if self.expression.endswith('='):
@@ -169,13 +170,13 @@ class Preprocessor:
 
     def _formal_elimination(self) -> None:
         r"""
-        消除表达式中冗余的正负号和数字分隔符
+        Eliminates redundant signs and number separators in the expression.
         :return: None
-        :raise OlocNumberSeparatorException: 如果数字分隔符中存在错误
+        :raise OlocNumberSeparatorException: If there are errors in the number separators
         """
 
         r"""
-        正负号消除原则
+        Rules for eliminating redundant signs:
         ++ => +
         +- => -
         -+ => -
@@ -184,29 +185,28 @@ class Preprocessor:
 
         def _simplify(match):
             """
-            根据正负号消除原则，简化连续的正负号。
+            Simplifies consecutive signs based on the rules for eliminating redundant signs.
 
-            :param match: 正则表达式匹配到的 `Match` 对象，表示连续的正负号。
-            :return: 简化后的单个符号（'+' 或 '-'）。
+            :param match: A `Match` object representing consecutive signs matched by the regular expression.
+            :return: A single simplified sign ('+' or '-').
             """
-            signs = match.group()  # 获取匹配到的连续正负号
-            # 判断最终的符号是正还是负
-            # 如果减号的数量是奇数，结果是负号，否则是正号
+            signs = match.group()  # Get the matched consecutive signs
+            # Determine the resulting sign based on the count of '-' signs
             return '-' if signs.count('-') % 2 == 1 else '+'
 
-        # 匹配连续的 "+" 和 "-" 的部分，并进行替换
+        # Match consecutive "+" and "-" signs and replace them
         self.expression = re.sub(r'[+-]+', _simplify, self.expression)
 
-        # 去掉开头多余的正号（如 +a -> a）
+        # Remove redundant leading "+" (e.g., +a -> a)
         if self.expression.startswith('+'):
             self.expression = self.expression[1:]
 
         function_names = utils.get_function_name_list()
         symbol_mapping_table = utils.get_symbol_mapping_table()
 
-        # 使用栈跟踪括号和函数嵌套
-        # 栈元素格式: [类型, 层级, 函数名(如果是函数的话)]
-        # 类型: 'F' 表示函数直接参数层, 'E' 表示表达式层
+        # Use a stack to track brackets and function nesting
+        # Stack element format: [type, level, function name (if it's a function)]
+        # Type: 'F' for direct function parameter level, 'E' for expression level
         stack = []
         invalid_positions = []
         result = []
@@ -215,7 +215,7 @@ class Preprocessor:
         while i < len(self.expression):
             char = self.expression[i]
 
-            # 检查是否是函数名开始
+            # Check if it is the start of a function name
             is_function_start = False
             matched_fn = None
             for fn in function_names:
@@ -229,11 +229,11 @@ class Preprocessor:
 
             if is_function_start:
                 result.append(matched_fn)
-                # 跳过函数名
+                # Skip the function name
                 i += len(matched_fn)
                 continue
 
-            # 处理逗号
+            # Handle commas
             if char == ',':
 
                 if i == 0 or i == len(self.expression) - 1:
@@ -242,12 +242,12 @@ class Preprocessor:
                     invalid_positions.append(i)
                 elif i + 1 < len(self.expression) and not self.expression[i + 1].isdigit():
                     invalid_positions.append(i)
-                # 有效的数字分隔符，不添加到结果（即移除）
+                # Valid number separator, do not add to the result (i.e., remove it)
 
                 i += 1
                 continue
 
-            # 其他字符直接添加
+            # Add other characters directly
             result.append(char)
             i += 1
 
@@ -259,11 +259,11 @@ class Preprocessor:
             )
 
         self.expression = ''.join(result)
-        self.expression = self.expression.replace(";",",") # 统一函数参数形式
+        self.expression = self.expression.replace(";", ",")  # Standardize function parameter format
 
     def execute(self) -> None:
         r"""
-        执行预处理,并将结果写入self.expression中
+        Executes preprocessing and writes the result to `self.expression`.
         :return: None
         """
 
@@ -274,34 +274,3 @@ class Preprocessor:
         self._equals_sign_elimination()
         self._formal_elimination()
         self.time_cost = time.time_ns() - start_time
-
-
-"""test"""
-if __name__ == '__main__':
-    import simpsave as ss
-    import time
-
-    start = time.time()
-    count = 0
-    test_cases = ss.read("test_cases", file="./data/olocconfig.ini")
-
-    for test in test_cases:
-        try:
-            result = Preprocessor(test)
-            result.execute()
-            print(f"{test}\t=>\t{result.expression}")
-        except Exception as error:
-            print("\n\n\n\n\n============\n", end="Expression: ")
-            print(test)
-            print(error)
-            print("\n" * 10)
-        count += 1
-    print(f"Test {count} tests in {time.time() - start}" + "" * 10)
-
-    while True:
-        try:
-            result = Preprocessor(input(">>"))
-            result.execute()
-            print(result.expression)
-        except Exception as error:
-            print(error)

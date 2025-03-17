@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-14
+:date: 2025-03-17
 :file: oloc_token.py
 :description: oloc token
 """
@@ -11,41 +11,41 @@ from oloc_exceptions import *
 
 class Token:
     r"""
-    表达式中的词元
-    :param token_type: 词元的类别
-    :param token_range: 词元在表达式中的范围(位置)
-    :param token_value: 词元的实际值
+    A token in an expression.
+    :param token_type: The category of the token
+    :param token_range: The range (position) of the token in the expression
+    :param token_value: The actual value of the token
     """
 
     class TYPE(Enum):
         r"""
-        枚举词原的所有类型
+        Enumeration of all possible token types
         """
-        # 数字类型
-        PERCENTAGE = 'percentage'  # 百分数: 100%
-        INFINITE_DECIMAL = 'infinite recurring decimal'  # 无限小数: 3.3... 或 2.3:4
-        FINITE_DECIMAL = 'finite decimal'  # 有限小数: 3.14
-        INTEGER = 'integer'  # 整数: 42
+        # Number types
+        PERCENTAGE = 'percentage'  # Percentage: 100%
+        INFINITE_DECIMAL = 'infinite recurring decimal'  # Infinite decimal: 3.3... or 2.3:4
+        FINITE_DECIMAL = 'finite decimal'  # Finite decimal: 3.14
+        INTEGER = 'integer'  # Integer: 42
 
-        # 无理数类型
-        NATIVE_IRRATIONAL = 'native irrational number'  # 原生无理数: π, e
-        SHORT_CUSTOM = 'short custom irrational'  # 短自定义无理数: x, y
-        LONG_CUSTOM = 'long custom irrational'  # 长自定义无理数: <name>
+        # Irrational number types
+        NATIVE_IRRATIONAL = 'native irrational number'  # Native irrational numbers: π, e
+        SHORT_CUSTOM = 'short custom irrational'  # Short custom irrational numbers: x, y
+        LONG_CUSTOM = 'long custom irrational'  # Long custom irrational numbers: <name>
 
-        # 无理数参数类型
+        # Irrational parameter type
         IRRATIONAL_PARAM = 'irrational param'
 
-        # 运算符
-        OPERATOR = 'operator'  # 运算符: +, -, *, /等
-        LBRACKET = 'left bracket'  # 左括号: (, [, {
-        RBRACKET = 'right bracket'  # 右括号: ), ], }
+        # Operators
+        OPERATOR = 'operator'  # Operators: +, -, *, /, etc.
+        LBRACKET = 'left bracket'  # Left brackets: (, [, {
+        RBRACKET = 'right bracket'  # Right brackets: ), ], }
 
-        # 函数相关
-        FUNCTION = 'function'  # 函数: sin, pow等
-        PARAM_SEPARATOR = 'parameter separator'  # 参数分隔符: ,或;
+        # Function-related
+        FUNCTION = 'function'  # Functions: sin, pow, etc.
+        PARAM_SEPARATOR = 'parameter separator'  # Parameter separators: , or ;
 
-        # 未知类型
-        UNKNOWN = 'unknown'  # 无法识别的字符
+        # Unknown type
+        UNKNOWN = 'unknown'  # Unrecognized characters
 
     def __init__(self, token_type: TYPE, token_value: str = "", token_range: list[int, int] = None):
         if token_range is None:
@@ -63,7 +63,7 @@ class Token:
 
     def get_exception_type(self) -> OlocInvalidTokenException.EXCEPTION_TYPE:
         r"""
-        返回对应的OlocInvalidTokenException.ExceptionType类型
+        Returns the corresponding OlocInvalidTokenException.ExceptionType
         :return:
         """
         mapping = {
@@ -86,10 +86,10 @@ class Token:
 
     def _check_legal(self) -> bool:
         r"""
-        检查自身的合法性
-        :return: 自身是否是一个合法的Token
+        Checks the legality of the token itself.
+        :return: Whether the token is valid
         """
-        # 根据Token类型调用相应的检查方法
+        # Call the corresponding check method based on the token type
         checker_method_name = f"_check_{self.type.name.lower()}"
         if hasattr(self, checker_method_name):
             checker_method = getattr(self, checker_method_name)
@@ -100,15 +100,15 @@ class Token:
 
     def _check_integer(self) -> bool:
         r"""
-        检查整数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of an integer-type token.
+        :return: Whether it is valid
         """
         return self.value.isdigit()
 
     def _check_finite_decimal(self) -> bool:
         r"""
-        检查有限小数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a finite decimal token.
+        :return: Whether it is valid
         """
         if '.' in self.value:
             parts = self.value.split('.')
@@ -118,10 +118,10 @@ class Token:
 
     def _check_infinite_decimal(self) -> bool:
         r"""
-        检查无限小数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of an infinite decimal token.
+        :return: Whether it is valid
         """
-        # 情况1: 以3-6个点结尾，如 3.14...
+        # Case 1: Ends with 3-6 dots, e.g., 3.14...
         if '.' in self.value and self.value.endswith(('...', '....', '.....', '......')):
             base = self.value.rstrip('.')
             if '.' in base:
@@ -129,7 +129,7 @@ class Token:
                 if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
                     return True
 
-        # 情况2: 以:加整数结尾，如 2.3:4
+        # Case 2: Ends with : and an integer, e.g., 2.3:4
         if ':' in self.value:
             parts = self.value.split(':')
             if len(parts) == 2:
@@ -144,8 +144,8 @@ class Token:
 
     def _check_percentage(self) -> bool:
         r"""
-        检查百分数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a percentage token.
+        :return: Whether it is valid
         """
         if self.value.endswith('%'):
             number_part = self.value[:-1]
@@ -159,8 +159,8 @@ class Token:
 
     def _check_native_irrational(self) -> bool:
         r"""
-        检查原生无理数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a native irrational number token.
+        :return: Whether it is valid
         """
         if self.value in {'π', '𝑒'}:
             return True
@@ -168,8 +168,8 @@ class Token:
 
     def _check_short_custom(self) -> bool:
         r"""
-        检查自定义短无理数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a short custom irrational number token.
+        :return: Whether it is valid
         """
         if self.value in set(utils.get_symbol_mapping_table().keys()):
             return False
@@ -177,8 +177,8 @@ class Token:
 
     def _check_long_custom(self) -> bool:
         r"""
-        检查自定义长无理数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a long custom irrational number token.
+        :return: Whether it is valid
         """
         if not self.value.startswith("<") and self.value.endswith(">"):
             return False
@@ -186,42 +186,42 @@ class Token:
 
     def _check_operator(self) -> bool:
         r"""
-        检查运算符类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of an operator token.
+        :return: Whether it is valid
         """
 
         symbol_mapping_table = utils.get_symbol_mapping_table()
-        # 排除分组运算符
+        # Exclude grouping operators
         brackets = ['(', ')', '[', ']', '{', '}']
 
-        # 检查是否在符号映射表中且不是括号
+        # Check if it is in the symbol mapping table and not a bracket
         return self.value in symbol_mapping_table.keys() and self.value not in brackets
 
     def _check_lbracket(self) -> bool:
         r"""
-        检查左括号类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a left bracket token.
+        :return: Whether it is valid
         """
         return self.value in ['(', '[', '{']
 
     def _check_rbracket(self) -> bool:
         r"""
-        检查右括号类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a right bracket token.
+        :return: Whether it is valid
         """
         return self.value in [')', ']', '}']
 
     def _check_param_separator(self) -> bool:
         r"""
-        检查参数分隔符类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a parameter separator token.
+        :return: Whether it is valid
         """
         return self.value in [',', ';']
 
     def _check_function(self) -> bool:
         r"""
-        检查函数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of a function token.
+        :return: Whether it is valid
         """
 
         function_list = utils.get_function_name_list()
@@ -229,31 +229,31 @@ class Token:
 
     def _check_irrational_param(self) -> bool:
         r"""
-        检查无理数参数类型的Token的合法性
-        :return: 是否合法
+        Checks the legality of an irrational parameter token.
+        :return: Whether it is valid
         """
         if len(self.value) <= 1:
             return False
 
-        # 检查值是否以 "?" 结尾
+        # Check if the value ends with "?"
         if not self.value.endswith("?"):
             return False
 
-        # 初始化小数点标志
+        # Initialize the decimal point flag
         find_decimal_point = False
-        # 检查首字符是否为 "+" 或 "-"
+        # Check if the first character is "+" or "-"
         start_index = 1 if self.value[0] in "+-" else 0
 
-        # 遍历字符串中的每个字符（跳过首字符如果是符号）
+        # Iterate through each character in the string (skipping the first if it's a sign)
         for c in self.value[start_index:-1]:
             if c == '.':
-                # 如果已经找到一个小数点，则返回 False
+                # If a decimal point is already found, return False
                 if find_decimal_point:
                     return False
-                # 标记找到小数点
+                # Mark the decimal point as found
                 find_decimal_point = True
             elif not c.isdigit():
-                # 如果字符不是数字，则返回 False
+                # If the character is not a digit, return False
                 return False
 
         return True

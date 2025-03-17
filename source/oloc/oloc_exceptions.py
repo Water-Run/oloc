@@ -1,6 +1,6 @@
 """
 :author: WaterRun
-:date: 2025-03-16
+:date: 2025-03-17
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -388,7 +388,7 @@ class OlocInvalidBracketException(OlocException):
 
         INCORRECT_BRACKET_HIERARCHY = (
             "OlocInvalidBracketException: Bracket `{err_bracket}` hierarchy error",
-            "Parentheses must follow the hierarchy: `()` `[]` `{}` in descending order."
+            "Parentheses must follow the hierarchy: `{}` `[]` `()` in descending order."
         )
 
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_bracket: str):
@@ -450,7 +450,8 @@ class OlocFunctionParameterException(OlocException):
             "Check the documentation for the parameter description of pow()."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_param: str, err_info: str):
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_param: str,
+                 err_info: str):
         r"""
         初始化 OlocFunctionParameterException，包含异常类型和 Token 内容。
 
@@ -464,6 +465,40 @@ class OlocFunctionParameterException(OlocException):
         self.err_info = err_info
 
         main_message = exception_type.value[0].format(err_param=err_param, err_info=err_info)
+        suggestion = exception_type.value[1]
+
+        self.message = f"{main_message} {suggestion}"
+
+        # 调用父类初始化
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocReservedWordException(OlocException):
+    r"""
+    当存在保留字冲突相关问题时引发的异常
+    """
+
+    class EXCEPTION_TYPE(Enum):
+        r"""
+        定义 OlocReservedWordException 的异常类型的枚举类。
+        """
+        IS_RESERVED = (
+            "OlocReservedWordException: The name `{conflict_str}` is a reserved word",
+            "In oloc, reserved words begin with `__reserved`. You cannot use a name that conflicts with it."
+        )
+
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], conflict_str: str):
+        r"""
+        初始化 OlocReservedWordException，包含异常类型和 Token 内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param conflict_str: 引发异常的冲突内容
+        """
+        self.conflict_str = conflict_str
+
+        main_message = exception_type.value[0].format(conflict_str=conflict_str)
         suggestion = exception_type.value[1]
 
         self.message = f"{main_message} {suggestion}"
