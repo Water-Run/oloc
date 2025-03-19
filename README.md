@@ -1,7 +1,8 @@
 # oloc: One-Line Of Calculation  
 
-> The Chinese version is the original documentation. The English version is translated from the Chinese version using LLM.  
-> Under development.  
+> *The Chinese version is the original documentation. The English version is translated from the Chinese version using LLM.*  
+
+> ***Project Under Development***  
 
 ***[中文文档](README_zh.md)***  
 
@@ -14,7 +15,7 @@
 - **Support for common functions**  
 - **Robust compatibility with input**:  
     - Implements multiple forms of the same content through a symbol mapping table  
-      - For example, the mathematical constant `π` can be represented as `pi`, `p`, etc., while the multiplication symbol can be represented as `*`, `×`, `・`, etc. In some cases, it can even support near-natural language inputs like `One plus one equals` or `一百的阶层`.  
+      - For example, the mathematical constant `π` can be represented as `pi`, `p`, etc., while the multiplication symbol can be represented as `*`, `×`, `・`, etc. In some cases, it can even support near-natural language inputs like `One plus one equals` or `一百的阶乘`.  
       - The symbol mapping table supports custom extensions.  
     - Implements different ways to call the same function through a function conversion table  
       - For instance, the expressions `1/2^0.5`, `pow(1/2,1/2)`, and `sqrt(1/2)` are equivalent.  

@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-17
+:date: 2025-03-19
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -449,44 +449,61 @@ class Lexer:
             def __init__(self, tokens_to_build: list[Token]):
                 self.tokens = tokens_to_build
 
-        def _build_expression_token_list(token_list: list[Token]) -> list[Token | Expression]:
-            r"""
-            将Token流中表达式部分转换为Expression
-            :param token_list: 待转换的Token流
-            :return: 转换后的Token | Expression流
-            """
-
         def _build_match(match_case: str) -> list[Token | Expression]:
             r"""
-            根据
+            根据需要匹配的字符串形式构造对应匹配模式的列表
             :param match_case: 需要匹配的字符串形式的模式
             :return: 一个列表,对应需要匹配的模式
             """
             match = Lexer.tokenizer(match_case)
             result = []
             for temp_token in match:
-                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in  ['<__preserved1__>', '<__preserved2__>']:
+                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__preserved1__>', '<__preserved2__>']:
                     result.append(Expression([temp_token]))
                 else:
                     result.append(temp_token)
             return result
 
-        def _find_match(match_case: list[Token | Expression], token_list: list[Token | Expression]) -> list[int, int]:
+        def _find_match(match_case: list[Token | Expression], token_list: list[Token | Expression]) -> list[bool, list[int, int]]:
             r"""
             找到Token流中和匹配模式匹配的部分
             :param match_case: 需要匹配的流形式
             :param token_list: 待匹配的模式流
-            :return: 两个元素的整数列表,对应范围的下标
+            :return: 一个列表.第一项是是否匹配到结果,第二项是两个元素的整数列表,对应范围的下标.
             """
+            def _is_match(unit_of_list: Token | Expression, unit_of_match: Token | Expression) -> bool:
+                r"""
+                判断对应单元是否匹配
+                :param unit_of_list: 待匹配流中的单元
+                :param unit_of_match: 模式流中的单元
+                :return: 是否匹配
+                """
+                if isinstance(unit_of_match, Expression) and isinstance(unit_of_list, Expression):
+                    return True
+                if isinstance(unit_of_match, Token) and isinstance(unit_of_list, Token) and unit_of_match.type == unit_of_list.type:
+                    # 自定义短/长无理数: 不需要内容一致
+                    if unit_of_match.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and unit_of_list.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
+                        return True
+                    return unit_of_match.value == unit_of_list.value
+                return False
 
-        def _convert_match(to_convert: list[Token | Expression], convert_to: list[Token | Expression]) -> list[Token]:
+            for list_index, list_unit in enumerate(token_list):
+                is_matched = False
+                for match_index, match_unit in enumerate(match_case):
+                    ...
+                else:
+                    is_matched = True
+
+        def _convert_match(to_convert: list[Token | Expression], match_pattern: list[Token | Expression], match_index: int) -> list[Token]:
             r"""
             将找到的匹配结构转换为convert_to的结构, 并解开Expression
-            :param to_convert:
-            :param convert_to:
+            :param to_convert: 待修改的Token | Expression流
+            :param match_pattern: 匹配的Token | Expression流
+            :param match_index: 被匹配的模式位置
             :return:
             """
             result = []
+            match_range = [match_index, match_index + len(match_pattern)]
 
             def _unwrap_to_token_list(process_list: list[Token | Expression]) -> list[Token]:
                 r"""
@@ -520,8 +537,21 @@ class Lexer:
                         return True
             return False
 
-        while True:
+        def _build_expression_token_list(token_list: list[Token]) -> list[Token | Expression]:
+            r"""
+            将Token流中表达式部分转换为Expression(最近的)
+            :param token_list: 待转换的Token流
+            :return: 转换后的Token | Expression流. 如果输入和输出一致,说明不再有可以转换的部分了.
+            """
+            for function_strs in utils.get_function_conversion_table().values():
+                for function_str in function_strs:
+                    function_match = _build_match(function_str)
+                    is_find, find_index = _find_match(function_match, token_list)
+                    if is_find:
+                        break
+            return token_list
 
+        while True:
             expression_list = _build_expression_token_list(self.tokens)
 
             for converted_form, forms_to_be_converted in function_conversion_table.items():
@@ -875,20 +905,20 @@ if __name__ == '__main__':
             print(f"\n\n\n========\n\n{error}\n\n\n")
     print(f"Run {len(tests)} in {time.time() - start}")
 
-    # while True:
-    #     try:
-    #         preprocess = preprocessor.Preprocessor(input(">>>"))
-    #         preprocess.execute()
-    #         lexer = Lexer(preprocess.expression)
-    #         lexer.execute()
-    #         print(lexer.tokens)
-    #         for token in lexer.tokens:
-    #             print(token.value, end=" ")
-    #         print(f"\nIn {preprocess.time_cost} + {lexer.time_cost} = {preprocess.time_cost + lexer.time_cost} s")
-    #     except (TypeError, ZeroDivisionError) as t_error:
-    #         raise t_error
-    #     except Exception as error:
-    #         print(error)
+    while True:
+        try:
+            preprocess = preprocessor.Preprocessor(input(">>>"))
+            preprocess.execute()
+            lexer = Lexer(preprocess.expression)
+            lexer.execute()
+            print(lexer.tokens)
+            for token in lexer.tokens:
+                print(token.value, end=" ")
+            print(f"\nIn {preprocess.time_cost / 1000000000} + {lexer.time_cost / 1000000000} = {preprocess.time_cost + lexer.time_cost} s")
+        except (TypeError, ZeroDivisionError) as t_error:
+            raise t_error
+        except Exception as error:
+            print(error)
 
     preprocess = preprocessor.Preprocessor(input(">>>"))
     preprocess.execute()

@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-16
+:date: 2025-03-17
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -100,7 +100,7 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
     raise RuntimeError("Unknown exception in calculate() of oloc: result queue is empty")
 
 
-def is_preserved(symbol: str) -> bool:
+def is_reserved(symbol: str) -> bool:
     """
     判断指定符号是否是oloc的保留字。
     注: oloc的保留字不可作为自定义短无理数。
@@ -118,4 +118,4 @@ def is_preserved(symbol: str) -> bool:
 """test"""
 if __name__ == "__main__":
     while True:
-        print(is_preserved(input(">>>")))
+        print(is_reserved(input(">>>")))

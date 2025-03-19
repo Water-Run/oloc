@@ -170,96 +170,146 @@ class Preprocessor:
 
     def _formal_elimination(self) -> None:
         r"""
-        Eliminates redundant signs and number separators in the expression.
+        消除表达式中冗余的正负号和数字分隔符。
         :return: None
-        :raise OlocNumberSeparatorException: If there are errors in the number separators
+        :raise OlocNumberSeparatorException: 如果数字分隔符中存在错误。
         """
 
-        r"""
-        Rules for eliminating redundant signs:
-        ++ => +
-        +- => -
-        -+ => -
-        -- => +
-        """
+        # 消除连续正负号
+        def _simplify_signs(match: re.Match) -> str:
+            r"""
+            根据正负号消除原则，简化连续的正负号。
 
-        def _simplify(match):
+            :param match: 匹配到的符号序列（re.Match 对象）
+            :return: 简化后的单个符号（'+' 或 '-'）。
             """
-            Simplifies consecutive signs based on the rules for eliminating redundant signs.
+            sign_sequence = match.group()  # 获取匹配的符号序列
+            return '-' if sign_sequence.count('-') % 2 == 1 else '+'
 
-            :param match: A `Match` object representing consecutive signs matched by the regular expression.
-            :return: A single simplified sign ('+' or '-').
-            """
-            signs = match.group()  # Get the matched consecutive signs
-            # Determine the resulting sign based on the count of '-' signs
-            return '-' if signs.count('-') % 2 == 1 else '+'
+        # 消除表达式中的冗余正负号
+        self.expression = re.sub(r'[+-]+', _simplify_signs, self.expression)
 
-        # Match consecutive "+" and "-" signs and replace them
-        self.expression = re.sub(r'[+-]+', _simplify, self.expression)
-
-        # Remove redundant leading "+" (e.g., +a -> a)
+        # 去除开头多余的正号（如 "+a" -> "a"）
         if self.expression.startswith('+'):
             self.expression = self.expression[1:]
 
+        # 获取函数名称列表
         function_names = utils.get_function_name_list()
-        symbol_mapping_table = utils.get_symbol_mapping_table()
 
-        # Use a stack to track brackets and function nesting
-        # Stack element format: [type, level, function name (if it's a function)]
-        # Type: 'F' for direct function parameter level, 'E' for expression level
-        stack = []
-        invalid_positions = []
-        result = []
+        # 定义块类型枚举
+        class BlockType(Enum):
+            r"""
+            子单元的类型字符串枚举
+            """
+            FUNCTION_WITH_COMMA = "FUNCTION_WITH_COMMA"
+            FUNCTION_WITHOUT_COMMA = "FUNCTION_WITHOUT_COMMA"
+            NORMAL = "NORMAL"
 
-        i = 0
+        def _has_semicolon(start_index: int) -> bool:
+            r"""
+            向后尝试判断函数参数是否以`;`作为分隔符。
+            通过遍历表达式内容，找到当前函数参数的分隔符格式。
+
+            :param start_index: 当前检查位。
+            :return: 是否有`;`形式的函数分隔符。
+            """
+            bracket_count = 1
+            for i in range(start_index, len(self.expression)):
+                char = self.expression[i]
+                if char == '(':
+                    bracket_count += 1
+                elif char == ')':
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        return False  # 找到匹配的右括号，未发现 `;` 分隔符
+                elif char == ';' and bracket_count == 1:
+                    return True  # 在当前括号层发现 `;`
+            return False
+
+        # 初始化变量
+        stack = []  # 用于跟踪嵌套块的类型
+        invalid_positions = []  # 用于记录无效的数字分隔符位置
+        result = []  # 最终结果的字符列表
+        i = 0  # 当前字符索引
+
+        # 主循环遍历表达式中的字符
         while i < len(self.expression):
             char = self.expression[i]
 
-            # Check if it is the start of a function name
-            is_function_start = False
-            matched_fn = None
-            for fn in function_names:
-                if (i + len(fn) <= len(self.expression) and
-                        self.expression[i:i + len(fn)] == fn and
-                        i + len(fn) < len(self.expression) and
-                        self.expression[i + len(fn)] == '('):
-                    is_function_start = True
-                    matched_fn = fn
-                    break
+            # 检查是否是函数名的开始
+            matched_function = next(
+                (
+                    fn for fn in function_names
+                    if self.expression.startswith(fn, i) and i + len(fn) < len(self.expression) and self.expression[i + len(fn)] == '('
+                ),
+                None,
+            )
 
-            if is_function_start:
-                result.append(matched_fn)
-                # Skip the function name
-                i += len(matched_fn)
+            if matched_function:
+                result.append(matched_function)
+                i += len(matched_function)
                 continue
 
-            # Handle commas
-            if char == ',':
+            # 处理左括号
+            if char == '(':
+                # 检查是否为函数的左括号
+                is_function_bracket = any(
+                    self.expression.startswith(fn, i - len(fn))
+                    for fn in function_names
+                )
 
-                if i == 0 or i == len(self.expression) - 1:
-                    invalid_positions.append(i)
-                elif not self.expression[i - 1].isdigit():
-                    invalid_positions.append(i)
-                elif i + 1 < len(self.expression) and not self.expression[i + 1].isdigit():
-                    invalid_positions.append(i)
-                # Valid number separator, do not add to the result (i.e., remove it)
+                if is_function_bracket:
+                    if _has_semicolon(i + 1):
+                        stack.append((BlockType.FUNCTION_WITHOUT_COMMA, len(stack)))
+                    else:
+                        stack.append((BlockType.FUNCTION_WITH_COMMA, len(stack)))
+                else:
+                    stack.append((BlockType.NORMAL, len(stack)))
+
+                result.append(char)
+                i += 1
+                continue
+
+            # 处理右括号
+            if char == ')':
+                if stack:
+                    stack.pop()
+                result.append(char)
+                i += 1
+                continue
+
+            # 处理逗号
+            if char == ',':
+                if stack and stack[-1][0] in {BlockType.FUNCTION_WITH_COMMA, BlockType.FUNCTION_WITHOUT_COMMA}:
+                    # 根据函数分隔符类型决定是否保留逗号
+                    if stack[-1][0] == BlockType.FUNCTION_WITH_COMMA:
+                        result.append(char)
+                else:
+                    # 检查逗号是否为有效的数字分隔符
+                    if (
+                            i == 0 or i == len(self.expression) - 1 or
+                            not self.expression[i - 1].isdigit() or
+                            (i + 1 < len(self.expression) and not self.expression[i + 1].isdigit())
+                    ):
+                        invalid_positions.append(i)
 
                 i += 1
                 continue
 
-            # Add other characters directly
+            # 其他字符直接添加到结果
             result.append(char)
             i += 1
 
+        # 如果发现无效的数字分隔符，抛出异常
         if invalid_positions:
             raise OlocNumberSeparatorException(
                 exception_type=OlocNumberSeparatorException.EXCEPTION_TYPE.INVALID_SEPARATOR,
                 expression=self.expression,
-                positions=invalid_positions
+                positions=invalid_positions,
             )
 
+        # 更新表达式
         self.expression = ''.join(result)
-        self.expression = self.expression.replace(";", ",")  # Standardize function parameter format
 
     def execute(self) -> None:
         r"""
