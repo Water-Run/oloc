@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-19
+:date: 2025-03-21
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -449,6 +449,9 @@ class Lexer:
             def __init__(self, tokens_to_build: list[Token]):
                 self.tokens = tokens_to_build
 
+            def __repr__(self):
+                return f"Expression: {self.tokens}"
+
         def _build_match(match_case: str) -> list[Token | Expression]:
             r"""
             根据需要匹配的字符串形式构造对应匹配模式的列表
@@ -458,7 +461,7 @@ class Lexer:
             match = Lexer.tokenizer(match_case)
             result = []
             for temp_token in match:
-                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__preserved1__>', '<__preserved2__>']:
+                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__reserved_param1__>', '<__reserved_param2__>']:
                     result.append(Expression([temp_token]))
                 else:
                     result.append(temp_token)
@@ -471,40 +474,40 @@ class Lexer:
             :param token_list: 待匹配的模式流
             :return: 一个列表.第一项是是否匹配到结果,第二项是两个元素的整数列表,对应范围的下标.
             """
-            def _is_match(unit_of_list: Token | Expression, unit_of_match: Token | Expression) -> bool:
+            def _is_match(units_of_list: list[Token | Expression], units_of_match: list[Token | Expression]) -> bool:
                 r"""
                 判断对应单元是否匹配
-                :param unit_of_list: 待匹配流中的单元
-                :param unit_of_match: 模式流中的单元
+                :param units_of_list: 待匹配流中的单元块(列表)
+                :param units_of_match: 模式流中的单元块(列表)
                 :return: 是否匹配
                 """
-                if isinstance(unit_of_match, Expression) and isinstance(unit_of_list, Expression):
+                for list_unit, match_unit in zip(units_of_list, units_of_match):
+                    if isinstance(list_unit, Expression) and isinstance(match_unit, Expression):
+                        continue
+                    if isinstance(list_unit, Token) and isinstance(match_unit, Token) and list_unit.type == match_unit.type:
+                        # 自定义短/长无理数: 不需要内容一致
+                        if list_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and match_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
+                            continue
+                    if not list_unit.value == match_unit.value:
+                        break
+                else:
                     return True
-                if isinstance(unit_of_match, Token) and isinstance(unit_of_list, Token) and unit_of_match.type == unit_of_list.type:
-                    # 自定义短/长无理数: 不需要内容一致
-                    if unit_of_match.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and unit_of_list.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
-                        return True
-                    return unit_of_match.value == unit_of_list.value
                 return False
 
-            for list_index, list_unit in enumerate(token_list):
-                is_matched = False
-                for match_index, match_unit in enumerate(match_case):
-                    ...
-                else:
-                    is_matched = True
+            for index, unit in enumerate(token_list):
+                if unit == match_case[0] and (attempt_length := index + len(match_case)) <= len(token_list):
+                    if _is_match(token_list[index:attempt_length], match_case):
+                        return [True, [index, attempt_length]]
+            return [False, [0, 0]]
 
-        def _convert_match(to_convert: list[Token | Expression], match_pattern: list[Token | Expression], match_index: int) -> list[Token]:
+        def _convert_match(to_convert: list[Token | Expression], match_pattern: list[Token | Expression], match_range: [int, int]) -> list[Token]:
             r"""
             将找到的匹配结构转换为convert_to的结构, 并解开Expression
             :param to_convert: 待修改的Token | Expression流
             :param match_pattern: 匹配的Token | Expression流
-            :param match_index: 被匹配的模式位置
+            :param match_range: 被匹配的模式范围
             :return:
             """
-            result = []
-            match_range = [match_index, match_index + len(match_pattern)]
-
             def _unwrap_to_token_list(process_list: list[Token | Expression]) -> list[Token]:
                 r"""
                 将Token | Expression流转换为Token流
@@ -514,52 +517,63 @@ class Lexer:
                 unwrap_result = []
                 for process_unit in process_list:
                     if isinstance(process_unit, Expression):
-                        unwrap_result.append(process_unit.tokens)
+                        unwrap_result.extend(process_unit.tokens)
                     else:
                         unwrap_result.append(process_unit)
                 return unwrap_result
 
+            result = to_convert[:match_range[0]]
+
+            params = [unit for unit in to_convert[match_range[0]:match_range[1]] if isinstance(unit, Expression)]
+
+            param_index = 0
+            after_convert = []
+            for temp_unit in match_pattern:
+                if isinstance(temp_unit, Expression):
+                    after_convert.append(params[param_index])
+                    param_index += 1
+                after_convert.append(temp_unit)
+
+            result += after_convert + to_convert[match_range[1]:]
+
             return _unwrap_to_token_list(result)
 
-        def _has_convert(token_list: list[Token]) -> bool:
+        def _has_convert(token_list: list[Token], matches_to_judge: list[list[Token]]) -> bool:
             r"""
             判断Token流中是否存在可转换的结构
             :param token_list: 待转换的结构
+            :param matches_to_judge: 待判断的缓存匹配
             :return: 是否存在
             """
-            for convert_types in function_conversion_table.values():
-                for convert_form in convert_types:
-                    token_keys = [Lexer.tokenizer(temp_key) for temp_key in function_conversion_table.keys()]
-                    if Lexer.tokenizer(convert_form) in token_keys:  # 最终形式
-                        continue
-                    match_case = _build_match(convert_form)
-                    if _find_match(match_case, token_list):
-                        return True
+            for temp_match in matches_to_judge:
+                if _find_match(temp_match, token_list):
+                    return True
             return False
 
         def _build_expression_token_list(token_list: list[Token]) -> list[Token | Expression]:
             r"""
-            将Token流中表达式部分转换为Expression(最近的)
+            将Token流中表达式部分转换为Expression
             :param token_list: 待转换的Token流
             :return: 转换后的Token | Expression流. 如果输入和输出一致,说明不再有可以转换的部分了.
             """
             for function_strs in utils.get_function_conversion_table().values():
                 for function_str in function_strs:
-                    function_match = _build_match(function_str)
-                    is_find, find_index = _find_match(function_match, token_list)
-                    if is_find:
-                        break
+                    ...
             return token_list
+
+        matches = []
+        for key, value_list in function_conversion_table.items():
+            for value in value_list:
+                matches.append(_build_match(value))
 
         while True:
             expression_list = _build_expression_token_list(self.tokens)
-
-            for converted_form, forms_to_be_converted in function_conversion_table.items():
-                convert_match = _build_match(converted_form)
-
-            Lexer.update(self.tokens)
-
-            if not _has_convert(self.tokens):
+            for match_case in matches:
+                is_find, find_range = _find_match(match_case, expression_list)
+                if is_find:
+                    self.tokens = _convert_match(expression_list, match_case, find_range)
+                    Lexer.update(self.tokens)
+            if not _has_convert(self.tokens, matches):
                 break
 
     def _static_check(self) -> None:
@@ -579,7 +593,7 @@ class Lexer:
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
-        #  self._function_conversion()
+        self._function_conversion()
         self.time_cost = time.time_ns() - start_time
 
     """
@@ -892,13 +906,13 @@ if __name__ == '__main__':
         try:
             preprocess = preprocessor.Preprocessor(test)
             preprocess.execute()
-            print(test, end=" => ")
+            #print(test, end=" => ")
             lexer = Lexer(preprocess.expression)
             lexer.execute()
             for token in lexer.tokens:
                 ... # debug
-                print(token.value, end=" ")
-            print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
+                #print(token.value, end=" ")
+            #print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
         except (TypeError, ZeroDivisionError) as t_error:
             raise t_error
         except Exception as error:
