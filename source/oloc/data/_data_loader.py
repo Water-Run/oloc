@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-16
+:date: 2025-03-22
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -11,48 +11,73 @@ r"""
 After modification, run this script directly in the "data" path
 """
 
-r"""
-Retain decimal places
-Type: int
-Range: >= 0
-Description: The number of decimal places to retain. Must be a positive integer, greater than or equal to zero.
-"""
 retain_decimal_places: int = 7
 
-r"""
-Symbol Mapping Table
-Type: dict
-Description: This dictionary maps symbols (keys) to a list of possible conversions (values). All strings in the list (except the reserved function names) are converted to the corresponding key. Order: from top to bottom, left to right.
-Warning: Note the order of substitution: top to bottom, left to right
-"""
 symbol_mapping_table: dict[dict[str:list[str]]] = {
-    "": [" ", "_", "rad", "radians", "个", "的", "'s"],
+    # 空
+    "": [" ", "_", "rad", "radians", "个", "的", "'s", "的", "'s"],
+
+    # 等号
     "=": ["==", "=", "equal", "equals", "eq", "is", "are", "=>", "->", "等于", "是"],
+
+    # 作为函数的运算符
     "√": ["√", "┌", "根号"],
     "°": ["°", "degree", "deg", "^o", "度"],
     "^": ["^", "**"],
+    "%": ["%", "余"],
+    "!": ["!", "阶层"],
+    "|": ["|"],
+
+    # 算术运算符
     "+": ["+", "plus", "add", "加", "\\"],
     "-": ["-", "minus", "sub",  "减"],
     "*": ["*", "・", "·", "⋅", "×", "mul",  "multiply", "乘"],
     "/": ["/", "÷", "div",  "divide", "除"],
-    "%": ["%", "余"],
-    "!": ["!", "阶层"],
+
+    # 特殊运算符
+    "?": ["?", "def", "dflt", "default", "指定"],
+
+    # 原生无理数
     "π": ["π", "pi", "PI", "Pi", "P", "p", "派", "圆周率"],
     "𝑒": ["𝑒", "e", "自然底数", "自然"],
+
+    # 小数
+    ":": [":", "循环位"],
     "...": ["...", "repeat", "循环"],
     ".": [".", "dot", "点"],
+
+    # 函数参数和数字分隔符
+    ",": [","],
+    ";": [";"],
+
+    # 括号
     "(": ["(", "（", "左括号", "左小括号"],
     ")": [")", "）", "右括号", "右小括号"],
     "[": ["[", "左中括号"],
     "]": ["]", "右中括号"],
     "{": ["{", "左大括号"],
     "}": ["}", "右大括号"],
-    "?": ["?", "def", "dflt", "default", "指定"],
-    ",": [","],
-    ";": [";"],
-    ":": [":"],
-    "|": ["|"],
-    "\\": ["\\"],
+
+    # 函数
+    "sqrt": ["sqrt", "sqt"],
+    "square": ["square", "sq"],
+    "cube": ["cube", "cub"],
+    "reciprocal": ["reciprocal", "rec"],
+    "exp": ["exp"],
+    "pow": ["pow", "power"],
+    "mod": ["mod", "modulo"],
+    "fact": ["fact", "factorial"],
+    "abs": ["abs", "absolute"],
+    "sign": ["sign"],
+    "rad": ["rad", "radius"],
+    "lg": ["lg"],
+    "ln": ["ln"],
+    "log": ["log"],
+    "sin": ["sin", "sine"],
+    "cos": ["cos", "cosine"],
+    "tan": ["tan", "tangent"],
+
+    # 数字
     "0": ["0", "zero", "零", "〇"],
     "1": ["1", "one", "一"],
     "2": ["2", "two", "二"],
@@ -66,40 +91,39 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
 }
 
 function_conversion_table: dict[dict[str:list[str]]] = {
-    "pow(<__reserved_param1__>,1/2)": ["sqrt(<__reserved_param1__>)", "<__reserved_param1__>^(1/2)", "√<__reserved_param1__>", "pow(<__reserved_param1__>,1/2)"],
-    "pow(<__reserved_param1__>,2)": ["square(<__reserved_param1__>)", "<__reserved_param1__>^2", "pow(<__reserved_param1__>,2)", "sq(<__reserved_param1__>)"],
-    "pow(<__reserved_param1__>,3)": ["cube(<__reserved_param1__>)", "<__reserved_param1__>^3", "pow(<__reserved_param1__>,3)", "cub(<__reserved_param1__>)"],
-    "pow(<__reserved_param1__>,-1)": ["reciprocal(<__reserved_param1__>)", "<__reserved_param1__>^-1", "pow(<__reserved_param1__>,-1)", "rec(<__reserved_param1__>)"],
-    "pow(<__reserved_param1__>,<__reserved_param2__>)": ["pow(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>^<__reserved_param2__>", "<__reserved_param1__>**<__reserved_param2__>", "power(<__reserved_param1__>,<__reserved_param2__>)"],
-    "e<__reserved_param1__>p(<__reserved_param1__>)": ["e<__reserved_param1__>p(<__reserved_param1__>)", "pow(𝑒,<__reserved_param1__>)"],
-    "mod(<__reserved_param1__>,<__reserved_param2__>)": ["mod(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>%<__reserved_param2__>", "modulo(<__reserved_param1__>,<__reserved_param2__>)"],
-    "fact(<__reserved_param1__>)": ["fact(<__reserved_param1__>)", "<__reserved_param1__>!", "factorial(<__reserved_param1__>)"],
-    "abs(<__reserved_param1__>)": ["abs(<__reserved_param1__>)", "|<__reserved_param1__>|"],
-    "sign(<__reserved_param1__>)": ["sign(<__reserved_param1__>)"],
-    "rad(<__reserved_param1__>)": ["rad(<__reserved_param1__>)", "<__reserved_param1__>°"],
-    "gcd(<__reserved_param1__>,<__reserved_param2__>)": ["gcd(<__reserved_param1__>,<__reserved_param2__>)"],
-    "lcm(<__reserved_param1__>,<__reserved_param2__>)": ["lcm(<__reserved_param1__>,<__reserved_param2__>)"],
-    "round(<__reserved_param1__>)": ["round(<__reserved_param1__>)", "rd(<__reserved_param1__>)"],
-    "log(10,<__reserved_param1__>)": ["lg(<__reserved_param1__>)", "log(10,<__reserved_param1__>)"],
-    "log(𝑒,<__reserved_param1__>)": ["ln(<__reserved_param1__>)", "log(𝑒,<__reserved_param1__>)"],
-    "log(<__reserved_param1__>,<__reserved_param2__>)": ["log(<__reserved_param1__>,<__reserved_param2__>)"],
-    "floor(<__reserved_param1__>)": ["floor(<__reserved_param1__>)", "⌊<__reserved_param1__>⌋"],
-    "ceil(<__reserved_param1__>)": ["ceil(<__reserved_param1__>)", "⌈<__reserved_param1__>⌉"],
-    "trunc(<__reserved_param1__>)": ["trunc(<__reserved_param1__>)"],
-    "sin(<__reserved_param1__>)": ["sin(<__reserved_param1__>)", "sine(<__reserved_param1__>)"],
-    "cos(<__reserved_param1__>)": ["cos(<__reserved_param1__>)", "cosine(<__reserved_param1__>)"],
-    "tan(<__reserved_param1__>)": ["tan(<__reserved_param1__>)", "tangent(<__reserved_param1__>)"],
-    "cosec(<__reserved_param1__>)": ["cosec(<__reserved_param1__>)", "csc(<__reserved_param1__>)", "1/sin(<__reserved_param1__>)", "1/sine(<__reserved_param1__>)"],
-    "sec(<__reserved_param1__>)": ["sec(<__reserved_param1__>)", "1/cos(<__reserved_param1__>)"],
-    "cot(<__reserved_param1__>)": ["cot(<__reserved_param1__>)", "1/tan(<__reserved_param1__>)"],
-    "asin(<__reserved_param1__>)": ["asin(<__reserved_param1__>)", "arcsin(<__reserved_param1__>)", "sin^(-1)(<__reserved_param1__>)"],
-    "acos(<__reserved_param1__>)": ["acos(<__reserved_param1__>)", "arccos(<__reserved_param1__>)", "cos^(-1)(<__reserved_param1__>)"],
-    "atan(<__reserved_param1__>)": ["atan(<__reserved_param1__>)", "arctan(<__reserved_param1__>)", "tan^(-1)(<__reserved_param1__>)"],
-    "acosec(<__reserved_param1__>)": ["acosec(<__reserved_param1__>)", "arccosec(<__reserved_param1__>)", "cosec^(-1)(<__reserved_param1__>)"],
-    "asec(<__reserved_param1__>)": ["asec(<__reserved_param1__>)", "arcsec(<__reserved_param1__>)", "sec^(-1)(<__reserved_param1__>)"],
-    "acot(<__reserved_param1__>)": ["acot(<__reserved_param1__>)", "arccot(<__reserved_param1__>)", "cot^(-1)(<__reserved_param1__>)"],
-}
+    # 指数函数
+    "pow(<__reserved_param1__>,1/2)": ["sqrt(<__reserved_param1__>)", "√<__reserved_param1__>"],
+    "pow(<__reserved_param1__>,2)": ["square(<__reserved_param1__>)"],
+    "pow(<__reserved_param1__>,3)": ["cube(<__reserved_param1__>)"],
+    "pow(<__reserved_param1__>,-1)": ["reciprocal(<__reserved_param1__>)"],
+    "pow(𝑒,<__reserved_param1__>)": ["exp(<__reserved_param1__>)"],
+    "pow(<__reserved_param1__>,<__reserved_param2__>)": ["pow(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>^<__reserved_param2__>", "<__reserved_param1__>**<__reserved_param2__>"],
 
+    # 取余函数
+    "mod(<__reserved_param1__>,<__reserved_param2__>)": ["mod(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>%<__reserved_param2__>"],
+
+    # 阶乘函数
+    "fact(<__reserved_param1__>)": ["fact(<__reserved_param1__>)", "<__reserved_param1__>!"],
+
+    # 绝对值函数
+    "abs(<__reserved_param1__>)": ["abs(<__reserved_param1__>)", "|<__reserved_param1__>|"],
+
+    # 符号函数
+    "sign(<__reserved_param1__>)": ["sign(<__reserved_param1__>)"],
+
+    # 角度转弧度函数
+    "rad(<__reserved_param1__>)": ["rad(<__reserved_param1__>)", "<__reserved_param1__>°"],
+
+    # 对数函数
+    "log(10,<__reserved_param1__>)": ["lg(<__reserved_param1__>)"],
+    "log(𝑒,<__reserved_param1__>)": ["ln(<__reserved_param1__>)"],
+    "log(<__reserved_param1__>,<__reserved_param2__>)": ["log(<__reserved_param1__>,<__reserved_param2__>)"],
+
+    # 三角函数
+    "sin(<__reserved_param1__>)": ["sin(<__reserved_param1__>)"],
+    "cos(<__reserved_param1__>)": ["cos(<__reserved_param1__>)"],
+    "tan(<__reserved_param1__>)": ["tan(<__reserved_param1__>)"],
+}
 
 
 r"""
@@ -115,8 +139,9 @@ formatting_output_function_options_table: dict[dict[str:any]] = {
     "scientific notation adding thresholds": -1,
     "operator form functions": True,
     "retain irrational param": False,
-    "non-english character form native irrational": True,
-    "superscript": True
+    "non-ascii character form native irrational": True,
+    "superscript": True,
+    "commonly-used-decimal conversions": True,
 }
 
 r"""
@@ -126,7 +151,12 @@ Description: A lookup table for exact or simplified values of common transcenden
 """
 transcendental_function_table: dict = {}
 
-"""test cases"""
+
+
+
+
+
+"""===test cases==="""
 test_cases1 = [
     # 基本整数测试
     "1",
@@ -2660,8 +2690,126 @@ test_cases6 = [
     "sin(x³) + cos(y²)",  # 多个角标与函数结合
 ]
 
+test_cases7 = [
+    # 简单的括号匹配
+    "(a + b)",
+    "[x - y]",
+    "{p * q}",
+    "(1 + 2) * 3",
+    "4 / (2 + 2)",
 
-test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6
+    # 多层嵌套括号
+    "((a + b) * c)",
+    "[(x - y) / z]",
+    "{(p * q) - r}",
+    "((1 + 2) * (3 + 4))",
+    "[(4 - 2) / (1 + 1)]",
+
+    # 不同括号类型的组合
+    "{[()]}",
+    "({[a + b] * (c - d)})",
+    "[{(x / y) + z} - w]",
+    "({[1 + 2] * 3} / 4)",
+
+    # 函数嵌套与括号
+    "pow((x + y), 2)",
+    "sqrt((x + y) * (z - w))",
+    "log((x - y) / z)",
+    "sin(cos(x))",
+    "tan(sin(cos(x)))",
+
+    # 算术运算符结合括号
+    "((a + b) * (c - d)) / e",
+    "{(x - y) + (z / w)} * p",
+    "(x * (y + z)) - (w / u)",
+    "[{a + (b * c)} - {d / e}]",
+    "(a + b) * (c - (d / e))",
+
+    # 复杂嵌套
+    "(((((a + b)))))",
+    "{[{[(x - y)]}]}",
+    "((((x / y) + z) - w) * p)",
+    "{({[{(1 + 2) * 3} / 4]})}",
+    "pow((sqrt(x + y)), log(z))",
+
+    # 空括号及特殊情况
+    "()",
+    "[]",
+    "{}",
+    "(a + b) + ()",
+    "[x * y] - {}",
+
+    # 错误情况（不匹配）
+    "(a + b",
+    "[x - y",
+    "{p * q",
+    "((a + b))]",
+    "[[x - y)]]",
+
+    # 长度较长的表达式
+    "(a + b) * (c - d) / (e + f) - (g * h)",
+    "[(x - y) / z] + {p * q} - ((r + s) / t)",
+    "(((a + b) * (c - d)) + ((e / f) - (g * h)))",
+    "{[(x - y) * (z + w)] - [(p / q) + (r * s)]}",
+
+    # 高度嵌套的括号
+    "((((((((((((a + b))))))))))))",
+    "[[[[[[[[[[x - y]]]]]]]]]]",
+    "{{{{{{{{{{p * q}}}}}}}}}}",
+    "(((((((((((((x - y) * (z + w)))))))))))))",
+    "{[{[{[{[{[{(a + b) * (c - d)}]}]}]}]}]}",
+
+    # 混合括号类型与嵌套
+    "({[(a + b) * (c - d)]})",
+    "([{(x - y) / (z + w)}])",
+    "{[((p * q) - (r + s)) / (t - u)]}",
+    "({[{[x * y] + (z / w)} - {p - q}]})",
+    "[({(1 + 2) * 3} / (4 - 5))]",
+
+    # 复杂函数与括号混合
+    "pow(sqrt(log(x + y)), cos(tan(z)))",
+    "sin(cos(tan(log(x)))) + sqrt(pow(y, 2))",
+    "log((sin(x) + cos(y)) / tan(z))",
+    "pow((x + y), (z - w)) / sqrt(p * q)",
+
+    # 计算式中的括号
+    "(x + y) * (z - w) / (a + b)",
+    "{[(p * q) + (r - s)] / (t * u)}",
+    "[(x - y) + {p * q} - ((r + s) / t)]",
+    "({[{[a + (b * c)] - (d / e)}]})",
+
+    # 极端情况
+    "((((((((((((((((((((((((((((a))))))))))))))))))))))))))))",
+    "{[{[{[{[{[{[{[{[{[{[{[{[{x}]}]}]}]}]}]}]}]}]}]}]}]}]}]}",
+    "({[{[{[{[{[{[{[{[{[{[{[{[{(p * q)}]}]}]}]}]}]}]}]}]}]}]})",
+    "(((((((((((((((((((((((((((((((((x + y) - z)))))))))))))))))))))))))))))))",
+
+    # 混合运算符
+    "(x + y) * [z - w] / {a + b}",
+    "[{(p * q) - (r + s)} * (t / u)]",
+    "((x - y) + {p * q}) - ((r + s) / t)",
+    "({[{[a + (b * c)] - (d / e)}]} * {[(x + y) / z]})",
+
+    # 特殊字符
+    "(a + b) * (c - d) / (e + f) - (g * h)",
+    "pow(sqrt(log(x + y)), cos(tan(z)))",
+    "(((a + b) * (c - d)) + ((e / f) - (g * h)))",
+    "{[(x - y) * (z + w)] - [(p / q) + (r * s)]}",
+    "[({(1 + 2) * 3} / (4 - 5))]",
+
+    # 混合括号格式
+    "{[{([{(a + b) * (c - d)}])}]}",
+    "[[{[{[{[{[{[{[{[{[{[{[{[{[{(p * q)}]}]}]}]}]}]}]}]}]}]}]}]}]",
+    "({[{[{[{[{[{3+4[{[{[{[{[{[{[{[{(x - y) * (z + w)}]}]}]}]}]}]}]}]}pow(2,3)]}]}]}]})",
+    "(((((((((((((((((((((((((((((((((x + y) - z)))))))))))))))))))))))))))))))",
+
+    # 极端情况下的空括号
+    "() * [] / {}",
+    "((() + []) - ({}))",
+    "{([]) * ({}) / (())}",
+]
+
+test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6 + test_cases7
 
 # Write Data
 pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])

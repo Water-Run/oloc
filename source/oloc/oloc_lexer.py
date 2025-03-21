@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-21
+:date: 2025-03-22
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -138,6 +138,15 @@ class Lexer:
         将表达式Token流中的各种数字转换为分数
         :return: None
         """
+
+        def _add_bracket(to_add: [Token, Token, Token]) -> [Token, Token, Token, Token, Token]:
+            r"""
+            为转换的结果添加括号
+            :param to_add: 待添加的结果
+            :return: 添加后的结果
+            """
+            return [Token(Token.TYPE.LBRACKET, "(", [0, 0])] + \
+                to_add + [Token(Token.TYPE.RBRACKET, ")", [0, 0])]
 
         def _convert_finite_decimal(finite_decimal: Token) -> [Token, Token, Token]:
             r"""
@@ -308,17 +317,24 @@ class Lexer:
                 percentage_str = '0.' + integer_part + decimal_part
             else:
                 decimal_point_pos = len(integer_part) - 2
-                percentage_str = integer_part[:decimal_point_pos] + '.' + integer_part[decimal_point_pos:] + decimal_part
+                percentage_str = integer_part[:decimal_point_pos] + '.' + integer_part[
+                                                                          decimal_point_pos:] + decimal_part
 
             percentage_str = percentage_str.rstrip('0')
             if percentage_str.endswith('.'):
                 percentage_str = percentage_str[:-1]
 
-            return [Token(Token.TYPE.INTEGER, percentage_str, [percentage.range[0], percentage.range[0] + len(percentage_str)]),
-                    Token(Token.TYPE.OPERATOR, "/", [percentage.range[0] + len(percentage_str), percentage.range[0] + len(percentage_str) + 1]),
+            fraction = [Token(Token.TYPE.INTEGER, percentage_str,
+                          [percentage.range[0], percentage.range[0] + len(percentage_str)]),
+                    Token(Token.TYPE.OPERATOR, "/",
+                          [percentage.range[0] + len(percentage_str), percentage.range[0] + len(percentage_str) + 1]),
                     Token(Token.TYPE.INTEGER, "1",
-                          [percentage.range[0] + len(percentage_str) + 1, percentage.range[0] + len(percentage_str) + 2]),
-                    ] if '.' not in percentage_str else _convert_finite_decimal(Token(Token.TYPE.FINITE_DECIMAL, percentage_str, [percentage.range[0], percentage.range[0] + len(percentage_str)]))
+                          [percentage.range[0] + len(percentage_str) + 1,
+                           percentage.range[0] + len(percentage_str) + 2]),
+                    ] if '.' not in percentage_str else _convert_finite_decimal(
+                Token(Token.TYPE.FINITE_DECIMAL, percentage_str,
+                      [percentage.range[0], percentage.range[0] + len(percentage_str)]))
+            return fraction
 
         fractionalized_tokens = []
 
@@ -347,7 +363,7 @@ class Lexer:
                         tokens_to_fractionalized = self._check_denominator(_convert_infinite_decimal(temp_token))
                     case Token.TYPE.PERCENTAGE:
                         tokens_to_fractionalized = self._check_denominator(_convert_percentage(temp_token))
-                fractionalized_tokens += Evaluator.simplify(tokens_to_fractionalized)
+                fractionalized_tokens += _add_bracket(Evaluator.simplify(tokens_to_fractionalized))
             else:
                 fractionalized_tokens += [temp_token]
             index += 1
@@ -357,21 +373,17 @@ class Lexer:
 
     def _bracket_checking_harmonisation(self) -> None:
         """
-        括号检查与统一化
+        括号检查与统一化及冗余消除
         :raise OlocInvalidBracketException: 如果括号出现层级错误或不匹配
         :return: None
         """
-        # 定义括号的层级优先级
         BRACKET_PRIORITY = {'(': 1, '[': 2, '{': 3, ')': 1, ']': 2, '}': 3}
-        # 定义括号的左右匹配关系
         BRACKET_MATCH = {'(': ')', '[': ']', '{': '}', ')': '(', ']': '[', '}': '{'}
 
-        # 栈结构用于匹配括号
         stack = []
 
         for temp_token in self.tokens:
-            if temp_token.type == Token.TYPE.LBRACKET:  # 左括号
-                # 检查层级是否合法
+            if temp_token.type == Token.TYPE.LBRACKET:
                 if stack and BRACKET_PRIORITY[temp_token.value] > BRACKET_PRIORITY[stack[-1][0]]:
                     raise OlocInvalidBracketException(
                         exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.INCORRECT_BRACKET_HIERARCHY,
@@ -379,12 +391,9 @@ class Lexer:
                         positions=[temp_token.range[0]],
                         err_bracket=temp_token.value
                     )
-
-                # 将左括号压入栈 (括号值, 起始位置, 优先级)
                 stack.append((temp_token.value, temp_token.range[0], BRACKET_PRIORITY[temp_token.value]))
 
-            elif temp_token.type == Token.TYPE.RBRACKET:  # 右括号
-                # 栈为空时，左括号缺失
+            elif temp_token.type == Token.TYPE.RBRACKET:
                 if not stack:
                     raise OlocInvalidBracketException(
                         exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_RIGHT_BRACKET,
@@ -393,10 +402,8 @@ class Lexer:
                         err_bracket=temp_token.value
                     )
 
-                # 弹出栈顶元素
                 last_left_bracket, last_position, last_priority = stack.pop()
 
-                # 检查括号是否匹配
                 if BRACKET_MATCH[last_left_bracket] != temp_token.value:
                     raise OlocInvalidBracketException(
                         exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_LEFT_BRACKET,
@@ -405,7 +412,6 @@ class Lexer:
                         err_bracket=last_left_bracket
                     )
 
-                # 检查层级是否合法
                 if BRACKET_PRIORITY[last_left_bracket] != BRACKET_PRIORITY[temp_token.value]:
                     raise OlocInvalidBracketException(
                         exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.INCORRECT_BRACKET_HIERARCHY,
@@ -414,7 +420,6 @@ class Lexer:
                         err_bracket=last_left_bracket
                     )
 
-        # 检查是否有未匹配的左括号
         if stack:
             last_left_bracket, last_position, _ = stack.pop()
             raise OlocInvalidBracketException(
@@ -429,6 +434,58 @@ class Lexer:
                 bracket_token.value = '('
             elif bracket_token.type == Token.TYPE.RBRACKET:
                 bracket_token.value = ')'
+
+        Lexer.update(self.tokens)
+
+        def _is_redundant_bracket(left_index: int, right_index: int) -> bool:
+            r"""
+            判断一对括号是否为冗余括号
+            :param left_index: 左括号在 Token 流中的索引
+            :param right_index: 右括号在 Token 流中的索引
+            :return: 是否为冗余括号
+            """
+            inner_tokens = self.tokens[left_index + 1:right_index]
+
+            if len(inner_tokens) == 1:
+                return True
+
+            left_operator_priority = float('inf')
+            right_operator_priority = float('inf')
+
+            if left_index > 0 and self.tokens[left_index - 1].type == Token.TYPE.OPERATOR:
+                left_operator_priority = utils.get_operator_priority(self.tokens[left_index - 1].value)
+
+            if right_index + 1 < len(self.tokens) and self.tokens[right_index + 1].type == Token.TYPE.OPERATOR:
+                right_operator_priority = utils.get_operator_priority(self.tokens[right_index + 1].value)
+
+            inner_min_priority = float('inf')
+            for token in inner_tokens:
+                if token.type == Token.TYPE.OPERATOR:
+                    inner_min_priority = min(inner_min_priority, utils.get_operator_priority(token.value))
+
+            if left_operator_priority <= inner_min_priority or right_operator_priority <= inner_min_priority:
+                return False
+
+            # 额外检查：如果左括号前是函数，则不能移除
+            if left_index > 0 and self.tokens[left_index - 1].type == Token.TYPE.FUNCTION:
+                return False
+
+            return True
+
+        tokens_to_remove = set()
+        stack = []
+
+        for i, token in enumerate(self.tokens):
+            if token.type == Token.TYPE.LBRACKET:
+                stack.append(i)
+            elif token.type == Token.TYPE.RBRACKET:
+                if stack:
+                    left_index = stack.pop()
+                    if _is_redundant_bracket(left_index, i):
+                        tokens_to_remove.add(left_index)
+                        tokens_to_remove.add(i)
+
+        self.tokens = [token for i, token in enumerate(self.tokens) if i not in tokens_to_remove]
 
         Lexer.update(self.tokens)
 
@@ -461,19 +518,21 @@ class Lexer:
             match = Lexer.tokenizer(match_case)
             result = []
             for temp_token in match:
-                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__reserved_param1__>', '<__reserved_param2__>']:
+                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__reserved_param1__>',
+                                                                                      '<__reserved_param2__>']:
                     result.append(Expression([temp_token]))
                 else:
                     result.append(temp_token)
             return result
 
-        def _find_match(match_case: list[Token | Expression], token_list: list[Token | Expression]) -> list[bool, list[int, int]]:
+        def _find_match(match_case: list[Token | Expression], token_list: list[Token | Expression]) -> list[int, int]:
             r"""
             找到Token流中和匹配模式匹配的部分
             :param match_case: 需要匹配的流形式
             :param token_list: 待匹配的模式流
-            :return: 一个列表.第一项是是否匹配到结果,第二项是两个元素的整数列表,对应范围的下标.
+            :return: 一个两个整数的列表,对应范围的下标.如果值是[-1,-1],说明没有找到匹配的部分.
             """
+
             def _is_match(units_of_list: list[Token | Expression], units_of_match: list[Token | Expression]) -> bool:
                 r"""
                 判断对应单元是否匹配
@@ -484,9 +543,11 @@ class Lexer:
                 for list_unit, match_unit in zip(units_of_list, units_of_match):
                     if isinstance(list_unit, Expression) and isinstance(match_unit, Expression):
                         continue
-                    if isinstance(list_unit, Token) and isinstance(match_unit, Token) and list_unit.type == match_unit.type:
+                    if isinstance(list_unit, Token) and isinstance(match_unit,
+                                                                   Token) and list_unit.type == match_unit.type:
                         # 自定义短/长无理数: 不需要内容一致
-                        if list_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and match_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
+                        if list_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and match_unit.type in [
+                            Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
                             continue
                     if not list_unit.value == match_unit.value:
                         break
@@ -497,10 +558,11 @@ class Lexer:
             for index, unit in enumerate(token_list):
                 if unit == match_case[0] and (attempt_length := index + len(match_case)) <= len(token_list):
                     if _is_match(token_list[index:attempt_length], match_case):
-                        return [True, [index, attempt_length]]
-            return [False, [0, 0]]
+                        return [index, attempt_length]
+            return [-1, -1]
 
-        def _convert_match(to_convert: list[Token | Expression], match_pattern: list[Token | Expression], match_range: [int, int]) -> list[Token]:
+        def _convert_match(to_convert: list[Token | Expression], match_pattern: list[Token | Expression],
+                           match_range: [int, int]) -> list[Token]:
             r"""
             将找到的匹配结构转换为convert_to的结构, 并解开Expression
             :param to_convert: 待修改的Token | Expression流
@@ -508,6 +570,7 @@ class Lexer:
             :param match_range: 被匹配的模式范围
             :return:
             """
+
             def _unwrap_to_token_list(process_list: list[Token | Expression]) -> list[Token]:
                 r"""
                 将Token | Expression流转换为Token流
@@ -546,7 +609,7 @@ class Lexer:
             :return: 是否存在
             """
             for temp_match in matches_to_judge:
-                if _find_match(temp_match, token_list):
+                if _find_match(temp_match, token_list)[0] != -1:
                     return True
             return False
 
@@ -556,31 +619,24 @@ class Lexer:
             :param token_list: 待转换的Token流
             :return: 转换后的Token | Expression流. 如果输入和输出一致,说明不再有可以转换的部分了.
             """
-            for function_strs in utils.get_function_conversion_table().values():
-                for function_str in function_strs:
-                    ...
-            return token_list
+            result = temp_expression = []
+            for temp_token in token_list:
+                ...
 
-        matches = []
-        for key, value_list in function_conversion_table.items():
-            for value in value_list:
-                matches.append(_build_match(value))
-
-        while True:
-            expression_list = _build_expression_token_list(self.tokens)
-            for match_case in matches:
-                is_find, find_range = _find_match(match_case, expression_list)
-                if is_find:
-                    self.tokens = _convert_match(expression_list, match_case, find_range)
-                    Lexer.update(self.tokens)
-            if not _has_convert(self.tokens, matches):
-                break
-
-    def _static_check(self) -> None:
-        r"""
-        对表达式执行静态检查
-        :return: None
-        """
+        # matches = []
+        # for key, value_list in function_conversion_table.items():
+        #     for value in value_list:
+        #         matches.append(_build_match(value))
+        #
+        # while True:
+        #     expression_list = _build_expression_token_list(self.tokens)
+        #     for match_case in matches:
+        #         find_range = _find_match(match_case, expression_list)
+        #         if find_range[0] != -1:
+        #             self.tokens = _convert_match(expression_list, match_case, find_range)
+        #             Lexer.update(self.tokens)
+        #     if not _has_convert(self.tokens, matches):
+        #         break
 
     def execute(self):
         r"""
@@ -906,13 +962,13 @@ if __name__ == '__main__':
         try:
             preprocess = preprocessor.Preprocessor(test)
             preprocess.execute()
-            #print(test, end=" => ")
+            print(test, end=" => ")
             lexer = Lexer(preprocess.expression)
             lexer.execute()
             for token in lexer.tokens:
-                ... # debug
-                #print(token.value, end=" ")
-            #print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
+                ...  # debug
+                print(token.value, end=" ")
+            print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
         except (TypeError, ZeroDivisionError) as t_error:
             raise t_error
         except Exception as error:
@@ -928,7 +984,8 @@ if __name__ == '__main__':
             print(lexer.tokens)
             for token in lexer.tokens:
                 print(token.value, end=" ")
-            print(f"\nIn {preprocess.time_cost / 1000000000} + {lexer.time_cost / 1000000000} = {preprocess.time_cost + lexer.time_cost} s")
+            print(
+                f"\nIn {preprocess.time_cost / 1000000000} + {lexer.time_cost / 1000000000} = {preprocess.time_cost + lexer.time_cost} s")
         except (TypeError, ZeroDivisionError) as t_error:
             raise t_error
         except Exception as error:

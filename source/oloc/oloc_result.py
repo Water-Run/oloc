@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-15
+:date: 2025-03-22
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -17,6 +17,18 @@ def output_filter(tokens: list[Token]) -> str:
     :return: 过滤后的生成的表达式字符串
     """
     configs = utils.get_formatting_output_function_options_table()
+
+    between_token = " " * configs["space between token"]
+    number_seperator = "," if configs["underline-style number separator"] else "_"
+
+
+    result = ""
+    for temp_token in tokens:
+        if temp_token.type == Token.TYPE.IRRATIONAL_PARAM and not configs["retain irrational param"]:
+            continue
+        if len(tokens) > 1:
+            result += between_token
+    return result
 
 
 class OlocResult:

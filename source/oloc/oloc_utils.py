@@ -1,11 +1,33 @@
 """
 :author: WaterRun
-:date: 2025-03-15
+:date: 2025-03-22
 :file: oloc_utils.py
 :description: Oloc utils
 """
 
 import simpsave as ss
+
+
+"""
+运算符优先级
+"""
+
+
+def get_operator_priority(operator: str) -> int:
+    r"""
+    返回运算符的优先级，数字越小优先级越高
+    :param operator: 待判断的运算符
+    :return: 优先级
+    """
+    PRIORITY = {
+        '+': 5, '-': 5,
+        '*': 4, '/': 4,
+        '^': 2, '%': 2,
+        '!': 3, '|': 3,  # 阶乘、绝对值
+        '√': 1,  # 开根号
+    }
+    return PRIORITY.get(operator, 6)  # 未知符号优先级最低
+
 
 """
 数据读取
@@ -124,7 +146,7 @@ def get_formatting_output_function_options_table() -> dict:
     if not (isinstance(result[keys[4]], int) and (2 <= result[keys[4]] <= 12 or result[keys[4]] == -1)):
         _invalidKeyParam(result[keys[4]])
 
-    for i in [3, 5, 6, 7, 8]:
+    for i in [3, 5, 6, 7, 8, 9]:
         if not isinstance(result[keys[i]], bool):
             _invalidKeyParam(result[keys[i]])
 
