@@ -354,7 +354,7 @@ class Lexer:
                     self.tokens[index + 2].type == Token.TYPE.INTEGER:
                 fractionalized_tokens += Evaluator.simplify(
                     self._check_denominator([temp_token, self.tokens[index + 1], self.tokens[index + 2]]))
-                index += 3
+                index += 2
             elif convert_type in convert_num_types:
                 match convert_type:
                     case Token.TYPE.FINITE_DECIMAL:
@@ -435,7 +435,7 @@ class Lexer:
             elif bracket_token.type == Token.TYPE.RBRACKET:
                 bracket_token.value = ')'
 
-        Lexer.update(self.tokens)
+        self.tokens, self.expression = Lexer.update(self.tokens)
 
         def _is_redundant_bracket(left_index: int, right_index: int) -> bool:
             r"""
@@ -487,7 +487,7 @@ class Lexer:
 
         self.tokens = [token for i, token in enumerate(self.tokens) if i not in tokens_to_remove]
 
-        Lexer.update(self.tokens)
+        self.tokens, self.expression = Lexer.update(self.tokens)
 
     def _function_conversion(self) -> None:
         r"""
@@ -509,65 +509,79 @@ class Lexer:
             def __repr__(self):
                 return f"Expression: {self.tokens}"
 
-        def _build_match(match_case: str) -> list[Token | Expression]:
+        class MatchFunc:
             r"""
-            根据需要匹配的字符串形式构造对应匹配模式的列表
-            :param match_case: 需要匹配的字符串形式的模式
-            :return: 一个列表,对应需要匹配的模式
-            """
-            match = Lexer.tokenizer(match_case)
-            result = []
-            for temp_token in match:
-                if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__reserved_param1__>',
-                                                                                      '<__reserved_param2__>']:
-                    result.append(Expression([temp_token]))
-                else:
-                    result.append(temp_token)
-            return result
-
-        def _find_match(match_case: list[Token | Expression], token_list: list[Token | Expression]) -> list[int, int]:
-            r"""
-            找到Token流中和匹配模式匹配的部分
-            :param match_case: 需要匹配的流形式
-            :param token_list: 待匹配的模式流
-            :return: 一个两个整数的列表,对应范围的下标.如果值是[-1,-1],说明没有找到匹配的部分.
+            单个函数的匹配单元
+            :param match_str: 用于生成的函数表达式字符串
             """
 
-            def _is_match(units_of_list: list[Token | Expression], units_of_match: list[Token | Expression]) -> bool:
+            def __init__(self, match_str: str):
+                self.match_str = match_str
+                self.flow: list[Token | Expression] = []
+                self.operator: Token = Token(Token.TYPE.UNKNOWN, "")
+                self._build_match()
+                self.range = [-1, -1]
+
+            def __repr__(self):
+                return f"{self.match_str} =>\n{self.flow}\t{self.operator}"
+
+            def _build_match(self):
                 r"""
-                判断对应单元是否匹配
-                :param units_of_list: 待匹配流中的单元块(列表)
-                :param units_of_match: 模式流中的单元块(列表)
-                :return: 是否匹配
+                根据需要匹配的字符串形式构造对应匹配模式的列表
                 """
-                for list_unit, match_unit in zip(units_of_list, units_of_match):
-                    if isinstance(list_unit, Expression) and isinstance(match_unit, Expression):
-                        continue
-                    if isinstance(list_unit, Token) and isinstance(match_unit,
-                                                                   Token) and list_unit.type == match_unit.type:
-                        # 自定义短/长无理数: 不需要内容一致
-                        if list_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and match_unit.type in [
-                            Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
+                match_list = Lexer.tokenizer(self.match_str)
+                result = []
+                for temp_token in match_list:
+                    if temp_token.type == Token.TYPE.LONG_CUSTOM and temp_token.value in ['<__reserved_param1__>',
+                                                                                          '<__reserved_param2__>']:
+                        result.append(Expression([temp_token]))
+                    else:
+                        result.append(temp_token)
+                    if temp_token.type == Token.TYPE.OPERATOR:
+                        self.operator = temp_token
+                self.flow = result
+
+            def find_match(self, token_list: list[Token | Expression]):
+                r"""
+                找到Token流中和匹配模式匹配的部分
+                :param token_list: 待匹配的模式流
+                """
+
+                def _is_match(units_of_list: list[Token | Expression], units_of_match: list[Token | Expression]) -> bool:
+                    r"""
+                    判断对应单元是否匹配
+                    :param units_of_list: 待匹配流中的单元块(列表)
+                    :param units_of_match: 模式流中的单元块(列表)
+                    :return: 是否匹配
+                    """
+                    for list_unit, match_unit in zip(units_of_list, units_of_match):
+                        if isinstance(list_unit, Expression) and isinstance(match_unit, Expression):
                             continue
-                    if not list_unit.value == match_unit.value:
-                        break
+                        if isinstance(list_unit, Token) and isinstance(match_unit,
+                                                                       Token) and list_unit.type == match_unit.type:
+                            # 自定义短/长无理数: 不需要内容一致
+                            if list_unit.type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and match_unit.type in [
+                                Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM]:
+                                continue
+                        if not list_unit.value == match_unit.value:
+                            break
+                    else:
+                        return True
+                    return False
+
+                for index, unit in enumerate(token_list):
+                    if unit == self.flow[0] and (attempt_length := index + len(self.flow)) <= len(token_list):
+                        if _is_match(token_list[index:attempt_length], self.flow):
+                            self.range = [index, attempt_length]
+                            break
                 else:
-                    return True
-                return False
+                    self.range = [-1, -1]
 
-            for index, unit in enumerate(token_list):
-                if unit == match_case[0] and (attempt_length := index + len(match_case)) <= len(token_list):
-                    if _is_match(token_list[index:attempt_length], match_case):
-                        return [index, attempt_length]
-            return [-1, -1]
-
-        def _convert_match(to_convert: list[Token | Expression], match_pattern: list[Token | Expression],
-                           match_range: [int, int]) -> list[Token]:
+        def _convert_match(to_convert: list[Token | Expression], match_func: MatchFunc) -> list[Token]:
             r"""
             将找到的匹配结构转换为convert_to的结构, 并解开Expression
             :param to_convert: 待修改的Token | Expression流
-            :param match_pattern: 匹配的Token | Expression流
-            :param match_range: 被匹配的模式范围
+            :param match_func: 匹配的函数匹配单元
             :return:
             """
 
@@ -585,23 +599,23 @@ class Lexer:
                         unwrap_result.append(process_unit)
                 return unwrap_result
 
-            result = to_convert[:match_range[0]]
+            result = to_convert[:match.range[0]]
 
-            params = [unit for unit in to_convert[match_range[0]:match_range[1]] if isinstance(unit, Expression)]
+            params = [unit for unit in to_convert[match.range[0]:match.range[1]] if isinstance(unit, Expression)]
 
             param_index = 0
             after_convert = []
-            for temp_unit in match_pattern:
+            for temp_unit in match_func.flow:
                 if isinstance(temp_unit, Expression):
                     after_convert.append(params[param_index])
                     param_index += 1
                 after_convert.append(temp_unit)
 
-            result += after_convert + to_convert[match_range[1]:]
+            result += after_convert + to_convert[match.range[1]:]
 
             return _unwrap_to_token_list(result)
 
-        def _has_convert(token_list: list[Token], matches_to_judge: list[list[Token]]) -> bool:
+        def _has_convert(token_list: list[Token], matches_to_judge: list[MatchFunc]) -> bool:
             r"""
             判断Token流中是否存在可转换的结构
             :param token_list: 待转换的结构
@@ -609,34 +623,40 @@ class Lexer:
             :return: 是否存在
             """
             for temp_match in matches_to_judge:
-                if _find_match(temp_match, token_list)[0] != -1:
+                temp_match.find_match(token_list)
+                if temp_match.range[0] != -1:
                     return True
             return False
 
-        def _build_expression_token_list(token_list: list[Token]) -> list[Token | Expression]:
+        def _build_expression_token_list(token_list: list[Token], reserved_operator: Token) -> list[Token | Expression]:
             r"""
             将Token流中表达式部分转换为Expression
             :param token_list: 待转换的Token流
-            :return: 转换后的Token | Expression流. 如果输入和输出一致,说明不再有可以转换的部分了.
+            :param reserved_operator: 本次转换中需要保留的运算符
+            :return: 转换后的Token | Expression流
             """
             result = temp_expression = []
             for temp_token in token_list:
-                ...
+                if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET, Token.TYPE.FUNCTION):
+                    result.append(temp_expression)
+                    temp_expression = []
+                    result.append(temp_token)
+            result.append(temp_expression)
 
-        # matches = []
-        # for key, value_list in function_conversion_table.items():
-        #     for value in value_list:
-        #         matches.append(_build_match(value))
-        #
-        # while True:
-        #     expression_list = _build_expression_token_list(self.tokens)
-        #     for match_case in matches:
-        #         find_range = _find_match(match_case, expression_list)
-        #         if find_range[0] != -1:
-        #             self.tokens = _convert_match(expression_list, match_case, find_range)
-        #             Lexer.update(self.tokens)
-        #     if not _has_convert(self.tokens, matches):
-        #         break
+        matches: list[MatchFunc] = []
+        for value_list in function_conversion_table.values():
+            for value in value_list:
+                if value not in function_conversion_table.keys():
+                    matches.append(MatchFunc(value))
+
+        while True:
+            for match in matches:
+                match.find_match(expression_list := _build_expression_token_list(self.tokens, match.operator))
+                if match.range[0] == -1:
+                    continue
+                self.tokens = _convert_match(expression_list, match)
+                self.tokens, self.expression = Lexer.update(self.tokens)
+
 
     def execute(self):
         r"""
@@ -649,7 +669,7 @@ class Lexer:
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
-        self._function_conversion()
+        #self._function_conversion()
         self.time_cost = time.time_ns() - start_time
 
     """
@@ -953,48 +973,52 @@ class Lexer:
 if __name__ == '__main__':
     import oloc_preprocessor as preprocessor
 
-    import simpsave as ss
+    def run_test():
+        import simpsave as ss
+        tests = ss.read("test_cases", file="./data/olocconfig.ini")
+        # input(f"{len(tests)}>>>")
+        start = time.time()
+        for test in tests:
+            try:
+                preprocess = preprocessor.Preprocessor(test)
+                preprocess.execute()
+                print(test, end=" => ")
+                lexer = Lexer(preprocess.expression)
+                lexer.execute()
+                for token in lexer.tokens:
+                    ...  # debug
+                    print(token.value, end=" ")
+                print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
+            except (TypeError, ZeroDivisionError) as t_error:
+                raise t_error
+            except Exception as error:
+                print(f"\n\n\n========\n\n{error}\n\n\n")
+        print(f"Run {len(tests)} in {time.time() - start}")
 
-    tests = ss.read("test_cases", file="./data/olocconfig.ini")
-    # input(f"{len(tests)}>>>")
-    start = time.time()
-    for test in tests:
-        try:
-            preprocess = preprocessor.Preprocessor(test)
-            preprocess.execute()
-            print(test, end=" => ")
-            lexer = Lexer(preprocess.expression)
-            lexer.execute()
-            for token in lexer.tokens:
-                ...  # debug
-                print(token.value, end=" ")
-            print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
-        except (TypeError, ZeroDivisionError) as t_error:
-            raise t_error
-        except Exception as error:
-            print(f"\n\n\n========\n\n{error}\n\n\n")
-    print(f"Run {len(tests)} in {time.time() - start}")
+    def test_with_error_handling():
+        while True:
+            try:
+                preprocess = preprocessor.Preprocessor(input(">>>"))
+                preprocess.execute()
+                lexer = Lexer(preprocess.expression)
+                lexer.execute()
+                print(lexer.tokens)
+                for token in lexer.tokens:
+                    print(token.value, end=" ")
+                print(
+                    f"\nIn {preprocess.time_cost / 1000000} + {lexer.time_cost / 1000000} = {(preprocess.time_cost + lexer.time_cost) / 1000000} ms")
+            except (TypeError, ZeroDivisionError) as t_error:
+                raise t_error
+            except Exception as error:
+                print(error)
 
-    while True:
-        try:
-            preprocess = preprocessor.Preprocessor(input(">>>"))
-            preprocess.execute()
-            lexer = Lexer(preprocess.expression)
-            lexer.execute()
-            print(lexer.tokens)
-            for token in lexer.tokens:
-                print(token.value, end=" ")
-            print(
-                f"\nIn {preprocess.time_cost / 1000000000} + {lexer.time_cost / 1000000000} = {preprocess.time_cost + lexer.time_cost} s")
-        except (TypeError, ZeroDivisionError) as t_error:
-            raise t_error
-        except Exception as error:
-            print(error)
+    def test_without_error_handing():
+        preprocess = preprocessor.Preprocessor(input(">>>"))
+        preprocess.execute()
+        lexer = Lexer(preprocess.expression)
+        lexer.execute()
+        print(lexer.tokens)
+        for token in lexer.tokens:
+            print(token.value, end=" ")
 
-    preprocess = preprocessor.Preprocessor(input(">>>"))
-    preprocess.execute()
-    lexer = Lexer(preprocess.expression)
-    lexer.execute()
-    print(lexer.tokens)
-    for token in lexer.tokens:
-        print(token.value, end=" ")
+    test_with_error_handling()

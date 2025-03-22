@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-17
+:date: 2025-03-22
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -310,6 +310,7 @@ class Preprocessor:
 
         # 更新表达式
         self.expression = ''.join(result)
+        self.expression = self.expression.replace(";", ",")
 
     def execute(self) -> None:
         r"""
@@ -324,3 +325,11 @@ class Preprocessor:
         self._equals_sign_elimination()
         self._formal_elimination()
         self.time_cost = time.time_ns() - start_time
+
+
+"""test"""
+if __name__ == "__main__":
+    while True:
+        preprocess = Preprocessor(input(">>>"))
+        preprocess.execute()
+        print(preprocess.expression)
