@@ -1,11 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-03-17
+:date: 2025-03-22
 :file: oloc_core.py
 :description: Core of oloc
 """
 import time
-
+import simpsave as ss
 from oloc_result import OlocResult
 from oloc_exceptions import *
 from multiprocessing import Process, Queue
@@ -101,7 +101,7 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
 
 
 def is_reserved(symbol: str) -> bool:
-    """
+    r"""
     判断指定符号是否是oloc的保留字。
     注: oloc的保留字不可作为自定义短无理数。
 
@@ -113,6 +113,23 @@ def is_reserved(symbol: str) -> bool:
         reserved_keywords += value
 
     return any(keyword in symbol for keyword in reserved_keywords)
+
+
+def run_test(test_file: str, test_key: str, time_limit: int):
+    r"""
+    运行测试
+    :param test_file: 待测试的simpsave ini文件
+    :param test_key: 待测试的simpsave的键
+    :param time_limit: 计算限时
+    :return: None
+    """
+    tests = ss.read(test_key, file=test_file)
+    for test in tests:
+        try:
+            calculate(test, time_limit=time_limit)
+        except Exception as error:
+            print(error)
+            input("continue>>")
 
 
 """test"""

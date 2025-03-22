@@ -90,42 +90,6 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "9": ["9", "nine", "九"],
 }
 
-function_conversion_table: dict[dict[str:list[str]]] = {
-    # 指数函数
-    "power(<__reserved_param1__>,1/2)": ["sqrt(<__reserved_param1__>)", "√<__reserved_param1__>"],
-    "power(<__reserved_param1__>,2)": ["square(<__reserved_param1__>)"],
-    "power(<__reserved_param1__>,3)": ["cube(<__reserved_param1__>)"],
-    "power(<__reserved_param1__>,-1)": ["reciprocal(<__reserved_param1__>)"],
-    "power(𝑒,<__reserved_param1__>)": ["exp(<__reserved_param1__>)"],
-    "power(<__reserved_param1__>,<__reserved_param2__>)": ["power(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>^<__reserved_param2__>", "<__reserved_param1__>**<__reserved_param2__>"],
-
-    # 取余函数
-    "modulo(<__reserved_param1__>,<__reserved_param2__>)": ["modulo(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>%<__reserved_param2__>"],
-
-    # 阶乘函数
-    "factorial(<__reserved_param1__>)": ["fact(<__reserved_param1__>)", "<__reserved_param1__>!"],
-
-    # 绝对值函数
-    "absolute(<__reserved_param1__>)": ["absolute(<__reserved_param1__>)", "|<__reserved_param1__>|"],
-
-    # 符号函数
-    "sign(<__reserved_param1__>)": ["sign(<__reserved_param1__>)"],
-
-    # 角度转弧度函数
-    "radius(<__reserved_param1__>)": ["radius(<__reserved_param1__>)", "<__reserved_param1__>°"],
-
-    # 对数函数
-    "log(10,<__reserved_param1__>)": ["lg(<__reserved_param1__>)"],
-    "log(𝑒,<__reserved_param1__>)": ["ln(<__reserved_param1__>)"],
-    "log(<__reserved_param1__>,<__reserved_param2__>)": ["log(<__reserved_param1__>,<__reserved_param2__>)"],
-
-    # 三角函数
-    "sine(<__reserved_param1__>)": ["sin(<__reserved_param1__>)"],
-    "cosine(<__reserved_param1__>)": ["cosine(<__reserved_param1__>)"],
-    "tangent(<__reserved_param1__>)": ["tangent(<__reserved_param1__>)"],
-}
-
-
 r"""
 Formatting Output Function Options Table
 Type: Dict
@@ -2813,7 +2777,7 @@ test_cases7 = [
 test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6 + test_cases7
 
 # Write Data
-pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['function_conversion_table', function_conversion_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
+pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
 print('olocconfig updated')

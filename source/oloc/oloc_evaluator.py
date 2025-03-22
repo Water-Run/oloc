@@ -1,6 +1,6 @@
-"""
+r"""
 :author: WaterRun
-:date: 2025-03-17
+:date: 2025-03-22
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
@@ -8,7 +8,6 @@
 from math import gcd
 from oloc_token import Token
 from oloc_exceptions import *
-
 
 class Evaluator:
     r"""
@@ -105,19 +104,6 @@ class Evaluator:
                  fraction_tokens[0].range[0] + len(str(simplified_numerator)) + 1 + len(str(simplified_denominator))]
             )
         ]
-
-    class Functions:
-        r"""
-        函数
-        """
-
-        """
-        代数函数
-        """
-
-        """
-        超越函数
-        """
 
 
 """test"""
