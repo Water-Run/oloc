@@ -637,11 +637,15 @@ class Lexer:
             """
             result = temp_expression = []
             for temp_token in token_list:
-                if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET, Token.TYPE.FUNCTION):
+                if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET, Token.TYPE.FUNCTION) or (temp_token.type == Token.TYPE.OPERATOR and temp_token.value == reserved_operator.value):
                     result.append(temp_expression)
                     temp_expression = []
                     result.append(temp_token)
+                    continue
+                temp_expression.append(temp_token)
+
             result.append(temp_expression)
+            return result
 
         matches: list[MatchFunc] = []
         for value_list in function_conversion_table.values():
@@ -656,7 +660,8 @@ class Lexer:
                     continue
                 self.tokens = _convert_match(expression_list, match)
                 self.tokens, self.expression = Lexer.update(self.tokens)
-
+            if not _has_convert(self.tokens, matches):
+                break
 
     def execute(self):
         r"""
@@ -669,7 +674,7 @@ class Lexer:
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
-        #self._function_conversion()
+        self._function_conversion()
         self.time_cost = time.time_ns() - start_time
 
     """

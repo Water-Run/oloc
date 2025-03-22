@@ -25,8 +25,27 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "°": ["°", "degree", "deg", "^o", "度"],
     "^": ["^", "**"],
     "%": ["%", "余"],
-    "!": ["!", "阶层"],
+    "!": ["!", "阶乘"],
     "|": ["|"],
+
+    # 函数
+    "sqrt": ["sqrt", "sqt"],
+    "square": ["square", "sq"],
+    "cube": ["cube", "cub"],
+    "reciprocal": ["reciprocal", "rec"],
+    "exp": ["exp"],
+    "power": ["pow", "power"],
+    "modulo": ["mod", "modulo"],
+    "factorial": ["fact", "factorial"],
+    "absolute": ["abs", "absolute"],
+    "sign": ["sign"],
+    "radius": ["rad", "radius"],
+    "lg": ["lg"],
+    "ln": ["ln"],
+    "log": ["log"],
+    "sine": ["sin", "sine"],
+    "cosine": ["cos", "cosine"],
+    "tangent": ["tan", "tangent"],
 
     # 算术运算符
     "+": ["+", "plus", "add", "加", "\\"],
@@ -58,25 +77,6 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "{": ["{", "左大括号"],
     "}": ["}", "右大括号"],
 
-    # 函数
-    "sqrt": ["sqrt", "sqt"],
-    "square": ["square", "sq"],
-    "cube": ["cube", "cub"],
-    "reciprocal": ["reciprocal", "rec"],
-    "exp": ["exp"],
-    "pow": ["pow", "power"],
-    "mod": ["mod", "modulo"],
-    "fact": ["fact", "factorial"],
-    "abs": ["abs", "absolute"],
-    "sign": ["sign"],
-    "rad": ["rad", "radius"],
-    "lg": ["lg"],
-    "ln": ["ln"],
-    "log": ["log"],
-    "sin": ["sin", "sine"],
-    "cos": ["cos", "cosine"],
-    "tan": ["tan", "tangent"],
-
     # 数字
     "0": ["0", "zero", "零", "〇"],
     "1": ["1", "one", "一"],
@@ -92,27 +92,27 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
 
 function_conversion_table: dict[dict[str:list[str]]] = {
     # 指数函数
-    "pow(<__reserved_param1__>,1/2)": ["sqrt(<__reserved_param1__>)", "√<__reserved_param1__>"],
-    "pow(<__reserved_param1__>,2)": ["square(<__reserved_param1__>)"],
-    "pow(<__reserved_param1__>,3)": ["cube(<__reserved_param1__>)"],
-    "pow(<__reserved_param1__>,-1)": ["reciprocal(<__reserved_param1__>)"],
-    "pow(𝑒,<__reserved_param1__>)": ["exp(<__reserved_param1__>)"],
-    "pow(<__reserved_param1__>,<__reserved_param2__>)": ["pow(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>^<__reserved_param2__>", "<__reserved_param1__>**<__reserved_param2__>"],
+    "power(<__reserved_param1__>,1/2)": ["sqrt(<__reserved_param1__>)", "√<__reserved_param1__>"],
+    "power(<__reserved_param1__>,2)": ["square(<__reserved_param1__>)"],
+    "power(<__reserved_param1__>,3)": ["cube(<__reserved_param1__>)"],
+    "power(<__reserved_param1__>,-1)": ["reciprocal(<__reserved_param1__>)"],
+    "power(𝑒,<__reserved_param1__>)": ["exp(<__reserved_param1__>)"],
+    "power(<__reserved_param1__>,<__reserved_param2__>)": ["power(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>^<__reserved_param2__>", "<__reserved_param1__>**<__reserved_param2__>"],
 
     # 取余函数
-    "mod(<__reserved_param1__>,<__reserved_param2__>)": ["mod(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>%<__reserved_param2__>"],
+    "modulo(<__reserved_param1__>,<__reserved_param2__>)": ["modulo(<__reserved_param1__>,<__reserved_param2__>)", "<__reserved_param1__>%<__reserved_param2__>"],
 
     # 阶乘函数
-    "fact(<__reserved_param1__>)": ["fact(<__reserved_param1__>)", "<__reserved_param1__>!"],
+    "factorial(<__reserved_param1__>)": ["fact(<__reserved_param1__>)", "<__reserved_param1__>!"],
 
     # 绝对值函数
-    "abs(<__reserved_param1__>)": ["abs(<__reserved_param1__>)", "|<__reserved_param1__>|"],
+    "absolute(<__reserved_param1__>)": ["absolute(<__reserved_param1__>)", "|<__reserved_param1__>|"],
 
     # 符号函数
     "sign(<__reserved_param1__>)": ["sign(<__reserved_param1__>)"],
 
     # 角度转弧度函数
-    "rad(<__reserved_param1__>)": ["rad(<__reserved_param1__>)", "<__reserved_param1__>°"],
+    "radius(<__reserved_param1__>)": ["radius(<__reserved_param1__>)", "<__reserved_param1__>°"],
 
     # 对数函数
     "log(10,<__reserved_param1__>)": ["lg(<__reserved_param1__>)"],
@@ -120,9 +120,9 @@ function_conversion_table: dict[dict[str:list[str]]] = {
     "log(<__reserved_param1__>,<__reserved_param2__>)": ["log(<__reserved_param1__>,<__reserved_param2__>)"],
 
     # 三角函数
-    "sin(<__reserved_param1__>)": ["sin(<__reserved_param1__>)"],
-    "cos(<__reserved_param1__>)": ["cos(<__reserved_param1__>)"],
-    "tan(<__reserved_param1__>)": ["tan(<__reserved_param1__>)"],
+    "sine(<__reserved_param1__>)": ["sin(<__reserved_param1__>)"],
+    "cosine(<__reserved_param1__>)": ["cosine(<__reserved_param1__>)"],
+    "tangent(<__reserved_param1__>)": ["tangent(<__reserved_param1__>)"],
 }
 
 
@@ -137,6 +137,7 @@ formatting_output_function_options_table: dict[dict[str:any]] = {
     "number separator interval": 3,
     "underline-style number separator": False,
     "scientific notation adding thresholds": -1,
+    "simplify function-names": True,
     "operator form functions": True,
     "retain irrational param": False,
     "non-ascii character form native irrational": True,

@@ -155,4 +155,4 @@ def get_formatting_output_function_options_table() -> dict:
 
 """test"""
 if __name__ == '__main__':
-    print(get_formatting_output_function_options_table())
+    print(get_function_name_list())
