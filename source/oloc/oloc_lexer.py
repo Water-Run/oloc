@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-25
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -489,6 +489,72 @@ class Lexer:
 
         self.tokens, self.expression = Lexer.update(self.tokens)
 
+    def _static_check(self):
+        r"""
+        静态检查
+        :raise OlocInvalidTokenException: 当存在非法的运算符,括号或函数时,或类型错误时
+        :raise OlocIrrationalNumberException: 当存在非法的无理数参数时
+        :return: None
+        """
+        valid_operators = ('+', '-', '*', '/', '√', '°', '^', '%', '!', '|')
+        valid_bracket = ('(', ')')
+        valid_function = tuple(utils.get_function_mapping_table().keys())
+        valid_types = (
+            Token.TYPE.INTEGER,
+            Token.TYPE.OPERATOR,
+            Token.TYPE.RBRACKET,
+            Token.TYPE.LBRACKET,
+            Token.TYPE.LONG_CUSTOM,
+            Token.TYPE.SHORT_CUSTOM,
+            Token.TYPE.NATIVE_IRRATIONAL,
+            Token.TYPE.IRRATIONAL_PARAM,
+            Token.TYPE.FUNCTION,
+            Token.TYPE.PARAM_SEPARATOR,
+        )
+
+        for index, token in enumerate(self.tokens):
+            if token.type not in valid_types:
+                raise OlocInvalidTokenException(
+                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_TYPES,
+                    expression=self.expression,
+                    positions=list(range(*token.range)),
+                    token_content=token.type,
+                )
+            if token.type == Token.TYPE.OPERATOR and token.value not in valid_operators:
+                raise OlocInvalidTokenException(
+                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_OPERATOR,
+                    expression=self.expression,
+                    positions=list(range(*token.range)),
+                    token_content=token.value,
+                )
+            if token.type == Token.TYPE.FUNCTION and token.value not in valid_function:
+                raise OlocInvalidTokenException(
+                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_FUNCTION,
+                    expression=self.expression,
+                    positions=list(range(*token.range)),
+                    token_content=token.value,
+                )
+            if token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET) and token.value not in valid_bracket:
+                raise OlocInvalidTokenException(
+                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_BRACKET,
+                    expression=self.expression,
+                    positions=list(range(*token.range)),
+                    token_content=token.value,
+                )
+            if token.type == Token.TYPE.IRRATIONAL_PARAM:
+                if len(self.tokens) == 0 or self.tokens[index - 1].type not in [
+                    Token.TYPE.NATIVE_IRRATIONAL,
+                    Token.TYPE.SHORT_CUSTOM,
+                    Token.TYPE.LONG_CUSTOM,
+                    Token.TYPE.RBRACKET,
+                    Token.TYPE.INTEGER
+                ]:
+                    raise OlocIrrationalNumberException(
+                        exception_type=OlocIrrationalNumberException.EXCEPTION_TYPE.STATIC_CHECK_IRRPARAM,
+                        expression=self.expression,
+                        positions=list(range(*token.range)),
+                    )
+
     def execute(self):
         r"""
         执行分词器
@@ -500,6 +566,7 @@ class Lexer:
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
+        self._static_check()
         self.time_cost = time.time_ns() - start_time
 
     """
@@ -851,4 +918,4 @@ if __name__ == '__main__':
         for token in lexer.tokens:
             print(token.value, end=" ")
 
-    run_test()
+    test_with_error_handling()

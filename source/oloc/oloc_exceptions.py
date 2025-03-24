@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-25
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -281,6 +281,33 @@ class OlocInvalidTokenException(OlocException):
             "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
         )
 
+        STATIC_CHECK_OPERATOR = (
+            "OlocInvalidTokenException: Operator that should not be present during the static checking phase `{"
+            "token_content}`",
+            "This operator should not be present during static processing. Checking an expression or submitting an "
+            "issue."
+        )
+
+        STATIC_CHECK_FUNCTION = (
+            "OlocInvalidTokenException: Function that should not be present during the static checking phase `{"
+            "token_content}`",
+            "This operator should not be present during static processing. Checking an expression or submitting an "
+            "issue."
+        )
+
+        STATIC_CHECK_BRACKET = (
+            "OlocInvalidTokenException: Bracket that should not be present during the static checking phase `{"
+            "token_content}`",
+            "This bracket should not be present during static processing. Checking an expression or submitting an "
+            "issue."
+        )
+
+        STATIC_CHECK_TYPES = (
+            "OlocInvalidTokenException: Token types that should not be present `{"
+            "token_content}`",
+            "Token of this type should not be retained during the static checking phase. Checking an expression or submitting an issue."
+        )
+
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
         r"""
         初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。
@@ -354,6 +381,11 @@ class OlocIrrationalNumberException(OlocException):
         MISMATCH_LONG_RIGHT_SIGN = (
             "OlocIrrationalNumberException: Mismatch '>' detected",
             "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
+        )
+
+        STATIC_CHECK_IRRPARAM = (
+            "OlocIrrationalNumberException: Irrational number of parameters for which static checking fails",
+            "Check the expression to ensure that the structure of the irrational number argument is legal."
         )
 
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
