@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-24
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -27,25 +27,6 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "%": ["%", "余"],
     "!": ["!", "阶乘"],
     "|": ["|"],
-
-    # 函数
-    "sqrt": ["sqrt", "sqt"],
-    "square": ["square", "sq"],
-    "cube": ["cube", "cub"],
-    "reciprocal": ["reciprocal", "rec"],
-    "exp": ["exp"],
-    "power": ["pow", "power"],
-    "modulo": ["mod", "modulo"],
-    "factorial": ["fact", "factorial"],
-    "absolute": ["abs", "absolute"],
-    "sign": ["sign"],
-    "radius": ["rad", "radius"],
-    "lg": ["lg"],
-    "ln": ["ln"],
-    "log": ["log"],
-    "sine": ["sin", "sine"],
-    "cosine": ["cos", "cosine"],
-    "tangent": ["tan", "tangent"],
 
     # 算术运算符
     "+": ["+", "plus", "add", "加", "\\"],
@@ -90,23 +71,51 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "9": ["9", "nine", "九"],
 }
 
+function_mapping: dict[str, str] = {
+    "sqrt": ["sqrt", "sqt"],
+    "sq": ["square", "sq"],
+    "cub": ["cube", "cub"],
+    "rec": ["reciprocal", "rec"],
+    "exp": ["exp"],
+    "pow": ["power", "pow"],
+    "mod": ["modulo", "mod"],
+    "fact": ["factorial", "fact"],
+    "abs": ["absolute", "abs"],
+    "sign": ["sign"],
+    "rad": ["radius", "rad"],
+    "lg": ["lg"],
+    "ln": ["ln"],
+    "log": ["log"],
+    "sin": ["sine", "sin"],
+    "cos": ["cosine", "cos"],
+    "tan": ["tangent", "tan"],
+}
+
 r"""
 Formatting Output Function Options Table
 Type: Dict
 Description: Configure each function setting of the formatted output filter
 """
-formatting_output_function_options_table: dict[dict[str:any]] = {
-    "space between tokens": True,
-    "number separators add thresholds": -1,
-    "number separator interval": 3,
-    "underline-style number separator": False,
-    "scientific notation adding thresholds": -1,
-    "simplify function-names": True,
-    "operator form functions": True,
-    "retain irrational param": False,
-    "non-ascii character form native irrational": True,
-    "superscript": True,
-    "commonly-used-decimal conversions": True,
+formatting_output_function_options_table: dict[str, dict[str:any]] = {
+    "function formatting":
+        {
+            "operator form functions": True,
+        },
+    "readability":
+        {
+            "space between tokens": True,
+            "number separators add thresholds": -1,
+            "number separator interval": 3,
+            "scientific notation adding thresholds": -1,
+            "superscript": True,
+            "commonly-used-decimal conversions": True,
+        },
+    "custom":
+        {
+            "underline-style number separator": False,
+            "retain irrational param": False,
+            "non-ascii character form native irrational": True,
+        },
 }
 
 r"""
@@ -115,11 +124,6 @@ Type: Dict
 Description: A lookup table for exact or simplified values of common transcendental functions at specific points.
 """
 transcendental_function_table: dict = {}
-
-
-
-
-
 
 """===test cases==="""
 test_cases1 = [
@@ -2777,7 +2781,7 @@ test_cases7 = [
 test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6 + test_cases7
 
 # Write Data
-pending = (['retain_decimal_places', retain_decimal_places], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
+pending = (['retain_decimal_places', retain_decimal_places],  ['function_mapping_table' ,function_mapping], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
 print('olocconfig updated')

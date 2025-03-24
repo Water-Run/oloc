@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-24
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -63,6 +63,66 @@ class Preprocessor:
                 normalized += self.expression[index]
         self.expression = normalized
 
+    def _mark_long_custom_index(self) -> list[tuple[int, int]]:
+        r"""
+        Marks the indices of custom long irrational numbers in the expression.
+        :return: A list of marked indices
+        """
+        long_custom_start_stack = []
+        custom_indices = []
+        for index, char in enumerate(self.expression):
+            if char == '<':
+                long_custom_start_stack.append(index)
+            if char == '>':
+                if len(long_custom_start_stack) == 1:
+                    custom_indices.append((long_custom_start_stack[0], index))
+                long_custom_start_stack.pop()
+        return custom_indices
+
+    def _is_protected(self, index: int, protected_indices: list[tuple[int, int]]) -> bool:
+        r"""
+        Checks if a certain index is in the protected area.
+        :param index: The target index
+        :param protected_indices: A list of protected index ranges
+        :return: Whether it is protected
+        """
+        for start, end in protected_indices:
+            if start <= index < end:
+                return True
+        return False
+
+    def _replace_symbols(self, mapping_table: dict, protected_indices: list[tuple[int, int]]) -> str:
+        r"""
+        Performs symbol mapping on the expression.
+        :param mapping_table: A mapping table containing mappings for replacement
+        :param protected_indices: A list of protected index ranges
+        :return: The processed expression
+        """
+        result = []
+        i = 0
+        while i < len(self.expression):
+            if self._is_protected(i, protected_indices):
+                # If the current index is in a protected area, directly add the character
+                result.append(self.expression[i])
+                i += 1
+            else:
+                replaced = False
+                # Traverse the mapping table and attempt replacement
+                for key, values in mapping_table.items():
+                    for value in values:
+                        if self.expression.startswith(value, i):
+                            result.append(key)
+                            i += len(value)
+                            replaced = True
+                            break
+                    if replaced:
+                        break
+                if not replaced:
+                    # If not replaced, directly add the character
+                    result.append(self.expression[i])
+                    i += 1
+        return ''.join(result)
+
     def _symbol_mapper(self) -> None:
         r"""
         Reads the symbol mapping table and maps symbols sequentially. Symbols in function names and custom long
@@ -71,86 +131,42 @@ class Preprocessor:
         """
         symbol_mapping_table = utils.get_symbol_mapping_table()
 
-        def _replace_symbols(expression: str) -> str:
+        def _mark_function_index() -> list[tuple[int, int]]:
             r"""
-            Performs symbol mapping.
-            :param expression: The expression to be processed
-            :return: The processed expression
+            Marks the indices of functions in the expression.
+            :return: A list of marked indices
             """
+            function_names = utils.get_function_name_list()
+            function_indices = []
+            for func in function_names:
+                start = 0
+                while (index := self.expression.find(func, start)) != -1:
+                    end = index + len(func)
+                    function_indices.append((index, end))
+                    start = end
+            return function_indices
 
-            def _mark_function_index() -> list[tuple[int, int]]:
-                r"""
-                Marks the indices of functions in the expression.
-                :return: A list of marked indices
-                """
-                function_names = utils.get_function_name_list()
-                function_indices = []
-                for func in function_names:
-                    start = 0
-                    while (index := expression.find(func, start)) != -1:
-                        end = index + len(func)
-                        function_indices.append((index, end))
-                        start = end
-                return function_indices
+        # Mark protected areas
+        function_indices = _mark_function_index()
+        custom_indices = self._mark_long_custom_index()
+        protected_indices = function_indices + custom_indices
 
-            def _mark_long_custom_index() -> list[int, int]:
-                r"""
-                Marks the indices of custom long irrational numbers in the expression.
-                :return: A list of marked indices
-                """
-                long_custom_start_stack = []
-                custom_indices = []
-                for index, char in enumerate(expression):
-                    if char == '<':
-                        long_custom_start_stack.append(index)
-                    if char == '>':
-                        if len(long_custom_start_stack) == 1:
-                            custom_indices.append([long_custom_start_stack[0], index])
-                        long_custom_start_stack.pop()
-                return custom_indices
+        # Replace symbols
+        self.expression = self._replace_symbols(symbol_mapping_table, protected_indices)
 
-            def _is_protected(index: int) -> bool:
-                r"""
-                Checks if a certain index is in the protected area.
-                :param index: The target index
-                :return: Whether it is protected
-                """
-                for start, end in protected_indices:
-                    if start <= index < end:
-                        return True
-                return False
+    def _function_mapper(self) -> None:
+        r"""
+        Reads the function mapping table and maps symbols sequentially. Symbols in custom long
+        irrational numbers are not replaced.
+        :return: None
+        """
+        function_mapping_table = utils.get_function_mapping_table()
 
-            # Mark protected areas
-            protected_indices = _mark_function_index() + _mark_long_custom_index()
+        # Mark protected areas
+        protected_indices = self._mark_long_custom_index()
 
-            # Replace non-protected parts
-            result = []
-            i = 0
-            while i < len(expression):
-                if _is_protected(i):
-                    # If the current index is in a protected area, directly add the character
-                    result.append(expression[i])
-                    i += 1
-                else:
-                    replaced = False
-                    # Traverse the symbol mapping table and attempt replacement
-                    for symbol, mappings in symbol_mapping_table.items():
-                        for mapping in mappings:
-                            if expression.startswith(mapping, i):
-                                result.append(symbol)
-                                i += len(mapping)
-                                replaced = True
-                                break
-                        if replaced:
-                            break
-                    if not replaced:
-                        # If not replaced, directly add the character
-                        result.append(expression[i])
-                        i += 1
-
-            return ''.join(result)
-
-        self.expression = _replace_symbols(self.expression)
+        # Replace symbols
+        self.expression = self._replace_symbols(function_mapping_table, protected_indices)
 
     def _equals_sign_elimination(self) -> None:
         r"""
@@ -322,6 +338,7 @@ class Preprocessor:
         self._remove_comment()
         self._normalize_superscript_symbols()
         self._symbol_mapper()
+        self._function_mapper()
         self._equals_sign_elimination()
         self._formal_elimination()
         self.time_cost = time.time_ns() - start_time

@@ -1,27 +1,12 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-24
 :file: oloc_utils.py
 :description: Oloc utils
 """
 
 import simpsave as ss
-from oloc_token import Token
 from enum import Enum
-
-"""
-常用数字
-"""
-
-
-class COMMON_FIGURES(Enum):
-    r"""
-    常用数字.Token流形式
-    """
-    ONE_HALF = [Token(Token.TYPE.INTEGER, "1"),
-                Token(Token.TYPE.OPERATOR, "/"),
-                Token(Token.TYPE.INTEGER, "2")]
-
 
 """
 运算符优先级
@@ -72,15 +57,37 @@ def get_symbol_mapping_table() -> dict:
     return result
 
 
+def get_function_mapping_table() -> dict:
+    r"""
+    Read function mapping table from ./data/olocconfig.ini
+    :return: Readout table
+    :raise RuntimeError: If table cannot be read or there is an error in the table contents
+    """
+    try:
+        result: dict = ss.read('function_mapping_table', file='./data/olocconfig.ini')
+    except (KeyError, ValueError, FileNotFoundError):
+        raise RuntimeError(
+            "olocdata.ini is not accessible or has the wrong format (losing `function_mapping_table`). \nVisit "
+            "https://github.com/Water-Run/oloc for documentation to fix.")
+
+    if not (
+            all(isinstance(key, str) for key in result.keys()) and
+            all(isinstance(value, list) for value in result.values()) and
+            all(all(isinstance(item, str) for item in value) for value in result.values())
+    ):
+        raise RuntimeError("There is a formatting error in the function mapping table in olocdata.ini. Visit "
+                           "https://github.com/Water-Run/oloc for documentation to fix.")
+    return result
+
+
 def get_function_name_list() -> list:
     r"""
     Get function names in standard function call form (explicit function call)
     :return: Function name list
     """
 
-    return ['cube', 'fact', 'cosine', 'power', 'sign', 'log', 'sin', 'square', 'radius', 'exp', 'tangent', 'ln',
-            'modulo', 'sqrt', 'reciprocal', 'absolute', 'lg']
-
+    function_mapping_table = get_function_mapping_table()
+    return [alias for aliases in function_mapping_table.values() for alias in aliases]
 
 def get_formatting_output_function_options_table() -> dict:
     r"""

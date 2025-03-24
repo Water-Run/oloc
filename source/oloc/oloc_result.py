@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-24
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -21,13 +21,19 @@ def output_filter(tokens: list[Token]) -> str:
     between_token = " " * configs["space between token"]
     number_seperator = "," if configs["underline-style number separator"] else "_"
 
-
     result = ""
+
     for temp_token in tokens:
+        temp_value = temp_token.value
+
+        # 当不启用保留无理数参数时,舍弃无理数参数
         if temp_token.type == Token.TYPE.IRRATIONAL_PARAM and not configs["retain irrational param"]:
             continue
+
+        # 添加Token间隔空格
         if len(tokens) > 1:
             result += between_token
+
     return result
 
 
