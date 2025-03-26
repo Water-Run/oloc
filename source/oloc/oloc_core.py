@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-26
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -123,13 +123,21 @@ def run_test(test_file: str, test_key: str, time_limit: int):
     :param time_limit: 计算限时
     :return: None
     """
-    tests = ss.read(test_key, file=test_file)
-    for test in tests:
-        try:
-            calculate(test, time_limit=time_limit)
-        except Exception as error:
-            print(error)
-            input("continue>>")
+    try:
+        tests = ss.read(test_key, file=test_file)
+    except KeyError as k_error:
+        print(f'--SimpSave Key Error--\n{k_error}')
+    except ValueError as v_error:
+        print(f'--SimpSave Value Error--\n{v_error}')
+    except FileNotFoundError as f_error:
+        print(f'--SimpSave File Not Found Error--\n{f_error}')
+    else:
+        for test in tests:
+            try:
+                calculate(test, time_limit=time_limit)
+            except Exception as error:
+                print(error)
+                input("continue>>")
 
 
 """test"""

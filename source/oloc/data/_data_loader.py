@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-24
+:date: 2025-03-26
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -71,7 +71,7 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "9": ["9", "nine", "九"],
 }
 
-function_mapping: dict[str, str] = {
+function_mapping_table: dict[str, str] = {
     "sqrt": ["sqrt", "sqt"],
     "sq": ["square", "sq"],
     "cub": ["cube", "cub"],
@@ -2781,7 +2781,15 @@ test_cases7 = [
 test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6 + test_cases7
 
 # Write Data
-pending = (['retain_decimal_places', retain_decimal_places],  ['function_mapping_table' ,function_mapping], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
+pending = (['retain_decimal_places', retain_decimal_places], ['function_mapping_table' , function_mapping_table], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
-print('olocconfig updated')
+print('dataloader: writing to olocconfig.ini')
+for table in pending[:-1]:  # temp: ignore test
+    if not (ss.read(table[0], file='olocconfig.ini') == table[1]):
+        print(table)
+        print('dataloader: fail to update')
+        break
+else:
+    print('dataloader: olocconfig updated')
+

@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-24
+:date: 2025-03-26
 :file: oloc_utils.py
 :description: Oloc utils
 """
@@ -88,6 +88,7 @@ def get_function_name_list() -> list:
 
     function_mapping_table = get_function_mapping_table()
     return [alias for aliases in function_mapping_table.values() for alias in aliases]
+
 
 def get_formatting_output_function_options_table() -> dict:
     r"""
