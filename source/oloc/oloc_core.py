@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-26
+:date: 2025-03-27
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -24,12 +24,16 @@ def _execute_calculation(expression: str, result_queue: Queue) -> None:
     """test"""
     try:
 
-        preprocess = Preprocessor(expression)
-        preprocess.execute()
-        result = preprocess  # temp
-        time.sleep(1)
-        lexer = Lexer(preprocess.expression)
+        # 预处理
+        preprocessor = Preprocessor(expression)
+        preprocessor.execute()
+
+        # 词法分析
+        lexer = Lexer(preprocessor.expression)
         lexer.execute()
+
+        # 结果封装
+        result = OlocResult(lexer.expression, [])
 
         result_queue.put(OlocResult(result.expression, [result.expression]))
     except Exception as e:

@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-22
+:date: 2025-03-27
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
@@ -8,6 +8,7 @@ r"""
 from math import gcd
 from oloc_token import Token
 from oloc_exceptions import *
+
 
 class Evaluator:
     r"""

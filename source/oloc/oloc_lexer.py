@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-25
+:date: 2025-03-27
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -71,50 +71,55 @@ class Lexer:
             Token.TYPE.NATIVE_IRRATIONAL
         }
 
+        def _add_multiply(add_index: int):
+            r"""
+            添加乘号至 Token 流
+            :param add_index: 要添加乘号的位置
+            """
+            self.tokens = (
+                    self.tokens[:add_index + 1]
+                    + [Token(Token.TYPE.OPERATOR, "*", [add_index + 1, add_index + 2])]
+                    + self.tokens[add_index + 1:]
+            )
+
         # 遍历 Token 列表
         index = 0
         while index < len(self.tokens) - 1:
             current_token = self.tokens[index]
             next_token = self.tokens[index + 1]
 
-            # 情况 1: 数字后接 (
-            if current_token.type in NUMBERS and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index + 1] + [
-                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                               index + 1:]
+            # 定义匹配条件的集合
+            conditions = [
+                # 情况 1: 数字后接 (
+                (lambda t1, t2: t1 in NUMBERS and t2 == Token.TYPE.LBRACKET),
 
-            # 情况 2: 无理数参数后接 (
-            elif current_token.type == Token.TYPE.IRRATIONAL_PARAM and next_token.type == Token.TYPE.LBRACKET:
-                self.tokens = self.tokens[:index + 1] + [
-                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                               index + 1:]
+                # 情况 2: 无理数参数后接 (
+                (lambda t1, t2: t1 == Token.TYPE.IRRATIONAL_PARAM and t2 == Token.TYPE.LBRACKET),
 
-            # 情况 3: ) 后接数字
-            elif current_token.type == Token.TYPE.RBRACKET and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index + 1] + [
-                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                               index + 1:]
+                # 情况 3: ) 后接数字
+                (lambda t1, t2: t1 == Token.TYPE.RBRACKET and t2 in NUMBERS),
 
-            # 情况 4: 无理数后接无理数
-            elif current_token.type in IRRATIONALS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index + 1] + [
-                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                               index + 1:]
+                # 情况 4: 无理数后接无理数
+                (lambda t1, t2: t1 in IRRATIONALS and t2 in IRRATIONALS),
 
-            # 情况 5: 数字后接无理数
-            elif current_token.type in NUMBERS and next_token.type in IRRATIONALS:
-                self.tokens = self.tokens[:index + 1] + [
-                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                               index + 1:]
+                # 情况 5: 数字后接无理数
+                (lambda t1, t2: t1 in NUMBERS and t2 in IRRATIONALS),
 
-            # 情况 6: 无理数后接数字
-            elif current_token.type in IRRATIONALS and next_token.type in NUMBERS:
-                self.tokens = self.tokens[:index + 1] + [
-                    Token(Token.TYPE.OPERATOR, "*", [index + 1, index + 2])] + self.tokens[
-                                                                               index + 1:]
+                # 情况 6: 无理数后接数字
+                (lambda t1, t2: t1 in IRRATIONALS and t2 in NUMBERS),
+
+                # 情况 7: 数字后接函数名
+                (lambda t1, t2: t1 in NUMBERS and t2 == Token.TYPE.FUNCTION)
+            ]
+
+            # 判断是否满足条件并调用 _add_multiply
+            if any(condition(current_token.type, next_token.type) for condition in conditions):
+                _add_multiply(index)
 
             # 前进到下一个 Token
             index += 1
+
+        # 更新 Tokens 和表达式
         self.tokens, self.expression = Lexer.update(self.tokens)
 
     def _check_denominator(self, check_tokens: list[Token, Token, Token]) -> list[Token, Token, Token]:
@@ -918,4 +923,4 @@ if __name__ == '__main__':
         for token in lexer.tokens:
             print(token.value, end=" ")
 
-    test_with_error_handling()
+    run_test()
