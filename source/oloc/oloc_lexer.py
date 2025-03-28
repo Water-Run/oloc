@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-28
+:date: 2025-03-29
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -619,6 +619,10 @@ class Lexer:
 
         # 标记无理数参数
         for index, char in enumerate(expression):
+
+            if mark_list[index] != Token.TYPE.UNKNOWN:
+                continue
+
             if char == "?":
                 # 记录当前 ? 的索引并初始化索引列表
                 irrational_param_index_list = [index]
@@ -628,6 +632,9 @@ class Lexer:
 
                 for scan_index in range(index - 1, -1, -1):  # 从当前索引向前遍历
                     scan_char = expression[scan_index]
+
+                    if mark_list[scan_index] != Token.TYPE.UNKNOWN:
+                        break
 
                     if scan_char.isdigit() or scan_char in {".", "+", "-"}:
                         irrational_param_index_list.append(scan_index)
@@ -644,18 +651,23 @@ class Lexer:
                 for irrational_index in irrational_param_index_list:
                     mark_list[irrational_index] = Token.TYPE.IRRATIONAL_PARAM
 
+        # 标记函数
         for func_name in function_names:
             start = 0
             func_len = len(func_name)
 
             # 在表达式中查找函数名
-            while (index := expression.find(func_name, start)) != -1:
-                end_index = index + func_len
-                # 标记匹配范围内的字符为 FUNCTION，不再检查前后字符
-                for i in range(index, end_index):
+            while (find_index := expression.find(func_name, start)) != -1:
+
+                end_index = find_index + func_len
+
+                if mark_list[find_index] != Token.TYPE.UNKNOWN:
+                    start = end_index
+                    continue
+
+                for i in range(find_index, end_index):
                     mark_list[i] = Token.TYPE.FUNCTION
 
-                # 更新查找的起始位置，避免重复匹配
                 start = end_index
 
         # 标记数字
@@ -865,6 +877,7 @@ if __name__ == '__main__':
             preprocessor.execute()
             lexer = Lexer(preprocessor.expression)
             lexer.execute()
+            print(test, end=" => ")
             for token in lexer.tokens:
                 print(token.value, end=" ")
             print("")
