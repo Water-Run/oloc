@@ -1,12 +1,15 @@
 r"""
 :author: WaterRun
-:date: 2025-03-24
+:date: 2025-03-28
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
 
-from oloc_lexer import *
 import time
+import re
+
+import oloc_utils as utils
+from oloc_exceptions import *
 
 
 class Preprocessor:
@@ -18,6 +21,9 @@ class Preprocessor:
     def __init__(self, expression: str):
         self.expression = expression
         self.time_cost = -1
+        self._symbol_mapping_table = utils.get_symbol_mapping_table()
+        self._function_mapping_table = utils.get_function_mapping_table()
+        self._function_name_list = utils.get_function_name_list()
 
     def _remove_comment(self) -> None:
         r"""
@@ -53,14 +59,14 @@ class Preprocessor:
                         '⁰': '0'}
 
         normalized = ""
-        for index, char in enumerate(self.expression):
+        for superscript_index, char in enumerate(self.expression):
             if char in superscripts.keys():
-                if index > 0 and self.expression[index - 1] in superscripts.keys():
+                if superscript_index > 0 and self.expression[superscript_index - 1] in superscripts.keys():
                     normalized += superscripts[char]
                 else:
                     normalized += "^" + superscripts[char]
             else:
-                normalized += self.expression[index]
+                normalized += self.expression[superscript_index]
         self.expression = normalized
 
     def _mark_long_custom_index(self) -> list[tuple[int, int]]:
@@ -129,14 +135,14 @@ class Preprocessor:
         irrational numbers are not replaced.
         :return: None
         """
-        symbol_mapping_table = utils.get_symbol_mapping_table()
+        symbol_mapping_table = self._symbol_mapping_table
 
         def _mark_function_index() -> list[tuple[int, int]]:
             r"""
             Marks the indices of functions in the expression.
             :return: A list of marked indices
             """
-            function_names = utils.get_function_name_list()
+            function_names = self._function_name_list
             function_indices = []
             for func in function_names:
                 start = 0
@@ -160,7 +166,7 @@ class Preprocessor:
         irrational numbers are not replaced.
         :return: None
         """
-        function_mapping_table = utils.get_function_mapping_table()
+        function_mapping_table = self._function_mapping_table
 
         # Mark protected areas
         protected_indices = self._mark_long_custom_index()
@@ -176,12 +182,12 @@ class Preprocessor:
         """
         if self.expression.endswith('='):
             self.expression = self.expression[:-1]
-        index = self.expression.find('=')
-        if index != -1:
+        equal_sign_index = self.expression.find('=')
+        if equal_sign_index != -1:
             raise OlocInvalidEqualSignException(
                 exception_type=OlocInvalidEqualSignException.EXCEPTION_TYPE.MISPLACED,
                 expression=self.expression,
-                positions=[index],
+                positions=[equal_sign_index],
             )
 
     def _formal_elimination(self) -> None:
@@ -210,7 +216,7 @@ class Preprocessor:
             self.expression = self.expression[1:]
 
         # 获取函数名称列表
-        function_names = utils.get_function_name_list()
+        function_names = self._function_name_list
 
         # 定义块类型枚举
         class BlockType(Enum):
@@ -343,10 +349,23 @@ class Preprocessor:
         self._formal_elimination()
         self.time_cost = time.time_ns() - start_time
 
-
 """test"""
-if __name__ == "__main__":
-    while True:
-        preprocess = Preprocessor(input(">>>"))
-        preprocess.execute()
-        print(preprocess.expression)
+
+if __name__ == '__main__':
+    import simpsave as ss
+
+    tests = ss.read('test_cases', file='./data/oloctest.ini')
+    time_costs = []
+    print('___________')
+    for index, test in enumerate(tests):
+        if index % 200 == 0:
+            print("=", end="")
+        try:
+            preprocessor = Preprocessor(test)
+            preprocessor.execute()
+            time_costs.append(preprocessor.time_cost)
+        except:
+            continue
+    print(f"\n"
+          f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
+          )

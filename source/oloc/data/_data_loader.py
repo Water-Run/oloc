@@ -2778,10 +2778,10 @@ test_cases7 = [
     "{([]) * ({}) / (())}",
 ]
 
-test_cases = test_cases1 + test_cases2 + test_cases3 + test_case4 + test_case5 + test_cases6 + test_cases7
+ss.delete(file='olocconfig.ini')
 
 # Write Data
-pending = (['retain_decimal_places', retain_decimal_places], ['function_mapping_table' , function_mapping_table], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table], ['test_cases', test_cases])
+pending = (['retain_decimal_places', retain_decimal_places], ['function_mapping_table' , function_mapping_table], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
 print('dataloader: writing to olocconfig.ini')

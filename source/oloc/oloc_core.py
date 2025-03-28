@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-27
+:date: 2025-03-28
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -119,7 +119,7 @@ def is_reserved(symbol: str) -> bool:
     return any(keyword in symbol for keyword in reserved_keywords)
 
 
-def run_test(test_file: str, test_key: str, time_limit: int):
+def run_test(test_file: str, test_key: str, time_limit: float = -1):
     r"""
     运行测试
     :param test_file: 待测试的simpsave ini文件
@@ -138,7 +138,7 @@ def run_test(test_file: str, test_key: str, time_limit: int):
     else:
         for test in tests:
             try:
-                calculate(test, time_limit=time_limit)
+                print(calculate(test, time_limit=time_limit).expression)
             except Exception as error:
                 print(error)
                 input("continue>>")
@@ -146,5 +146,4 @@ def run_test(test_file: str, test_key: str, time_limit: int):
 
 """test"""
 if __name__ == "__main__":
-    while True:
-        print(is_reserved(input(">>>")))
+    run_test("./data/oloctest.ini", "test_cases", 0.5)

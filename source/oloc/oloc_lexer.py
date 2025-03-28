@@ -1,13 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-03-27
+:date: 2025-03-28
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
 
-import re
 import time
-from enum import Enum
 import oloc_utils as utils
 from oloc_evaluator import Evaluator
 from oloc_exceptions import *
@@ -54,7 +52,6 @@ class Lexer:
         :return: None
         """
 
-        # 定义数字和无理数的类型集合
         NUMBERS = {
             Token.TYPE.FINITE_DECIMAL,
             Token.TYPE.INFINITE_DECIMAL,
@@ -82,13 +79,11 @@ class Lexer:
                     + self.tokens[add_index + 1:]
             )
 
-        # 遍历 Token 列表
-        index = 0
-        while index < len(self.tokens) - 1:
-            current_token = self.tokens[index]
-            next_token = self.tokens[index + 1]
+        token_index = 0
+        while token_index < len(self.tokens) - 1:
+            current_token = self.tokens[token_index]
+            next_token = self.tokens[token_index + 1]
 
-            # 定义匹配条件的集合
             conditions = [
                 # 情况 1: 数字后接 (
                 (lambda t1, t2: t1 in NUMBERS and t2 == Token.TYPE.LBRACKET),
@@ -112,15 +107,11 @@ class Lexer:
                 (lambda t1, t2: t1 in NUMBERS and t2 == Token.TYPE.FUNCTION)
             ]
 
-            # 判断是否满足条件并调用 _add_multiply
             if any(condition(current_token.type, next_token.type) for condition in conditions):
-                _add_multiply(index)
+                _add_multiply(token_index)
 
-            # 前进到下一个 Token
-            index += 1
-
-        # 更新 Tokens 和表达式
-        self.tokens, self.expression = Lexer.update(self.tokens)
+            token_index += 1
+            self.tokens, self.expression = Lexer.update(self.tokens)
 
     def _check_denominator(self, check_tokens: list[Token, Token, Token]) -> list[Token, Token, Token]:
         r"""
@@ -167,7 +158,7 @@ class Lexer:
             if int(integer_part) < 0:
                 numerator = -numerator
 
-            fraction = [Token(Token.TYPE.INTEGER,
+            return [Token(Token.TYPE.INTEGER,
                               str(numerator),
                               [finite_decimal.range[0], finite_decimal.range[0] + len(str(numerator))]
                               ),
@@ -182,8 +173,6 @@ class Lexer:
                                finite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
                               ),
                         ]
-
-            return fraction
 
         def _convert_infinite_decimal(infinite_decimal: Token) -> [Token, Token, Token]:
             r"""
@@ -269,7 +258,7 @@ class Lexer:
                     numerator += int(repeat_part)
 
                 # 返回分数形式
-                fraction = [Token(Token.TYPE.INTEGER,
+                return [Token(Token.TYPE.INTEGER,
                                   str(numerator),
                                   [infinite_decimal.range[0], infinite_decimal.range[0] + len(str(numerator))]
                                   ),
@@ -284,7 +273,6 @@ class Lexer:
                                    infinite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
                                   ),
                             ]
-                return fraction
 
             # 主函数逻辑
             infinite_decimal_str = infinite_decimal.value
@@ -329,7 +317,7 @@ class Lexer:
             if percentage_str.endswith('.'):
                 percentage_str = percentage_str[:-1]
 
-            fraction = [Token(Token.TYPE.INTEGER, percentage_str,
+            return [Token(Token.TYPE.INTEGER, percentage_str,
                           [percentage.range[0], percentage.range[0] + len(percentage_str)]),
                     Token(Token.TYPE.OPERATOR, "/",
                           [percentage.range[0] + len(percentage_str), percentage.range[0] + len(percentage_str) + 1]),
@@ -339,7 +327,6 @@ class Lexer:
                     ] if '.' not in percentage_str else _convert_finite_decimal(
                 Token(Token.TYPE.FINITE_DECIMAL, percentage_str,
                       [percentage.range[0], percentage.range[0] + len(percentage_str)]))
-            return fraction
 
         fractionalized_tokens = []
 
@@ -350,16 +337,16 @@ class Lexer:
         ]
 
         tokens_to_fractionalized: list[Token] = []
-        index = 0
-        while index < len(self.tokens):
-            temp_token = self.tokens[index]
+        token_index = 0
+        while token_index < len(self.tokens):
+            temp_token = self.tokens[token_index]
             if (convert_type := temp_token.type) == Token.TYPE.INTEGER and \
-                    index + 2 < len(self.tokens) and \
-                    self.tokens[index + 1].value == "/" and \
-                    self.tokens[index + 2].type == Token.TYPE.INTEGER:
+                    token_index + 2 < len(self.tokens) and \
+                    self.tokens[token_index + 1].value == "/" and \
+                    self.tokens[token_index + 2].type == Token.TYPE.INTEGER:
                 fractionalized_tokens += Evaluator.simplify(
-                    self._check_denominator([temp_token, self.tokens[index + 1], self.tokens[index + 2]]))
-                index += 2
+                    self._check_denominator([temp_token, self.tokens[token_index + 1], self.tokens[token_index + 2]]))
+                token_index += 2
             elif convert_type in convert_num_types:
                 match convert_type:
                     case Token.TYPE.FINITE_DECIMAL:
@@ -371,10 +358,9 @@ class Lexer:
                 fractionalized_tokens += _add_bracket(Evaluator.simplify(tokens_to_fractionalized))
             else:
                 fractionalized_tokens += [temp_token]
-            index += 1
+            token_index += 1
 
-        self.tokens = fractionalized_tokens
-        self.tokens, self.expression = Lexer.update(self.tokens)
+        self.tokens, self.expression = Lexer.update(fractionalized_tokens)
 
     def _bracket_checking_harmonisation(self) -> None:
         """
@@ -489,10 +475,9 @@ class Lexer:
                     if _is_redundant_bracket(left_index, i):
                         tokens_to_remove.add(left_index)
                         tokens_to_remove.add(i)
+                        self.tokens, self.expression = Lexer.update([token for i, token in enumerate(self.tokens) if i not in tokens_to_remove])
 
-        self.tokens = [token for i, token in enumerate(self.tokens) if i not in tokens_to_remove]
-
-        self.tokens, self.expression = Lexer.update(self.tokens)
+        self.tokens, self.expression = Lexer.update([token for i, token in enumerate(self.tokens) if i not in tokens_to_remove])
 
     def _static_check(self):
         r"""
@@ -501,6 +486,7 @@ class Lexer:
         :raise OlocIrrationalNumberException: 当存在非法的无理数参数时
         :return: None
         """
+        return
         valid_operators = ('+', '-', '*', '/', '√', '°', '^', '%', '!', '|')
         valid_bracket = ('(', ')')
         valid_function = tuple(utils.get_function_mapping_table().keys())
@@ -517,7 +503,7 @@ class Lexer:
             Token.TYPE.PARAM_SEPARATOR,
         )
 
-        for index, token in enumerate(self.tokens):
+        for token_index, token in enumerate(self.tokens):
             if token.type not in valid_types:
                 raise OlocInvalidTokenException(
                     exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_TYPES,
@@ -547,7 +533,7 @@ class Lexer:
                     token_content=token.value,
                 )
             if token.type == Token.TYPE.IRRATIONAL_PARAM:
-                if len(self.tokens) == 0 or self.tokens[index - 1].type not in [
+                if len(self.tokens) == 0 or self.tokens[token_index - 1].type not in [
                     Token.TYPE.NATIVE_IRRATIONAL,
                     Token.TYPE.SHORT_CUSTOM,
                     Token.TYPE.LONG_CUSTOM,
@@ -842,85 +828,58 @@ class Lexer:
         更新输入的Token流
         :return: 一个列表,第一项是更新后的Token流,第二项是表达式字符串
         """
-        # 清空表达式和起始下标
         expression = ""
         start_index = 0
 
-        # 遍历所有Token，拼接表达式并检查下标连续性
-        for index, process_token in enumerate(tokens):
-            # 拼接表达式
+        for token_index, process_token in enumerate(tokens):
             expression += process_token.value
 
-            # 如果是第一个Token，直接设置其下标
-            if index == 0:
+            if token_index == 0:
                 process_token.range = [start_index, start_index + len(process_token.value)]
                 start_index = process_token.range[1]
                 continue
 
-            # 检查当前Token和前一个Token的下标连续性
-            previous_token = tokens[index - 1]
+            previous_token = tokens[token_index - 1]
             if previous_token.range[1] != process_token.range[0]:
-                # 下标不连续，重新分配当前Token及后续Token的下标
                 process_token.range = [start_index, start_index + len(process_token.value)]
             else:
-                # 下标连续，保持当前下标
                 process_token.range = [previous_token.range[1], previous_token.range[1] + len(process_token.value)]
 
-            # 更新起始下标
             start_index = process_token.range[1]
         return [tokens, expression]
 
-
 """test"""
+
 if __name__ == '__main__':
-    import oloc_preprocessor as preprocessor
+    import simpsave as ss
+    from oloc_preprocessor import Preprocessor
 
-    def run_test():
-        import simpsave as ss
-        tests = ss.read("test_cases", file="./data/olocconfig.ini")
-        # input(f"{len(tests)}>>>")
-        start = time.time()
-        for test in tests:
-            try:
-                preprocess = preprocessor.Preprocessor(test)
-                preprocess.execute()
-                print(test, end=" => ")
-                lexer = Lexer(preprocess.expression)
-                lexer.execute()
-                for token in lexer.tokens:
-                    ...  # debug
-                    print(token.value, end=" ")
-                print(f"\t {preprocess.time_cost / 1000000} ms {lexer.time_cost / 1000000} ms")
-            except (TypeError, ZeroDivisionError) as t_error:
-                raise t_error
-            except Exception as error:
-                print(f"\n\n\n========\n\n{error}\n\n\n")
-        print(f"Run {len(tests)} in {time.time() - start}")
+    tests = ss.read('test_cases', file='./data/oloctest.ini')
+    time_costs = []
+    print('___________')
+    for index, test in enumerate(tests):
+        # if index % 200 == 0:
+        #     print("=", end="")
+        try:
+            preprocessor = Preprocessor(test)
+            preprocessor.execute()
+            lexer = Lexer(preprocessor.expression)
+            lexer.execute()
+            for token in lexer.tokens:
+                print(token.value, end=" ")
+            print("")
+            time_costs.append(lexer.time_cost)
+        except Exception as e:
+            print(e)
+    print(f"\n"
+          f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
+          )
 
-    def test_with_error_handling():
-        while True:
-            try:
-                preprocess = preprocessor.Preprocessor(input(">>>"))
-                preprocess.execute()
-                lexer = Lexer(preprocess.expression)
-                lexer.execute()
-                print(lexer.tokens)
-                for token in lexer.tokens:
-                    print(token.value, end=" ")
-                print(
-                    f"\nIn {preprocess.time_cost / 1000000} + {lexer.time_cost / 1000000} = {(preprocess.time_cost + lexer.time_cost) / 1000000} ms")
-            except (TypeError, ZeroDivisionError) as t_error:
-                raise t_error
-            except Exception as error:
-                print(error)
-
-    def test_without_error_handing():
-        preprocess = preprocessor.Preprocessor(input(">>>"))
-        preprocess.execute()
-        lexer = Lexer(preprocess.expression)
+    while True:
+        expression = input(">>")
+        preprocessor = Preprocessor(expression)
+        preprocessor.execute()
+        lexer = Lexer(preprocessor.expression)
         lexer.execute()
         print(lexer.tokens)
-        for token in lexer.tokens:
-            print(token.value, end=" ")
-
-    run_test()
+        print(preprocessor.time_cost + lexer.time_cost)

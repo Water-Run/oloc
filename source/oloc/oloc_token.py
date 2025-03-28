@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-17
+:date: 2025-03-28
 :file: oloc_token.py
 :description: oloc token
 """
@@ -59,7 +59,7 @@ class Token:
         self._check_legal()
 
     def __repr__(self):
-        return f"Token({self.type.value}, '{self.value}, {self.range}')"
+        return f"Token({self.type.value}, {self.value}, {self.range})"
 
     def get_exception_type(self) -> OlocInvalidTokenException.EXCEPTION_TYPE:
         r"""
