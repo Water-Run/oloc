@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-24
+:date: 2025-03-29
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -18,20 +18,35 @@ def output_filter(tokens: list[Token]) -> str:
     """
     configs = utils.get_formatting_output_function_options_table()
 
-    between_token = " " * configs["space between token"]
-    number_seperator = "," if configs["underline-style number separator"] else "_"
+    between_token = " " * configs["readability"]["space between token"]
+    number_seperator = "," if configs["custom"]["underline-style number separator"] else "_"
+    ascii_native_irrational_map = {"π": "pi", "𝑒": "e"}
 
     result = ""
 
-    for temp_token in tokens:
-        temp_value = temp_token.value
+    def _add_separator(num: Token, seperator: str, thresholds: int, interval: int) -> list[Token]:
+        r"""
+        添加数字分隔符
+        :param num: 待添加的数字
+        :param seperator: 分隔符形式
+        :param thresholds: 分隔符阈值
+        :param interval: 分隔符间隔
+        :return: 添加后的分隔符列表
+        """
+        result = []
+
+    # 字符串处理
+    for index, temp_token in enumerate(tokens):
 
         # 当不启用保留无理数参数时,舍弃无理数参数
         if temp_token.type == Token.TYPE.IRRATIONAL_PARAM and not configs["retain irrational param"]:
             continue
 
+        if temp_token.type == Token.TYPE.NATIVE_IRRATIONAL and configs["custom"]["non-ascii character form native irrational"]:
+            result += ascii_native_irrational_map[temp_token.value]
+
         # 添加Token间隔空格
-        if len(tokens) > 1:
+        if len(tokens) > 1 and index != len(tokens) - 1:
             result += between_token
 
     return result

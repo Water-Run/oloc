@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-26
+:date: 2025-03-29
 :file: oloc_utils.py
 :description: Oloc utils
 """
@@ -104,47 +104,67 @@ def get_formatting_output_function_options_table() -> dict:
             "https://github.com/Water-Run/oloc for documentation to fix.")
 
     # 合法性检查
-    keys = (
-        "space between tokens",
-        "number separators add thresholds",
-        "number separator interval",
-        "underline-style number separator",
-        "scientific notation adding thresholds",
-        "operator form functions",
-        "retain irrational param",
-        "non-english character form native irrational",
-        "superscript",
-    )
+    expected_keys = {
+        "function formatting": {
+            "operator form functions": bool,
+        },
+        "readability": {
+            "space between tokens": bool,
+            "number separators add thresholds": int,
+            "number separator interval": int,
+            "scientific notation adding thresholds": int,
+            "superscript": bool,
+            "commonly-used-decimal conversions": bool,
+        },
+        "custom": {
+            "underline-style number separator": bool,
+            "retain irrational param": bool,
+            "non-ascii character form native irrational": bool,
+        },
+    }
 
-    for key in keys:
-        if key not in result.keys():
+    # 检查所有顶层键是否存在
+    for category in expected_keys:
+        if category not in result:
             raise RuntimeError(
-                f"The key `{key}` is missing from the formatting output function options table.\nVisit "
+                f"The category `{category}` is missing from the formatting output function options table.\nVisit "
                 f"https://github.com/Water-Run/oloc for documentation to fix.")
 
-    def _invalidKeyParam(raise_key: str):
-        r"""
-        封装不合法的键值时的异常抛出
-        :param key: 不合法的键
-        :return: None
-        """
-        raise RuntimeError(
-            f"The key {raise_key} from the formatting output function options table have parameter error.\nVisit "
-            f"https://github.com/Water-Run/oloc for documentation to fix."
-        )
+        # 检查每个子键是否存在
+        for key, expected_type in expected_keys[category].items():
+            if key not in result[category]:
+                raise RuntimeError(
+                    f"The key `{key}` is missing from the `{category}` category of the formatting output function options table.\nVisit "
+                    f"https://github.com/Water-Run/oloc for documentation to fix.")
 
-    if not (isinstance(result[keys[0]], int) and 0 <= result[keys[0]] <= 10):
-        _invalidKeyParam(result[keys[0]])
-    if not (isinstance(result[keys[1]], int) and (2 <= result[keys[1]] <= 12 or result[keys[1]] == -1)):
-        _invalidKeyParam(result[keys[1]])
-    if not (isinstance(result[keys[2]], int) and 1 <= result[keys[2]] <= 6):
-        _invalidKeyParam(result[keys[2]])
-    if not (isinstance(result[keys[4]], int) and (2 <= result[keys[4]] <= 12 or result[keys[4]] == -1)):
-        _invalidKeyParam(result[keys[4]])
+            # 检查值的类型是否正确
+            if not isinstance(result[category][key], expected_type):
+                raise RuntimeError(
+                    f"The key `{key}` in the `{category}` category has a value of incorrect type. Expected `{expected_type.__name__}`.\nVisit "
+                    f"https://github.com/Water-Run/oloc for documentation to fix."
+                )
 
-    for i in [3, 5, 6, 7, 8, 9]:
-        if not isinstance(result[keys[i]], bool):
-            _invalidKeyParam(result[keys[i]])
+            # 检查数值范围（仅对特定整数字段）
+            if category == "readability" and key in ["number separators add thresholds", "number separator interval", "scientific notation adding thresholds"]:
+                value = result[category][key]
+                if key == "number separators add thresholds" and not (value == -1 or 2 <= value <= 12):
+                    raise RuntimeError(
+                        f"The key `{key}` in the `{category}` category has an invalid value `{value}`. "
+                        f"Expected -1 or an integer between 2 and 12.\nVisit "
+                        f"https://github.com/Water-Run/oloc for documentation to fix."
+                    )
+                elif key == "number separator interval" and not (1 <= value <= 6):
+                    raise RuntimeError(
+                        f"The key `{key}` in the `{category}` category has an invalid value `{value}`. "
+                        f"Expected an integer between 1 and 6.\nVisit "
+                        f"https://github.com/Water-Run/oloc for documentation to fix."
+                    )
+                elif key == "scientific notation adding thresholds" and not (value == -1 or 2 <= value <= 12):
+                    raise RuntimeError(
+                        f"The key `{key}` in the `{category}` category has an invalid value `{value}`. "
+                        f"Expected -1 or an integer between 2 and 12.\nVisit "
+                        f"https://github.com/Water-Run/oloc for documentation to fix."
+                    )
 
     return result
 
