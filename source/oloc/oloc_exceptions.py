@@ -293,6 +293,12 @@ class OlocInvalidTokenException(OlocException):
             "Token of this type should not be retained during the static checking phase. Checking an expression or submitting an issue."
         )
 
+        SYNTAX_ERROR = (
+            "OlocInvalidTokenException: Syntax error for token `{"
+            "token_content}`",
+            "Check the expression or consult the documentation."
+        )
+
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
         r"""
         初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。

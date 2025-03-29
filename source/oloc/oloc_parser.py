@@ -6,90 +6,23 @@ r"""
 """
 
 from oloc_token import Token
-from enum import Enum
+from oloc_exceptions import *
+import time
 
 
-class ASTNode:
+class Unit:
     r"""
-    AST树的节点
-    :param node_type: 节点的类型
-    :param token: 创建节点的Token
-    :param children: 子节点列表，用于嵌套结构
+    运算体单元
     """
-
-    class TYPE(Enum):
-        r"""
-        AST节点的类型
-        """
-        BIN_EXP = 'BinaryExpression'
-        LITERAL = 'Literal'
-        FUN_CAL = 'FunctionCall'
-        GRP_EXP = 'GroupExpression'
-        URY_EXP = 'UnaryExpression'
-
-    def __init__(self, node_type: TYPE, token: Token, children: list[Token] | None = None):
-        self.type = node_type
-        self.token = token
-        self.children = children or []
-
-    def add_child(self, child: Token):
-        r"""
-        添加子节点
-        :param child: 子节点的Token
-        :return: None
-        """
-        self.children.append(child)
-
-    def __repr__(self):
-        return f"ASTNode: {self.type}\n{self.token}\n{self.children}"
-
-
-class ASTTree:
-    r"""
-    AST树
-    :param root: 根节点
-    """
-
-    def __init__(self, root: ASTNode | None):
-        self.root = root
-
-    def __repr__(self):
-
-        result = "ASTTree:\n"
-
-        def _traverse(node=None, depth=0):
-            r"""
-            遍历树 (前序遍历)，打印结构
-            :param node: 当前节点
-            :param depth: 当前深度
-            """
-            if node is None:
-                node = self.root
-            nonlocal result
-            result += ("  " * depth + f"{node.node_type}: {node.value}")
-            for child in node.children:
-                _traverse(child, depth + 1)
-
-        return result
 
 
 class Parser:
     r"""
     语法分析器
-
     :param tokens: 用于构造的Token流
     """
 
     def __init__(self, tokens: list[Token]):
         self.tokens = tokens
-        self.ast: ASTTree | None = None
-        self._current_index = 0
-        self._current_token = tokens[0] if len(tokens) > 0 else None
-
-    def execute(self):
-        r"""
-        执行语法分析,结果写入self.ast中
-        :return:
-        """
-        if self._current_token is not None:
-            ...
+        self.hierarchy: list[int] = [0 for _ in tokens]
+        self.time_cost = -1
