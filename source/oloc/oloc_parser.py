@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-24
+:date: 2025-03-29
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -50,7 +50,7 @@ class ASTTree:
     :param root: 根节点
     """
 
-    def __init__(self, root: ASTNode):
+    def __init__(self, root: ASTNode | None):
         self.root = root
 
     def __repr__(self):
@@ -58,7 +58,7 @@ class ASTTree:
         result = "ASTTree:\n"
 
         def _traverse(node=None, depth=0):
-            """
+            r"""
             遍历树 (前序遍历)，打印结构
             :param node: 当前节点
             :param depth: 当前深度
@@ -81,4 +81,15 @@ class Parser:
     """
 
     def __init__(self, tokens: list[Token]):
-        ...
+        self.tokens = tokens
+        self.ast: ASTTree | None = None
+        self._current_index = 0
+        self._current_token = tokens[0] if len(tokens) > 0 else None
+
+    def execute(self):
+        r"""
+        执行语法分析,结果写入self.ast中
+        :return:
+        """
+        if self._current_token is not None:
+            ...
