@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-25
+:date: 2025-03-29
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -176,26 +176,6 @@ class OlocNumberSeparatorException(OlocException):
         super().__init__(exception_type, expression, positions)
 
 
-class OlocResultException(OlocException):
-    r"""
-    当结果中存在异常(即尝试读取OlocResult中的指定信息时)引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocResultException 的异常类型的枚举类。
-        """
-        NO_VALID_RESULT = (
-            "OlocResultException: Calculations fail to yield valid results",
-            "."
-        )
-
-        NON_CONVERTIBLE_RESULT = (
-            "OlocResultException: Unable to convert `` in the result",
-            ""
-        )
-
-
 class OlocInvalidTokenException(OlocException):
     r"""
     当Token不合法(即,Token的is_legal为False时)在静态检查流程中引发的异常
@@ -269,7 +249,7 @@ class OlocInvalidTokenException(OlocException):
             "Check out the tutorial or the function-conversion-table for more information."
         )
 
-        INVALID_PARAM_SEPARTOR = (
+        INVALID_PARAM_SEPARATOR = (
             "OlocInvalidTokenException: Invalid param-separator `{token_content}`",
             "The function parameter separator can only be `,` or `;`. If your parameters contain numeric separators, "
             "the parameter separator can only be ';'."
@@ -300,6 +280,11 @@ class OlocInvalidTokenException(OlocException):
             "token_content}`",
             "This bracket should not be present during static processing. Checking an expression or submitting an "
             "issue."
+        )
+
+        STATIC_CHECK_IRRPARAM = (
+            "OlocInvalidTokenException: Irrational number of parameters `{token_content}` for which static checking fails",
+            "Check the expression to ensure that the structure of the irrational number argument is legal."
         )
 
         STATIC_CHECK_TYPES = (
@@ -364,33 +349,28 @@ class OlocInvalidCalculationException(OlocException):
         super().__init__(exception_type, expression, positions)
 
 
-class OlocIrrationalNumberException(OlocException):
+class OlocIrrationalNumberFormatException(OlocException):
     r"""
-    当存在无理数相关问题时引发的异常
+    当存在无理数格式相关问题时引发的异常
     """
 
     class EXCEPTION_TYPE(Enum):
         r"""
-        定义 OlocIrrationalNumberException 的异常类型的枚举类。
+        定义 OlocIrrationalNumberFormatException 的异常类型的枚举类。
         """
         MISMATCH_LONG_LEFT_SIGN = (
-            "OlocIrrationalNumberException: Mismatch '<' detected",
+            "OlocIrrationalNumberFormatException: Mismatch '<' detected",
             "When declaring a custom long irrational number, `<` must match `>`. Check your expressions."
         )
 
         MISMATCH_LONG_RIGHT_SIGN = (
-            "OlocIrrationalNumberException: Mismatch '>' detected",
+            "OlocIrrationalNumberFormatException: Mismatch '>' detected",
             "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
-        )
-
-        STATIC_CHECK_IRRPARAM = (
-            "OlocIrrationalNumberException: Irrational number of parameters for which static checking fails",
-            "Check the expression to ensure that the structure of the irrational number argument is legal."
         )
 
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
         r"""
-        初始化 OlocIrrationalNumberException。
+        初始化 OlocIrrationalNumberFormatException。
 
         :param exception_type: 异常的类型 (Enum)
         :param expression: 触发异常的原始表达式
@@ -534,40 +514,6 @@ class OlocReservedWordException(OlocException):
         suggestion = exception_type.value[1]
 
         self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocRunTimeException(OlocException):
-    r"""
-    当Oloc运行发生错误时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocReservedWordException 的异常类型的枚举类。
-        """
-        RUNTIME_ERROR = (
-            "OlocRunTimeException: {content}",
-            "Check the documentation. If the problem is caused by a bug in oloc, go to the GitHub interface and submit an issue."
-        )
-
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], content: str):
-        r"""
-        初始化 OlocReservedWordException，包含异常类型和 Token 内容。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        :param content: 引发异常的错误信息
-        """
-        self.conflict_str = content
-
-        main_message = exception_type.value[0].format(conflict_str=content)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{content}"
 
         # 调用父类初始化
         super().__init__(exception_type, expression, positions)

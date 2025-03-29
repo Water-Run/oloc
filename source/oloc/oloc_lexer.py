@@ -483,10 +483,9 @@ class Lexer:
         r"""
         静态检查
         :raise OlocInvalidTokenException: 当存在非法的运算符,括号或函数时,或类型错误时
-        :raise OlocIrrationalNumberException: 当存在非法的无理数参数时
+        :raise OlocIrrationalNumberFormatException: 当存在非法的无理数参数时
         :return: None
         """
-        return
         valid_operators = ('+', '-', '*', '/', '√', '°', '^', '%', '!', '|')
         valid_bracket = ('(', ')')
         valid_function = tuple(utils.get_function_mapping_table().keys())
@@ -503,36 +502,36 @@ class Lexer:
             Token.TYPE.PARAM_SEPARATOR,
         )
 
-        for token_index, token in enumerate(self.tokens):
-            if token.type not in valid_types:
+        for token_index, temp_token in enumerate(self.tokens):
+            if temp_token.type not in valid_types:
                 raise OlocInvalidTokenException(
                     exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_TYPES,
                     expression=self.expression,
-                    positions=list(range(*token.range)),
-                    token_content=token.type,
+                    positions=list(range(*temp_token.range)),
+                    token_content=temp_token.type,
                 )
-            if token.type == Token.TYPE.OPERATOR and token.value not in valid_operators:
+            if temp_token.type == Token.TYPE.OPERATOR and temp_token.value not in valid_operators:
                 raise OlocInvalidTokenException(
                     exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_OPERATOR,
                     expression=self.expression,
-                    positions=list(range(*token.range)),
-                    token_content=token.value,
+                    positions=list(range(*temp_token.range)),
+                    token_content=temp_token.value,
                 )
-            if token.type == Token.TYPE.FUNCTION and token.value not in valid_function:
+            if temp_token.type == Token.TYPE.FUNCTION and temp_token.value not in valid_function:
                 raise OlocInvalidTokenException(
                     exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_FUNCTION,
                     expression=self.expression,
-                    positions=list(range(*token.range)),
-                    token_content=token.value,
+                    positions=list(range(*temp_token.range)),
+                    token_content=temp_token.value,
                 )
-            if token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET) and token.value not in valid_bracket:
+            if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET) and temp_token.value not in valid_bracket:
                 raise OlocInvalidTokenException(
                     exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_BRACKET,
                     expression=self.expression,
-                    positions=list(range(*token.range)),
-                    token_content=token.value,
+                    positions=list(range(*temp_token.range)),
+                    token_content=temp_token.value,
                 )
-            if token.type == Token.TYPE.IRRATIONAL_PARAM:
+            if temp_token.type == Token.TYPE.IRRATIONAL_PARAM:
                 if len(self.tokens) == 0 or self.tokens[token_index - 1].type not in [
                     Token.TYPE.NATIVE_IRRATIONAL,
                     Token.TYPE.SHORT_CUSTOM,
@@ -540,10 +539,11 @@ class Lexer:
                     Token.TYPE.RBRACKET,
                     Token.TYPE.INTEGER
                 ]:
-                    raise OlocIrrationalNumberException(
-                        exception_type=OlocIrrationalNumberException.EXCEPTION_TYPE.STATIC_CHECK_IRRPARAM,
+                    raise OlocInvalidTokenException(
+                        exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_IRRPARAM,
                         expression=self.expression,
-                        positions=list(range(*token.range)),
+                        positions=list(range(*temp_token.range)),
+                        token_content=temp_token.value,
                     )
 
     def execute(self):
@@ -569,7 +569,7 @@ class Lexer:
         r"""
         分词器
         :param expression: 待分词的表达式
-        :raise OlocIrrationalNumberException: 如果无理数形式不合法
+        :raise OlocIrrationalNumberFormatException: 如果无理数形式不合法
         :return: 分词后的Token列表
         """
         function_names = utils.get_function_name_list()
@@ -592,8 +592,8 @@ class Lexer:
 
                 # 单个左尖括号是错误的
                 if index == len(expression) - 1:
-                    raise OlocIrrationalNumberException(
-                        exception_type=OlocIrrationalNumberException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
+                    raise OlocIrrationalNumberFormatException(
+                        exception_type=OlocIrrationalNumberFormatException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
                         expression=expression,
                         positions=[index, index],
                     )
@@ -607,8 +607,8 @@ class Lexer:
 
                 # 如果没找到匹配的右尖括号，抛出异常
                 if right_bracket_index is None:
-                    raise OlocIrrationalNumberException(
-                        exception_type=OlocIrrationalNumberException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
+                    raise OlocIrrationalNumberFormatException(
+                        exception_type=OlocIrrationalNumberFormatException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
                         expression=expression,
                         positions=[index, index],
                     )
@@ -772,8 +772,9 @@ class Lexer:
                 continue
 
             # 标记函数参数分隔符
-            if unit_char in ";,":
+            if unit_char in ",":
                 mark_list[index] = Token.TYPE.PARAM_SEPARATOR
+                continue
 
             # 标记括号
             if unit_char in "{[(":
@@ -866,27 +867,27 @@ if __name__ == '__main__':
     import simpsave as ss
     from oloc_preprocessor import Preprocessor
 
-    tests = ss.read('test_cases', file='./data/oloctest.ini')
-    time_costs = []
-    print('___________')
-    for index, test in enumerate(tests):
-        # if index % 200 == 0:
-        #     print("=", end="")
-        try:
-            preprocessor = Preprocessor(test)
-            preprocessor.execute()
-            lexer = Lexer(preprocessor.expression)
-            lexer.execute()
-            print(test, end=" => ")
-            for token in lexer.tokens:
-                print(token.value, end=" ")
-            print("")
-            time_costs.append(lexer.time_cost)
-        except Exception as e:
-            print(e)
-    print(f"\n"
-          f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
-          )
+    # tests = ss.read('test_cases', file='./data/oloctest.ini')
+    # time_costs = []
+    # print('___________')
+    # for index, test in enumerate(tests):
+    #     # if index % 200 == 0:
+    #     #     print("=", end="")
+    #     try:
+    #         preprocessor = Preprocessor(test)
+    #         preprocessor.execute()
+    #         lexer = Lexer(preprocessor.expression)
+    #         lexer.execute()
+    #         print(test, end=" => ")
+    #         for token in lexer.tokens:
+    #             print(token.value, end=" ")
+    #         print("")
+    #         time_costs.append(lexer.time_cost)
+    #     except Exception as e:
+    #         print(e)
+    # print(f"\n"
+    #       f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
+    #       )
 
     while True:
         expression = input(">>")

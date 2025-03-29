@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-28
+:date: 2025-03-29
 :file: oloc_token.py
 :description: oloc token
 """
@@ -59,7 +59,7 @@ class Token:
         self._check_legal()
 
     def __repr__(self):
-        return f"Token({self.type.value}, {self.value}, {self.range})"
+        return f"Token('{self.type.value}','{self.value}','{self.range}')"
 
     def get_exception_type(self) -> OlocInvalidTokenException.EXCEPTION_TYPE:
         r"""
@@ -78,7 +78,7 @@ class Token:
             Token.TYPE.LBRACKET: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_BRACKET,
             Token.TYPE.RBRACKET: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_BRACKET,
             Token.TYPE.FUNCTION: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_FUNCTION,
-            Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_PARAM_SEPARTOR,
+            Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_PARAM_SEPARATOR,
             Token.TYPE.IRRATIONAL_PARAM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_IRRATIONAL_PARAM,
             Token.TYPE.UNKNOWN: OlocInvalidTokenException.EXCEPTION_TYPE.UNKNOWN_TOKEN,
         }
