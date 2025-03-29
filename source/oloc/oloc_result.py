@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-29
+:date: 2025-03-30
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -34,6 +34,7 @@ def output_filter(tokens: list[Token]) -> str:
         :return: 添加后的分隔符列表
         """
         result = []
+        return result
 
     # 字符串处理
     for index, temp_token in enumerate(tokens):

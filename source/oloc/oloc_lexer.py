@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-29
+:date: 2025-03-30
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -364,7 +364,7 @@ class Lexer:
 
     def _bracket_checking_harmonisation(self) -> None:
         """
-        括号检查与统一化及冗余消除
+        括号检查与统一化
         :raise OlocInvalidBracketException: 如果括号出现层级错误或不匹配
         :return: None
         """
@@ -428,57 +428,6 @@ class Lexer:
 
         self.tokens, self.expression = Lexer.update(self.tokens)
 
-        def _is_redundant_bracket(left_index: int, right_index: int) -> bool:
-            r"""
-            判断一对括号是否为冗余括号
-            :param left_index: 左括号在 Token 流中的索引
-            :param right_index: 右括号在 Token 流中的索引
-            :return: 是否为冗余括号
-            """
-            inner_tokens = self.tokens[left_index + 1:right_index]
-
-            if len(inner_tokens) == 1:
-                return True
-
-            left_operator_priority = float('inf')
-            right_operator_priority = float('inf')
-
-            if left_index > 0 and self.tokens[left_index - 1].type == Token.TYPE.OPERATOR:
-                left_operator_priority = utils.get_operator_priority(self.tokens[left_index - 1].value)
-
-            if right_index + 1 < len(self.tokens) and self.tokens[right_index + 1].type == Token.TYPE.OPERATOR:
-                right_operator_priority = utils.get_operator_priority(self.tokens[right_index + 1].value)
-
-            inner_min_priority = float('inf')
-            for token in inner_tokens:
-                if token.type == Token.TYPE.OPERATOR:
-                    inner_min_priority = min(inner_min_priority, utils.get_operator_priority(token.value))
-
-            if left_operator_priority <= inner_min_priority or right_operator_priority <= inner_min_priority:
-                return False
-
-            # 额外检查：如果左括号前是函数，则不能移除
-            if left_index > 0 and self.tokens[left_index - 1].type == Token.TYPE.FUNCTION:
-                return False
-
-            return True
-
-        tokens_to_remove = set()
-        stack = []
-
-        for i, token in enumerate(self.tokens):
-            if token.type == Token.TYPE.LBRACKET:
-                stack.append(i)
-            elif token.type == Token.TYPE.RBRACKET:
-                if stack:
-                    left_index = stack.pop()
-                    if _is_redundant_bracket(left_index, i):
-                        tokens_to_remove.add(left_index)
-                        tokens_to_remove.add(i)
-                        self.tokens, self.expression = Lexer.update([token for i, token in enumerate(self.tokens) if i not in tokens_to_remove])
-
-        self.tokens, self.expression = Lexer.update([token for i, token in enumerate(self.tokens) if i not in tokens_to_remove])
-
     def _static_check(self):
         r"""
         静态检查
@@ -502,6 +451,8 @@ class Lexer:
             Token.TYPE.PARAM_SEPARATOR,
         )
 
+        self.token, self.expression = Lexer.update(self.tokens)
+
         for token_index, temp_token in enumerate(self.tokens):
             if temp_token.type not in valid_types:
                 raise OlocInvalidTokenException(
@@ -511,6 +462,16 @@ class Lexer:
                     token_content=temp_token.type,
                 )
             if temp_token.type == Token.TYPE.OPERATOR and temp_token.value not in valid_operators:
+
+                match temp_token.value:
+                    case ".":
+                        raise OlocInvalidTokenException(
+                            exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_POINT,
+                            expression=self.expression,
+                            positions=list(range(*temp_token.range)),
+                            token_content=temp_token.value,
+                        )
+
                 raise OlocInvalidTokenException(
                     exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_OPERATOR,
                     expression=self.expression,
@@ -838,28 +799,31 @@ class Lexer:
     @staticmethod
     def update(tokens: list[Token]) -> [list[Token], str]:
         r"""
-        更新输入的Token流
-        :return: 一个列表,第一项是更新后的Token流,第二项是表达式字符串
+        更新输入的 Token 流
+        :return: 一个列表, 第一项是更新后的 Token 流, 第二项是表达式字符串
         """
-        expression = ""
+        update_expression = ""
         start_index = 0
+        result = []
 
         for token_index, process_token in enumerate(tokens):
-            expression += process_token.value
+            update_expression += process_token.value
 
+            # 计算当前 token 的 range
             if token_index == 0:
                 process_token.range = [start_index, start_index + len(process_token.value)]
-                start_index = process_token.range[1]
-                continue
-
-            previous_token = tokens[token_index - 1]
-            if previous_token.range[1] != process_token.range[0]:
-                process_token.range = [start_index, start_index + len(process_token.value)]
             else:
-                process_token.range = [previous_token.range[1], previous_token.range[1] + len(process_token.value)]
+                previous_token = tokens[token_index - 1]
+                if previous_token.range[1] != process_token.range[0]:
+                    process_token.range = [start_index, start_index + len(process_token.value)]
+                else:
+                    process_token.range = [previous_token.range[1], previous_token.range[1] + len(process_token.value)]
 
+            # 无论如何都将当前 token 添加到结果列表
+            result.append(process_token)
             start_index = process_token.range[1]
-        return [tokens, expression]
+
+        return [result, update_expression]
 
 """test"""
 
@@ -867,28 +831,30 @@ if __name__ == '__main__':
     import simpsave as ss
     from oloc_preprocessor import Preprocessor
 
-    # tests = ss.read('test_cases', file='./data/oloctest.ini')
-    # time_costs = []
-    # print('___________')
-    # for index, test in enumerate(tests):
-    #     # if index % 200 == 0:
-    #     #     print("=", end="")
-    #     try:
-    #         preprocessor = Preprocessor(test)
-    #         preprocessor.execute()
-    #         lexer = Lexer(preprocessor.expression)
-    #         lexer.execute()
-    #         print(test, end=" => ")
-    #         for token in lexer.tokens:
-    #             print(token.value, end=" ")
-    #         print("")
-    #         time_costs.append(lexer.time_cost)
-    #     except Exception as e:
-    #         print(e)
-    # print(f"\n"
-    #       f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
-    #       )
+    def run_test():
+        tests = ss.read('test_cases', file='./data/oloctest.ini')
+        time_costs = []
+        print('___________')
+        for index, test in enumerate(tests):
+            # if target_index % 200 == 0:
+            #     print("=", end="")
+            try:
+                preprocessor = Preprocessor(test)
+                preprocessor.execute()
+                lexer = Lexer(preprocessor.expression)
+                lexer.execute()
+                print(test, end=" => ")
+                for token in lexer.tokens:
+                    print(token.value, end=" ")
+                print("")
+                time_costs.append(lexer.time_cost)
+            except Exception as e:
+                print(e)
+        print(f"\n"
+              f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
+              )
 
+    run_test()
     while True:
         expression = input(">>")
         preprocessor = Preprocessor(expression)

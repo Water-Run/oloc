@@ -1,10 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-03-28
+:date: 2025-03-30
 :file: oloc_core.py
 :description: Core of oloc
 """
 import time
+
 import simpsave as ss
 from oloc_result import OlocResult
 from oloc_exceptions import *
@@ -34,8 +35,8 @@ def _execute_calculation(expression: str, result_queue: Queue) -> None:
 
         # 结果封装
         result = OlocResult(lexer.expression, [])
-
         result_queue.put(OlocResult(result.expression, [result.expression]))
+
     except Exception as e:
         result_queue.put(e)
 
@@ -71,12 +72,14 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
     result_queue = Queue()
 
     if time_limit < 0:  # 不监视时间
-        _execute_calculation(expression, result_queue)
-        if not result_queue.empty():
-            result = result_queue.get()
-            if isinstance(result, Exception):
-                raise result
-            return result
+        preprocessor = Preprocessor(expression)
+        preprocessor.execute()
+
+        # 词法分析
+        lexer = Lexer(preprocessor.expression)
+        lexer.execute()
+
+        return OlocResult(lexer.expression, [])
     else:
         r"""
         在子进程中调用calculate()执行计算, 一旦超过time_limit则抛出OlocTimeOutException
@@ -95,11 +98,11 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
                 elapsed_time=time_limit,
             )
 
-    if not result_queue.empty():
-        result = result_queue.get()
-        if isinstance(result, Exception):
-            raise result
-        return result
+        if not result_queue.empty():
+            result = result_queue.get()
+            if isinstance(result, Exception):
+                raise result
+            return result
 
     raise RuntimeError("Unknown exception in calculate() of oloc: result queue is empty")
 
@@ -119,14 +122,16 @@ def is_reserved(symbol: str) -> bool:
     return any(keyword in symbol for keyword in reserved_keywords)
 
 
-def run_test(test_file: str, test_key: str, time_limit: float = -1):
+def run_test(test_file: str, test_key: str, time_limit: float = -1, pause_if_exception: bool = False):
     r"""
     运行测试
     :param test_file: 待测试的simpsave ini文件
     :param test_key: 待测试的simpsave的键
     :param time_limit: 计算限时
+    :param pause_if_exception: 在出现异常时是否暂停
     :return: None
     """
+    start = time.time()
     try:
         tests = ss.read(test_key, file=test_file)
     except KeyError as k_error:
@@ -141,9 +146,11 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1):
                 print(calculate(test, time_limit=time_limit).expression)
             except Exception as error:
                 print(error)
-                input("continue>>")
+                if pause_if_exception:
+                    input("continue>>")
+        print(f"Finish {len(tests)} cases in {time.time() - start} s")
 
 
 """test"""
 if __name__ == "__main__":
-    run_test("./data/oloctest.ini", "test_cases", 0.5)
+    run_test("./data/oloctest.ini", "test_cases", -1)

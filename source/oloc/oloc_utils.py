@@ -1,12 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-03-29
+:date: 2025-03-30
 :file: oloc_utils.py
 :description: Oloc utils
 """
 
 import simpsave as ss
-from enum import Enum
 
 """
 运算符优先级
@@ -100,7 +99,8 @@ def get_formatting_output_function_options_table() -> dict:
         result = ss.read('formatting_output_function_options_table', file='./data/olocconfig.ini')
     except (KeyError, ValueError, FileNotFoundError):
         raise RuntimeError(
-            "olocdata.ini is not accessible or has the wrong format (losing `formatting_output_function_options_table`). \nVisit "
+            "olocdata.ini is not accessible or has the wrong format (losing "
+            "`formatting_output_function_options_table`). \nVisit"
             "https://github.com/Water-Run/oloc for documentation to fix.")
 
     # 合法性检查
@@ -145,7 +145,8 @@ def get_formatting_output_function_options_table() -> dict:
                 )
 
             # 检查数值范围（仅对特定整数字段）
-            if category == "readability" and key in ["number separators add thresholds", "number separator interval", "scientific notation adding thresholds"]:
+            if category == "readability" and key in ["number separators add thresholds", "number separator interval",
+                                                     "scientific notation adding thresholds"]:
                 value = result[category][key]
                 if key == "number separators add thresholds" and not (value == -1 or 2 <= value <= 12):
                     raise RuntimeError(

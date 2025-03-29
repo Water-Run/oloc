@@ -115,6 +115,7 @@ formatting_output_function_options_table: dict[str, dict[str:any]] = {
             "underline-style number separator": False,
             "retain irrational param": False,
             "non-ascii character form native irrational": True,
+            "omit the multiplication sign": True,
         },
 }
 

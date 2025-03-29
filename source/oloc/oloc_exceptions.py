@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-29
+:date: 2025-03-30
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -160,7 +160,9 @@ class OlocNumberSeparatorException(OlocException):
         """
         INVALID_SEPARATOR = (
             "OlocNumberSeparatorException: Invalid numeric separator detected",
-            "Ensure commas are used correctly as numeric separators in rational numbers. Commas must not appear at "
+            "Ensure commas are used correctly as numeric separators in rational numbers. If you expect `,` to be a "
+            "function parameter, check that the function name is a legal function name in oloc. Commas must not "
+            "appear at"
             "the start, end, or consecutively. When using numeric separators in a function, only `;` can be used to "
             "separate the arguments of the function."
         )
@@ -200,7 +202,8 @@ class OlocInvalidTokenException(OlocException):
         INVALID_INFINITE_DECIMAL = (
             "OlocInvalidTokenException: Invalid infinite-decimal number `{token_content}`",
             "An infinite cyclic decimal must be followed by a finite cyclic decimal ending in 3-6 ` . ` or `:` "
-            "followed by an integer. e.g. 1.23..., 2.34......, 10.1:2"
+            "followed by an integer. e.g. 1.23..., 2.34......, 10.1:2. The declaration `:` cannot be used when the "
+            "first decimal place is a round-robin place."
         )
 
         INVALID_FINITE_DECIMAL = (
@@ -246,7 +249,8 @@ class OlocInvalidTokenException(OlocException):
 
         INVALID_FUNCTION = (
             "OlocInvalidTokenException: Invalid function `{token_content}`",
-            "Check out the tutorial or the function-conversion-table for more information."
+            "This may be caused by splicing several consecutive legal function names. Check out the tutorial or the "
+            "function-conversion-table for more information."
         )
 
         INVALID_PARAM_SEPARATOR = (
@@ -261,42 +265,47 @@ class OlocInvalidTokenException(OlocException):
             "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
         )
 
+        STATIC_CHECK_POINT = (
+            "OlocInvalidTokenException: Point that should not be present during the static checking phase `{"
+            "token_content}`",
+            "It's likely that there are illegal decimals. Decimals must have one and only one decimal point, "
+            "distinguishing between preceding integer and decimal places. Checking the expression or submitting an"
+            "issue."
+        )
+
         STATIC_CHECK_OPERATOR = (
             "OlocInvalidTokenException: Operator that should not be present during the static checking phase `{"
             "token_content}`",
-            "This operator should not be present during static processing. Checking an expression or submitting an "
+            "This operator should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
 
         STATIC_CHECK_FUNCTION = (
             "OlocInvalidTokenException: Function that should not be present during the static checking phase `{"
             "token_content}`",
-            "This operator should not be present during static processing. Checking an expression or submitting an "
+            "This operator should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
 
         STATIC_CHECK_BRACKET = (
             "OlocInvalidTokenException: Bracket that should not be present during the static checking phase `{"
             "token_content}`",
-            "This bracket should not be present during static processing. Checking an expression or submitting an "
+            "This bracket should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
 
         STATIC_CHECK_IRRPARAM = (
             "OlocInvalidTokenException: Irrational number of parameters `{token_content}` for which static checking fails",
-            "Check the expression to ensure that the structure of the irrational number argument is legal."
+            "This may be due to the fact that the previous Token of the irrational number parameter is not legal. An "
+            "irrational number argument can only come after an irrational number or a result (such as a function) "
+            "that may be irrational. Check the expression to ensure that the structure of the irrational number "
+            "argument is legal."
         )
 
         STATIC_CHECK_TYPES = (
             "OlocInvalidTokenException: Token types that should not be present `{"
             "token_content}`",
-            "Token of this type should not be retained during the static checking phase. Checking an expression or submitting an issue."
-        )
-
-        SYNTAX_ERROR = (
-            "OlocInvalidTokenException: Syntax error for token `{"
-            "token_content}`",
-            "Check the expression or consult the documentation."
+            "Token of this type should not be retained during the static checking phase. Checking the expression or submitting an issue."
         )
 
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):

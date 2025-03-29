@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-28
+:date: 2025-03-30
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -76,24 +76,30 @@ class Preprocessor:
         """
         long_custom_start_stack = []
         custom_indices = []
-        for index, char in enumerate(self.expression):
+        for exp_index, char in enumerate(self.expression):
             if char == '<':
-                long_custom_start_stack.append(index)
+                long_custom_start_stack.append(exp_index)
             if char == '>':
                 if len(long_custom_start_stack) == 1:
-                    custom_indices.append((long_custom_start_stack[0], index))
+                    custom_indices.append((long_custom_start_stack[0], exp_index))
+                if len(long_custom_start_stack) == 0:
+                    raise OlocIrrationalNumberFormatException(
+                        exception_type=OlocIrrationalNumberFormatException.EXCEPTION_TYPE.MISMATCH_LONG_RIGHT_SIGN,
+                        expression=char,
+                        positions=[exp_index],
+                    )
                 long_custom_start_stack.pop()
         return custom_indices
 
-    def _is_protected(self, index: int, protected_indices: list[tuple[int, int]]) -> bool:
+    def _is_protected(self, target_index: int, protected_indices: list[tuple[int, int]]) -> bool:
         r"""
         Checks if a certain index is in the protected area.
-        :param index: The target index
+        :param target_index: The target index
         :param protected_indices: A list of protected index ranges
         :return: Whether it is protected
         """
         for start, end in protected_indices:
-            if start <= index < end:
+            if start <= target_index < end:
                 return True
         return False
 
@@ -101,14 +107,14 @@ class Preprocessor:
         r"""
         Performs symbol mapping on the expression.
         :param mapping_table: A mapping table containing mappings for replacement
-        :param protected_indices: A list of protected index ranges
+        :param protected_indices: A list of protected target_index ranges
         :return: The processed expression
         """
         result = []
         i = 0
         while i < len(self.expression):
             if self._is_protected(i, protected_indices):
-                # If the current index is in a protected area, directly add the character
+                # If the current target_index is in a protected area, directly add the character
                 result.append(self.expression[i])
                 i += 1
             else:
@@ -143,14 +149,14 @@ class Preprocessor:
             :return: A list of marked indices
             """
             function_names = self._function_name_list
-            function_indices = []
+            mark_function_indices = []
             for func in function_names:
                 start = 0
-                while (index := self.expression.find(func, start)) != -1:
-                    end = index + len(func)
-                    function_indices.append((index, end))
+                while (exp_index := self.expression.find(func, start)) != -1:
+                    end = exp_index + len(func)
+                    mark_function_indices.append((exp_index, end))
                     start = end
-            return function_indices
+            return mark_function_indices
 
         # Mark protected areas
         function_indices = _mark_function_index()
@@ -236,15 +242,15 @@ class Preprocessor:
             :return: 是否有`;`形式的函数分隔符。
             """
             bracket_count = 1
-            for i in range(start_index, len(self.expression)):
-                char = self.expression[i]
-                if char == '(':
+            for exp_index in range(start_index, len(self.expression)):
+                exp_char = self.expression[exp_index]
+                if exp_char == '(':
                     bracket_count += 1
-                elif char == ')':
+                elif exp_char == ')':
                     bracket_count -= 1
                     if bracket_count == 0:
                         return False  # 找到匹配的右括号，未发现 `;` 分隔符
-                elif char == ';' and bracket_count == 1:
+                elif exp_char == ';' and bracket_count == 1:
                     return True  # 在当前括号层发现 `;`
             return False
 
@@ -262,7 +268,8 @@ class Preprocessor:
             matched_function = next(
                 (
                     fn for fn in function_names
-                    if self.expression.startswith(fn, i) and i + len(fn) < len(self.expression) and self.expression[i + len(fn)] == '('
+                    if self.expression.startswith(fn, i) and i + len(fn) < len(self.expression) and \
+                       self.expression[i + len(fn)] == '('
                 ),
                 None,
             )
