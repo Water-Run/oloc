@@ -366,24 +366,3 @@ class Preprocessor:
         self._equals_sign_elimination()
         self._formal_elimination()
         self.time_cost = time.time_ns() - start_time
-
-"""test"""
-
-if __name__ == '__main__':
-    import simpsave as ss
-
-    tests = ss.read('test_cases', file='./data/oloctest.ini')
-    time_costs = []
-    print('___________')
-    for index, test in enumerate(tests):
-        if index % 200 == 0:
-            print("=", end="")
-        try:
-            preprocessor = Preprocessor(test)
-            preprocessor.execute()
-            time_costs.append(preprocessor.time_cost)
-        except:
-            continue
-    print(f"\n"
-          f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
-          )

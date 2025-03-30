@@ -6,6 +6,7 @@ r"""
 """
 
 import time
+
 import oloc_utils as utils
 from oloc_evaluator import Evaluator
 from oloc_exceptions import *
@@ -30,7 +31,6 @@ class Lexer:
         """
         self.tokens = Lexer.tokenizer(self.expression)
         self._self_check()
-
 
     def _self_check(self) -> None:
         r"""
@@ -111,8 +111,8 @@ class Lexer:
                 # 情况 6: 无理数后接数字
                 (lambda t1, t2: t1 in IRRATIONALS and t2 in NUMBERS),
 
-                # 情况 7: 数字后接函数名
-                (lambda t1, t2: t1 in NUMBERS and t2 == Token.TYPE.FUNCTION)
+                # 情况 7: 数字或右括号后接函数名
+                (lambda t1, t2: t1 in list(NUMBERS) + [Token.TYPE.RBRACKET] and t2 == Token.TYPE.FUNCTION)
             ]
 
             if any(condition(current_token.type, next_token.type) for condition in conditions):
@@ -166,21 +166,22 @@ class Lexer:
             if int(integer_part) < 0:
                 numerator = -numerator
 
-            return [Token(Token.TYPE.INTEGER,
-                              str(numerator),
-                              [finite_decimal.range[0], finite_decimal.range[0] + len(str(numerator))]
-                              ),
-                        Token(Token.TYPE.OPERATOR,
-                              "/",
-                              [finite_decimal.range[0] + len(str(numerator)) + 1,
-                               finite_decimal.range[0] + len(str(numerator)) + 2]
-                              ),
-                        Token(Token.TYPE.INTEGER,
-                              str(denominator),
-                              [finite_decimal.range[0] + len(str(numerator)) + 2,
-                               finite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
-                              ),
-                        ]
+            return [Token
+                    (Token.TYPE.INTEGER,
+                     str(numerator),
+                     [finite_decimal.range[0], finite_decimal.range[0] + len(str(numerator))]
+                     ),
+                    Token(Token.TYPE.OPERATOR,
+                          "/",
+                          [finite_decimal.range[0] + len(str(numerator)) + 1,
+                           finite_decimal.range[0] + len(str(numerator)) + 2]
+                          ),
+                    Token(Token.TYPE.INTEGER,
+                          str(denominator),
+                          [finite_decimal.range[0] + len(str(numerator)) + 2,
+                           finite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
+                          ),
+                    ]
 
         def _convert_infinite_decimal(infinite_decimal: Token) -> [Token, Token, Token]:
             r"""
@@ -205,46 +206,46 @@ class Lexer:
 
                     # 最后一位数字是循环部分
                     if decimal_part:
-                        repeat_part = decimal_part[-1]
-                        finite_part = integer_part + "." + decimal_part[:-1]
+                        _repeat_part = decimal_part[-1]
+                        _finite_part = integer_part + "." + decimal_part[:-1]
                     else:
                         # 如果没有小数部分，默认循环部分为0
-                        repeat_part = "0"
-                        finite_part = integer_part + ".0"
+                        _repeat_part = "0"
+                        _finite_part = integer_part + ".0"
 
-                    return [repeat_part, finite_part]
+                    return [_repeat_part, _finite_part]
 
                 # 处理显式声明循环部分的情况（使用:分隔）
                 else:
-                    base_number, repeat_part = process_decimal.split(':')
+                    base_number, _repeat_part = process_decimal.split(':')
 
                     if '.' in base_number:
                         integer_part, decimal_part = base_number.split('.')
-                        finite_part = integer_part + "." + decimal_part
+                        _finite_part = integer_part + "." + decimal_part
                     else:
                         # 如果基数部分没有小数点，加上.0
-                        finite_part = base_number + ".0"
+                        _finite_part = base_number + ".0"
 
-                    return [repeat_part, finite_part]
+                    return [_repeat_part, _finite_part]
 
-            def _fraction_from_parts(repeat_part: str, finite_part: str) -> list[Token, Token, Token]:
+            def _fraction_from_parts(_repeat_part: str, _finite_part: str) -> list[Token, Token, Token]:
                 r"""
                 根据循环部分和有限部分计算分数形式
-                :param repeat_part: 循环部分
-                :param finite_part: 有限部分
+                :param _repeat_part: 循环部分
+                :param _finite_part: 有限部分
                 :return: 转换后的分数Token流(分子,分数线,分母)
                 """
                 # 分解有限部分
-                if '.' in finite_part:
-                    integer_str, decimal_str = finite_part.split('.')
+                if '.' in _finite_part:
+                    integer_str, decimal_str = _finite_part.split('.')
                 else:
-                    integer_str, decimal_str = finite_part, '0'
+                    integer_str, decimal_str = _finite_part, '0'
 
                 # 将整数部分转为整数
                 integer_value = int(integer_str) if integer_str else 0
 
                 # 计算分母：循环部分产生的分母是9的乘积
-                denominator = int('9' * len(repeat_part))
+                denominator = int('9' * len(_repeat_part))
 
                 # 如果有限小数部分非空，需要将循环部分乘以适当的因子
                 if decimal_str:
@@ -259,28 +260,28 @@ class Lexer:
 
                 # 处理有限小数部分
                 if decimal_str:
-                    numerator += int(decimal_str) * int('9' * len(repeat_part))
+                    numerator += int(decimal_str) * int('9' * len(_repeat_part))
 
                 # 处理循环部分
-                if repeat_part:
-                    numerator += int(repeat_part)
+                if _repeat_part:
+                    numerator += int(_repeat_part)
 
                 # 返回分数形式
                 return [Token(Token.TYPE.INTEGER,
-                                  str(numerator),
-                                  [infinite_decimal.range[0], infinite_decimal.range[0] + len(str(numerator))]
-                                  ),
-                            Token(Token.TYPE.OPERATOR,
-                                  "/",
-                                  [infinite_decimal.range[0] + len(str(numerator)) + 1,
-                                   infinite_decimal.range[0] + len(str(numerator)) + 2]
-                                  ),
-                            Token(Token.TYPE.INTEGER,
-                                  str(denominator),
-                                  [infinite_decimal.range[0] + len(str(numerator)) + 2,
-                                   infinite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
-                                  ),
-                            ]
+                              str(numerator),
+                              [infinite_decimal.range[0], infinite_decimal.range[0] + len(str(numerator))]
+                              ),
+                        Token(Token.TYPE.OPERATOR,
+                              "/",
+                              [infinite_decimal.range[0] + len(str(numerator)) + 1,
+                               infinite_decimal.range[0] + len(str(numerator)) + 2]
+                              ),
+                        Token(Token.TYPE.INTEGER,
+                              str(denominator),
+                              [infinite_decimal.range[0] + len(str(numerator)) + 2,
+                               infinite_decimal.range[0] + len(str(numerator)) + 2 + len(str(denominator))]
+                              ),
+                        ]
 
             # 主函数逻辑
             infinite_decimal_str = infinite_decimal.value
@@ -435,176 +436,7 @@ class Lexer:
                 bracket_token.value = ')'
 
         self.tokens, self.expression = Lexer.update(self.tokens)
-
-    def _static_check(self):
-        r"""
-        静态检查,确保在进入语法分析前语句的合法性
-        :raise OlocInvalidTokenException: 当存在非法的运算符,括号或函数时,或类型错误时
-        :raise OlocIrrationalNumberFormatException: 当存在非法的无理数参数时
-        :return: None
-        """
-        valid_operators = ('+', '-', '*', '/', '√', '°', '^', '%', '!', '|')
-        valid_bracket = ('(', ')')
-        valid_function = tuple(utils.get_function_mapping_table().keys())
-        valid_types = (
-            Token.TYPE.INTEGER,
-            Token.TYPE.OPERATOR,
-            Token.TYPE.RBRACKET,
-            Token.TYPE.LBRACKET,
-            Token.TYPE.LONG_CUSTOM,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.NATIVE_IRRATIONAL,
-            Token.TYPE.IRRATIONAL_PARAM,
-            Token.TYPE.FUNCTION,
-            Token.TYPE.PARAM_SEPARATOR,
-        )
-        valid_numbers = (
-            Token.TYPE.INTEGER,
-            Token.TYPE.LONG_CUSTOM,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.NATIVE_IRRATIONAL,
-        )
-
-        self.token, self.expression = Lexer.update(self.tokens)
         self._self_check()
-
-        absolute_symbol_waiting_right = False
-        absolute_symbol_current_index = -1
-
-        for token_index, temp_token in enumerate(self.tokens):
-
-            # 类型检查
-            if temp_token.type not in valid_types:
-                raise OlocStaticCheckException(
-                    exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_TYPES,
-                    expression=self.expression,
-                    positions=list(range(*temp_token.range)),
-                    token_content=temp_token.type,
-                )
-
-            # 运算符检查
-            if temp_token.type == Token.TYPE.OPERATOR:
-
-                def operator_front_legal(index: int) -> bool:
-                    r"""
-                    找出运算符之前内容是否合法
-                    :param index: 运算符的下标
-                    :return: 是否合法
-                    """
-
-                def operator_rear_legal(index: int) -> bool:
-                    r"""
-                    找出运算符之后内容是否合法
-                    :param index: 运算符的下标
-                    :return: 是否合法
-                    """
-
-                match temp_token.value:
-                    case ".":
-                        raise OlocStaticCheckException(
-                            exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_DOT,
-                            expression=self.expression,
-                            positions=list(range(*temp_token.range)),
-                            token_content=temp_token.value,
-                        )
-
-                    case "|":
-
-                        absolute_symbol_waiting_right = not absolute_symbol_waiting_right
-                        absolute_symbol_current_index = token_index
-                        if absolute_symbol_waiting_right:
-                            if not operator_front_legal(token_index):
-                                ...
-                        else:
-                            if not operator_rear_legal(token_index):
-                                ...
-
-                    case "√" | "+" | "-":
-
-                        if not operator_rear_legal(token_index):
-                            ...
-
-                    case "!" | "°":
-
-                        if not operator_front_legal(token_index):
-                            ...
-
-                    case  "*" | "/" | "^" | "%":
-                        ... # todo
-
-                if temp_token.value not in valid_operators:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_OPERATOR,
-                        expression=self.expression,
-                        positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
-                    )
-
-            # 函数检查
-            if temp_token.type == Token.TYPE.FUNCTION:
-
-                if temp_token.value not in valid_function:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_NAME,
-                        expression=self.expression,
-                        positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
-                    )
-
-                if (token_index - 1 >= 0 and self.tokens[token_index - 1].type not in (Token.TYPE.LBRACKET, Token.TYPE.OPERATOR)) or \
-                        (token_index + 1 == len(self.tokens) or self.tokens[token_index + 1].type != Token.TYPE.LBRACKET):
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_PLACE,
-                        expression=self.expression,
-                        positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
-                    )
-
-            # 函数分隔符检查
-            if temp_token.type == Token.TYPE.PARAM_SEPARATOR:
-                if token_index == 0 or self.tokens[token_index - 1].type not in (Token.TYPE.OPERATOR, Token.TYPE.INTEGER):
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_SEPARATOR,
-                        expression=self.expression,
-                        positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
-                    )
-
-            # 括号检查
-            if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET):
-
-                if temp_token.value not in valid_bracket:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_BRACKET,
-                        expression=self.expression,
-                        positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
-                    )
-
-            # 无理数参数检查
-            if temp_token.type == Token.TYPE.IRRATIONAL_PARAM:
-
-                if len(self.tokens) == 0 or self.tokens[token_index - 1].type not in [
-                    Token.TYPE.NATIVE_IRRATIONAL,
-                    Token.TYPE.SHORT_CUSTOM,
-                    Token.TYPE.LONG_CUSTOM,
-                    Token.TYPE.RBRACKET,
-                    Token.TYPE.INTEGER
-                ]:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_IRRPARAM,
-                        expression=self.expression,
-                        positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
-                    )
-
-        if absolute_symbol_waiting_right:
-            raise OlocStaticCheckException(
-                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.MISMATCHED_ABSOLUTE,
-                expression=self.expression,
-                positions=[absolute_symbol_current_index],
-                token_content="|",
-            )
 
     def execute(self):
         r"""
@@ -617,7 +449,6 @@ class Lexer:
         self._formal_complementation()
         self._fractionalization()
         self._bracket_checking_harmonisation()
-        self._static_check()
         self.time_cost = time.time_ns() - start_time
 
     """
@@ -923,43 +754,3 @@ class Lexer:
             start_index = process_token.range[1]
 
         return [result, update_expression]
-
-
-"""test"""
-if __name__ == '__main__':
-    import simpsave as ss
-    from oloc_preprocessor import Preprocessor
-
-    def run_test():
-        tests = ss.read('test_cases', file='./data/oloctest.ini')
-        time_costs = []
-        print('___________')
-        for index, test in enumerate(tests):
-            # if target_index % 200 == 0:
-            #     print("=", end="")
-            try:
-                preprocessor = Preprocessor(test)
-                preprocessor.execute()
-                lexer = Lexer(preprocessor.expression)
-                lexer.execute()
-                print(test, end=" => ")
-                for token in lexer.tokens:
-                    print(token.value, end=" ")
-                print("")
-                time_costs.append(lexer.time_cost)
-            except Exception as e:
-                print(e)
-        print(f"\n"
-              f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
-              )
-
-    #run_test()
-
-    while True:
-        expression = input(">>")
-        preprocessor = Preprocessor(expression)
-        preprocessor.execute()
-        lexer = Lexer(preprocessor.expression)
-        lexer.execute()
-        print(lexer.tokens)
-        print(preprocessor.time_cost + lexer.time_cost)

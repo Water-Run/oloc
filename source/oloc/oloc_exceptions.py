@@ -433,7 +433,8 @@ class OlocFunctionParameterException(OlocException):
 
         OUTSIDE_SEPARATOR = (
             "OlocFunctionParameterException: Function separator `{err_param} detected outside of function ({err_info})",
-            "The function separator must be inside the function."
+            "The function separator must be inside the function. If you expect the separator to be inside a function, "
+            "check that the function name is valid."
         )
 
         POWER = (
@@ -516,10 +517,27 @@ class OlocStaticCheckException(OlocException):
             "issue."
         )
 
+        OPERATOR_COLON = (
+            "OlocStaticCheckException: Colon symbols detected during the static checking phase `{"
+            "token_content}`",
+            "This can be caused by incorrectly displaying the infinite loop decimal statement. "
+            "Checking the expression or submitting an"
+            "issue."
+        )
+
         INVALID_OPERATOR = (
             "OlocStaticCheckException: Operator that should not be present during the static checking phase `{"
             "token_content}`",
             "This operator should not be present during static processing. Checking the expression or submitting an "
+            "issue."
+        )
+
+        OPERATOR_PLACE = (
+            "OlocStaticCheckException: Misplaced operator `{"
+            "token_content}`",
+            "Syntactic qualifications for unary and binary operators, in particular. Check the documentation for "
+            "information."
+            "Checking the expression or submitting an"
             "issue."
         )
 
@@ -558,6 +576,7 @@ class OlocStaticCheckException(OlocException):
             "OlocStaticCheckException: Invalid function parameter separator detected `{"
             "token_content}`",
             "A legal function argument separator can only be preceded by a number or a right bracket. "
+            "If the latter item begins with an operator, it must be in the form of a legal unary operator. "
             "Checking the expression or submitting an"
             "issue."
         )
