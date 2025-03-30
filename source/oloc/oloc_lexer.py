@@ -27,9 +27,17 @@ class Lexer:
         r"""
         将表达式转为Token流,并检查Token的合法性
         :return: None
-        :raise OlocInvalidTokenException: 如果Token不合法
         """
         self.tokens = Lexer.tokenizer(self.expression)
+        self._self_check()
+
+
+    def _self_check(self) -> None:
+        r"""
+        Token流自检
+        :raise OlocInvalidTokenException: 如果Token不合法
+        :return: None
+        """
         for check_token in self.tokens:
             if not check_token.is_legal:
                 raise OlocInvalidTokenException(
@@ -430,7 +438,7 @@ class Lexer:
 
     def _static_check(self):
         r"""
-        静态检查
+        静态检查,确保在进入语法分析前语句的合法性
         :raise OlocInvalidTokenException: 当存在非法的运算符,括号或函数时,或类型错误时
         :raise OlocIrrationalNumberFormatException: 当存在非法的无理数参数时
         :return: None
@@ -450,49 +458,125 @@ class Lexer:
             Token.TYPE.FUNCTION,
             Token.TYPE.PARAM_SEPARATOR,
         )
+        valid_numbers = (
+            Token.TYPE.INTEGER,
+            Token.TYPE.LONG_CUSTOM,
+            Token.TYPE.SHORT_CUSTOM,
+            Token.TYPE.NATIVE_IRRATIONAL,
+        )
 
         self.token, self.expression = Lexer.update(self.tokens)
+        self._self_check()
+
+        absolute_symbol_waiting_right = False
+        absolute_symbol_current_index = -1
 
         for token_index, temp_token in enumerate(self.tokens):
+
+            # 类型检查
             if temp_token.type not in valid_types:
-                raise OlocInvalidTokenException(
-                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_TYPES,
+                raise OlocStaticCheckException(
+                    exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_TYPES,
                     expression=self.expression,
                     positions=list(range(*temp_token.range)),
                     token_content=temp_token.type,
                 )
-            if temp_token.type == Token.TYPE.OPERATOR and temp_token.value not in valid_operators:
+
+            # 运算符检查
+            if temp_token.type == Token.TYPE.OPERATOR:
+
+                def operator_front_legal(index: int) -> bool:
+                    r"""
+                    找出运算符之前内容是否合法
+                    :param index: 运算符的下标
+                    :return: 是否合法
+                    """
+
+                def operator_rear_legal(index: int) -> bool:
+                    r"""
+                    找出运算符之后内容是否合法
+                    :param index: 运算符的下标
+                    :return: 是否合法
+                    """
 
                 match temp_token.value:
                     case ".":
-                        raise OlocInvalidTokenException(
-                            exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_POINT,
+                        raise OlocStaticCheckException(
+                            exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_DOT,
                             expression=self.expression,
                             positions=list(range(*temp_token.range)),
                             token_content=temp_token.value,
                         )
 
-                raise OlocInvalidTokenException(
-                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_OPERATOR,
-                    expression=self.expression,
-                    positions=list(range(*temp_token.range)),
-                    token_content=temp_token.value,
-                )
-            if temp_token.type == Token.TYPE.FUNCTION and temp_token.value not in valid_function:
-                raise OlocInvalidTokenException(
-                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_FUNCTION,
-                    expression=self.expression,
-                    positions=list(range(*temp_token.range)),
-                    token_content=temp_token.value,
-                )
-            if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET) and temp_token.value not in valid_bracket:
-                raise OlocInvalidTokenException(
-                    exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_BRACKET,
-                    expression=self.expression,
-                    positions=list(range(*temp_token.range)),
-                    token_content=temp_token.value,
-                )
+                    case "|":
+
+                        absolute_symbol_waiting_right = not absolute_symbol_waiting_right
+                        absolute_symbol_current_index = token_index
+                        if absolute_symbol_waiting_right:
+                            if not operator_front_legal(token_index):
+                                ...
+                        else:
+                            if not operator_rear_legal(token_index):
+                                ...
+
+                    case "√" | "+" | "-":
+
+                        if not operator_rear_legal(token_index):
+                            ...
+
+                    case "!" | "°":
+
+                        if not operator_front_legal(token_index):
+                            ...
+
+                    case  "*" | "/" | "^" | "%":
+                        ... # todo
+
+                if temp_token.value not in valid_operators:
+                    raise OlocStaticCheckException(
+                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_OPERATOR,
+                        expression=self.expression,
+                        positions=list(range(*temp_token.range)),
+                        token_content=temp_token.value,
+                    )
+
+            # 函数检查
+            if temp_token.type == Token.TYPE.FUNCTION:
+
+                if temp_token.value not in valid_function:
+                    raise OlocStaticCheckException(
+                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_NAME,
+                        expression=self.expression,
+                        positions=list(range(*temp_token.range)),
+                        token_content=temp_token.value,
+                    )
+
+                if token_index + 1 == len(self.tokens) or self.tokens[token_index + 1].type != Token.TYPE.LBRACKET:
+                    raise OlocStaticCheckException(
+                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_PLACE,
+                        expression=self.expression,
+                        positions=list(range(*temp_token.range)),
+                        token_content=temp_token.value,
+                    )
+
+            # 函数分隔符检查
+            if temp_token.type == Token.TYPE.PARAM_SEPARATOR:
+                ...
+
+            # 括号检查
+            if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET):
+
+                if temp_token.value not in valid_bracket:
+                    raise OlocStaticCheckException(
+                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_BRACKET,
+                        expression=self.expression,
+                        positions=list(range(*temp_token.range)),
+                        token_content=temp_token.value,
+                    )
+
+            # 无理数参数检查
             if temp_token.type == Token.TYPE.IRRATIONAL_PARAM:
+
                 if len(self.tokens) == 0 or self.tokens[token_index - 1].type not in [
                     Token.TYPE.NATIVE_IRRATIONAL,
                     Token.TYPE.SHORT_CUSTOM,
@@ -500,12 +584,20 @@ class Lexer:
                     Token.TYPE.RBRACKET,
                     Token.TYPE.INTEGER
                 ]:
-                    raise OlocInvalidTokenException(
-                        exception_type=OlocInvalidTokenException.EXCEPTION_TYPE.STATIC_CHECK_IRRPARAM,
+                    raise OlocStaticCheckException(
+                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_IRRPARAM,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
                         token_content=temp_token.value,
                     )
+
+        if absolute_symbol_waiting_right:
+            raise OlocStaticCheckException(
+                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.MISMATCHED_ABSOLUTE,
+                expression=self.expression,
+                positions=[absolute_symbol_current_index],
+                token_content="|",
+            )
 
     def execute(self):
         r"""
@@ -854,7 +946,7 @@ if __name__ == '__main__':
               f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
               )
 
-    run_test()
+
     while True:
         expression = input(">>")
         preprocessor = Preprocessor(expression)

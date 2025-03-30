@@ -265,48 +265,6 @@ class OlocInvalidTokenException(OlocException):
             "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
         )
 
-        STATIC_CHECK_POINT = (
-            "OlocInvalidTokenException: Point that should not be present during the static checking phase `{"
-            "token_content}`",
-            "It's likely that there are illegal decimals. Decimals must have one and only one decimal point, "
-            "distinguishing between preceding integer and decimal places. Checking the expression or submitting an"
-            "issue."
-        )
-
-        STATIC_CHECK_OPERATOR = (
-            "OlocInvalidTokenException: Operator that should not be present during the static checking phase `{"
-            "token_content}`",
-            "This operator should not be present during static processing. Checking the expression or submitting an "
-            "issue."
-        )
-
-        STATIC_CHECK_FUNCTION = (
-            "OlocInvalidTokenException: Function that should not be present during the static checking phase `{"
-            "token_content}`",
-            "This operator should not be present during static processing. Checking the expression or submitting an "
-            "issue."
-        )
-
-        STATIC_CHECK_BRACKET = (
-            "OlocInvalidTokenException: Bracket that should not be present during the static checking phase `{"
-            "token_content}`",
-            "This bracket should not be present during static processing. Checking the expression or submitting an "
-            "issue."
-        )
-
-        STATIC_CHECK_IRRPARAM = (
-            "OlocInvalidTokenException: Irrational number of parameters `{token_content}` for which static checking fails",
-            "This may be due to the fact that the previous Token of the irrational number parameter is not legal. An "
-            "irrational number argument can only come after an irrational number or a result (such as a function) "
-            "that may be irrational. Check the expression to ensure that the structure of the irrational number "
-            "argument is legal."
-        )
-
-        STATIC_CHECK_TYPES = (
-            "OlocInvalidTokenException: Token types that should not be present `{"
-            "token_content}`",
-            "Token of this type should not be retained during the static checking phase. Checking the expression or submitting an issue."
-        )
 
     def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
         r"""
@@ -526,6 +484,95 @@ class OlocReservedWordException(OlocException):
         self.conflict_str = conflict_str
 
         main_message = exception_type.value[0].format(conflict_str=conflict_str)
+        suggestion = exception_type.value[1]
+
+        self.message = f"{main_message} {suggestion}"
+
+        # 调用父类初始化
+        super().__init__(exception_type, expression, positions)
+
+
+class OlocStaticCheckException(OlocException):
+    r"""
+    当词法分析器静态检查捕获错误时抛出的异常
+    """
+
+    class EXCEPTION_TYPE(Enum):
+        r"""
+        定义 OlocStaticCheckException 的异常类型的枚举类。
+        """
+
+        OPERATOR_DOT = (
+            "OlocStaticCheckException: Dot symbols detected during the static checking phase `{"
+            "token_content}`",
+            "It's likely that there are illegal decimals. Decimals must have one and only one decimal point, "
+            "distinguishing between preceding integer and decimal places. Checking the expression or submitting an"
+            "issue."
+        )
+
+        INVALID_OPERATOR = (
+            "OlocStaticCheckException: Operator that should not be present during the static checking phase `{"
+            "token_content}`",
+            "This operator should not be present during static processing. Checking the expression or submitting an "
+            "issue."
+        )
+
+        FUNCTION_NAME = (
+            "OlocStaticCheckException: Function names that should not appear in the static checking phase `{"
+            "token_content}`",
+            "This function should not be present during static processing. Checking the expression or submitting an "
+            "issue."
+        )
+
+        FUNCTION_PLACE = (
+            "OlocStaticCheckException: Misplaced function call `{"
+            "token_content}`",
+            "Function declarations must be followed by a left bracket. Checking the expression or submitting an "
+            "issue."
+        )
+
+        INVALID_BRACKET = (
+            "OlocStaticCheckException: Bracket that should not be present during the static checking phase `{"
+            "token_content}`",
+            "This bracket should not be present during static processing. Checking the expression or submitting an "
+            "issue."
+        )
+
+        INVALID_IRRPARAM = (
+            "OlocStaticCheckException: Irrational number of parameters `{token_content}` for which static checking "
+            "fails",
+            "This may be due to the fact that the previous Token of the irrational number parameter is not legal. An "
+            "irrational number argument can only come after an irrational number or a result (such as a function) "
+            "that may be irrational. Check the expression to ensure that the structure of the irrational number "
+            "argument is legal."
+        )
+
+        INVALID_TYPES = (
+            "OlocStaticCheckException: Token types that should not be present `{"
+            "token_content}`",
+            "Token of this type should not be retained during the static checking phase. Checking the expression or "
+            "submitting an issue."
+        )
+
+        MISMATCHED_ABSOLUTE = (
+            "OlocStaticCheckException: Mismatched absolute symbol `{"
+            "token_content}`",
+            "Absolute value symbols must be paired left and right. Checking the expression or "
+            "submitting an issue."
+        )
+
+    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
+        r"""
+        初始化 OlocStaticCheckException，包含异常类型和 Token 内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param token_content: 引发异常的 Token 内容
+        """
+        self.token_content = token_content
+
+        main_message = exception_type.value[0].format(token_content=token_content)
         suggestion = exception_type.value[1]
 
         self.message = f"{main_message} {suggestion}"

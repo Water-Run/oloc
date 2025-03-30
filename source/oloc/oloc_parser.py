@@ -56,6 +56,15 @@ class Parser:
         生成Unit流
         :return: None
         """
+        LITERAL = (
+            Token.TYPE.INTEGER,
+            Token.TYPE.NATIVE_IRRATIONAL,
+            Token.TYPE.SHORT_CUSTOM,
+            Token.TYPE.LONG_CUSTOM,
+        )
+        for token_index, temp_token in enumerate(self.tokens):
+            ...
+
 
     def _syntax_check(self):
         r"""
