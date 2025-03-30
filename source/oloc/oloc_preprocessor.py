@@ -201,6 +201,7 @@ class Preprocessor:
         消除表达式中冗余的正负号和数字分隔符。
         :return: None
         :raise OlocNumberSeparatorException: 如果数字分隔符中存在错误。
+        :raise OlocFunctionParameterException: 如果出现在函数之外的函数分隔符
         """
 
         # 消除连续正负号
@@ -307,14 +308,11 @@ class Preprocessor:
                 i += 1
                 continue
 
-            # 处理逗号
             if char == ',':
                 if stack and stack[-1][0] in {BlockType.FUNCTION_WITH_COMMA, BlockType.FUNCTION_WITHOUT_COMMA}:
-                    # 根据函数分隔符类型决定是否保留逗号
                     if stack[-1][0] == BlockType.FUNCTION_WITH_COMMA:
                         result.append(char)
                 else:
-                    # 检查逗号是否为有效的数字分隔符
                     if (
                             i == 0 or i == len(self.expression) - 1 or
                             not self.expression[i - 1].isdigit() or
@@ -322,6 +320,19 @@ class Preprocessor:
                     ):
                         invalid_positions.append(i)
 
+                i += 1
+                continue
+
+            if char == ';':
+                # 检查是否在函数内部
+                if not (stack and stack[-1][0] in {BlockType.FUNCTION_WITH_COMMA, BlockType.FUNCTION_WITHOUT_COMMA}):
+                    raise OlocFunctionParameterException(
+                        exception_type=OlocFunctionParameterException.EXCEPTION_TYPE.OUTSIDE_SEPARATOR,
+                        expression=self.expression,
+                        positions=[i],
+                        err_param=';',
+                        err_info='Captured during preprocessing of digit delimiter conversions'
+                    )
                 i += 1
                 continue
 

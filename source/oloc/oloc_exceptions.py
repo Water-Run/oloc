@@ -430,6 +430,12 @@ class OlocFunctionParameterException(OlocException):
         r"""
         定义 OlocFunctionParameterException 的异常类型的枚举类。
         """
+
+        OUTSIDE_SEPARATOR = (
+            "OlocFunctionParameterException: Function separator `{err_param} detected outside of function ({err_info})",
+            "The function separator must be inside the function."
+        )
+
         POWER = (
             "OlocFunctionParameterException: The parameter `{err_param}` in the pow() is incorrect ({err_info})",
             "Check the documentation for the parameter description of pow()."
@@ -446,7 +452,7 @@ class OlocFunctionParameterException(OlocException):
         :param err_param: 引发异常的参数内容
         :param err_info: 引发异常的信息内容
         """
-        self.err_bracket = err_param
+        self.err_param = err_param
         self.err_info = err_info
 
         main_message = exception_type.value[0].format(err_param=err_param, err_info=err_info)
@@ -527,7 +533,8 @@ class OlocStaticCheckException(OlocException):
         FUNCTION_PLACE = (
             "OlocStaticCheckException: Misplaced function call `{"
             "token_content}`",
-            "Function declarations must be followed by a left bracket. Checking the expression or submitting an "
+            "Function declarations must be followed by a left bracket. If the function is not the first element, "
+            "it may be preceded by left brackets or an operator. Checking the expression or submitting an"
             "issue."
         )
 
@@ -545,6 +552,14 @@ class OlocStaticCheckException(OlocException):
             "irrational number argument can only come after an irrational number or a result (such as a function) "
             "that may be irrational. Check the expression to ensure that the structure of the irrational number "
             "argument is legal."
+        )
+
+        INVALID_SEPARATOR = (
+            "OlocStaticCheckException: Invalid function parameter separator detected `{"
+            "token_content}`",
+            "A legal function argument separator can only be preceded by a number or a right bracket. "
+            "Checking the expression or submitting an"
+            "issue."
         )
 
         INVALID_TYPES = (

@@ -551,7 +551,8 @@ class Lexer:
                         token_content=temp_token.value,
                     )
 
-                if token_index + 1 == len(self.tokens) or self.tokens[token_index + 1].type != Token.TYPE.LBRACKET:
+                if (token_index - 1 >= 0 and self.tokens[token_index - 1].type not in (Token.TYPE.LBRACKET, Token.TYPE.OPERATOR)) or \
+                        (token_index + 1 == len(self.tokens) or self.tokens[token_index + 1].type != Token.TYPE.LBRACKET):
                     raise OlocStaticCheckException(
                         exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_PLACE,
                         expression=self.expression,
@@ -561,7 +562,13 @@ class Lexer:
 
             # 函数分隔符检查
             if temp_token.type == Token.TYPE.PARAM_SEPARATOR:
-                ...
+                if token_index == 0 or self.tokens[token_index - 1].type not in (Token.TYPE.OPERATOR, Token.TYPE.INTEGER):
+                    raise OlocStaticCheckException(
+                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_SEPARATOR,
+                        expression=self.expression,
+                        positions=list(range(*temp_token.range)),
+                        token_content=temp_token.value,
+                    )
 
             # 括号检查
             if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET):
@@ -917,8 +924,8 @@ class Lexer:
 
         return [result, update_expression]
 
-"""test"""
 
+"""test"""
 if __name__ == '__main__':
     import simpsave as ss
     from oloc_preprocessor import Preprocessor
@@ -946,6 +953,7 @@ if __name__ == '__main__':
               f"Avg Time Cost For {len(time_costs)} cases: {sum(time_costs) / len(time_costs) / 1000000} ms\n"
               )
 
+    #run_test()
 
     while True:
         expression = input(">>")
