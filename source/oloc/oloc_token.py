@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-29
+:date: 2025-03-31
 :file: oloc_token.py
 :description: oloc token
 """
@@ -61,26 +61,26 @@ class Token:
     def __repr__(self):
         return f"Token('{self.type.value}', '{self.value}', '{self.range}')"
 
-    def get_exception_type(self) -> OlocInvalidTokenException.EXCEPTION_TYPE:
+    def get_exception_type(self) -> OlocValueError.TYPE:
         r"""
-        Returns the corresponding OlocInvalidTokenException.ExceptionType
+        Returns the corresponding OlocValueError.TYPE
         :return:
         """
         mapping = {
-            Token.TYPE.PERCENTAGE: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_PERCENTAGE,
-            Token.TYPE.INFINITE_DECIMAL: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_INFINITE_DECIMAL,
-            Token.TYPE.FINITE_DECIMAL: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_FINITE_DECIMAL,
-            Token.TYPE.INTEGER: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_INTEGER,
-            Token.TYPE.NATIVE_IRRATIONAL: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_NATIVE_IRRATIONAL,
-            Token.TYPE.SHORT_CUSTOM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_SHORT_CUSTOM_IRRATIONAL,
-            Token.TYPE.LONG_CUSTOM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_LONG_CUSTOM_IRRATIONAL,
-            Token.TYPE.OPERATOR: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_OPERATOR,
-            Token.TYPE.LBRACKET: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_BRACKET,
-            Token.TYPE.RBRACKET: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_BRACKET,
-            Token.TYPE.FUNCTION: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_FUNCTION,
-            Token.TYPE.PARAM_SEPARATOR: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_PARAM_SEPARATOR,
-            Token.TYPE.IRRATIONAL_PARAM: OlocInvalidTokenException.EXCEPTION_TYPE.INVALID_IRRATIONAL_PARAM,
-            Token.TYPE.UNKNOWN: OlocInvalidTokenException.EXCEPTION_TYPE.UNKNOWN_TOKEN,
+            Token.TYPE.PERCENTAGE: OlocValueError.TYPE.INVALID_PERCENTAGE,
+            Token.TYPE.INFINITE_DECIMAL: OlocValueError.TYPE.INVALID_INFINITE_DECIMAL,
+            Token.TYPE.FINITE_DECIMAL: OlocValueError.TYPE.INVALID_FINITE_DECIMAL,
+            Token.TYPE.INTEGER: OlocValueError.TYPE.INVALID_INTEGER,
+            Token.TYPE.NATIVE_IRRATIONAL: OlocValueError.TYPE.INVALID_NATIVE_IRRATIONAL,
+            Token.TYPE.SHORT_CUSTOM: OlocValueError.TYPE.INVALID_SHORT_CUSTOM_IRRATIONAL,
+            Token.TYPE.LONG_CUSTOM: OlocValueError.TYPE.INVALID_LONG_CUSTOM_IRRATIONAL,
+            Token.TYPE.OPERATOR: OlocValueError.TYPE.INVALID_OPERATOR,
+            Token.TYPE.LBRACKET: OlocValueError.TYPE.INVALID_BRACKET,
+            Token.TYPE.RBRACKET: OlocValueError.TYPE.INVALID_BRACKET,
+            Token.TYPE.FUNCTION: OlocValueError.TYPE.INVALID_FUNCTION,
+            Token.TYPE.PARAM_SEPARATOR: OlocValueError.TYPE.INVALID_PARAM_SEPARATOR,
+            Token.TYPE.IRRATIONAL_PARAM: OlocValueError.TYPE.INVALID_IRRATIONAL_PARAM,
+            Token.TYPE.UNKNOWN: OlocValueError.TYPE.UNKNOWN_TOKEN,
         }
         return mapping[self.type]
 

@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-30
+:date: 2025-03-31
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -56,8 +56,7 @@ class Parser:
     def _static_check(self):
         r"""
         静态检查,确保在进入语法分析前语句的合法性
-        :raise OlocInvalidTokenException: 当存在非法的运算符,括号或函数时,或类型错误时
-        :raise OlocIrrationalNumberFormatException: 当存在非法的无理数参数时
+        :raise OlocSyntaxError: 当存在非法的运算符,括号或函数时,或类型错误时
         :return: None
         """
 
@@ -93,11 +92,11 @@ class Parser:
 
             # 类型检查
             if temp_token.type not in VALID_TYPES:
-                raise OlocStaticCheckException(
-                    exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_TYPES,
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.UNEXPECTED_TOKEN_TYPE,
                     expression=self.expression,
                     positions=list(range(*temp_token.range)),
-                    token_content=temp_token.type,
+                    primary_info=temp_token.type,
                 )
 
             # 运算符检查
@@ -106,19 +105,19 @@ class Parser:
                 match temp_token.value:
 
                     case ".":
-                        raise OlocStaticCheckException(
-                            exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_DOT,
+                        raise OlocSyntaxError(
+                            exception_type=OlocSyntaxError.TYPE.DOT_SYNTAX_ERROR,
                             expression=self.expression,
                             positions=list(range(*temp_token.range)),
-                            token_content=temp_token.value,
+                            primary_info=temp_token.value,
                         )
 
                     case ":":
-                        raise OlocStaticCheckException(
-                            exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_COLON,
+                        raise OlocSyntaxError(
+                            exception_type=OlocSyntaxError.TYPE.COLON_SYNTAX_ERROR,
                             expression=self.expression,
                             positions=list(range(*temp_token.range)),
-                            token_content=temp_token.value,
+                            primary_info=temp_token.value,
                         )
 
                     case "|":
@@ -128,114 +127,114 @@ class Parser:
 
                         if token_index != len(self.tokens) - 1 and self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index + 1].value in ('°', '!', '|'):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                         if token_index > 0 and self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index - 1].value in ('*', '/', '°', '%', '!', '|'):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                     case "√" | "+" | "-":
 
                         if not token_index != len(self.tokens) - 1:
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                         if self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index + 1].value in ('*', '/', '°', '^', '%', '!'):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                     case "!" | "°":
 
                         if not token_index > 0:
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                         if self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                     case  "*" | "/" | "^" | "%":
 
                         if token_index not in range(1, len(self.tokens) - 1):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                         if self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                         if self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index + 1].value in ('*', '/', '°', '^', '%', '!'):
-                            raise OlocStaticCheckException(
-                                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.OPERATOR_PLACE,
+                            raise OlocSyntaxError(
+                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
-                                token_content=temp_token.value,
+                                primary_info=temp_token.value,
                             )
 
                 if temp_token.value not in VALID_OPERATORS:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_OPERATOR,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.UNEXPECTED_OPERATOR,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
+                        primary_info=temp_token.value,
                     )
 
             # 函数检查
             if temp_token.type == Token.TYPE.FUNCTION:
 
                 if temp_token.value not in VALID_FUNCTION:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_NAME,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.INVALID_FUNCTION_NAME,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
+                        primary_info=temp_token.value,
                     )
 
                 if (token_index - 1 >= 0 and self.tokens[token_index - 1].type not in (Token.TYPE.LBRACKET, Token.TYPE.OPERATOR, Token.TYPE.PARAM_SEPARATOR)) or \
                         (token_index + 1 == len(self.tokens) or self.tokens[token_index + 1].type != Token.TYPE.LBRACKET):
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.FUNCTION_PLACE,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_MISPLACEMENT,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
+                        primary_info=temp_token.value,
                     )
 
             # 函数分隔符检查
@@ -245,22 +244,22 @@ class Parser:
                         or (self.tokens[token_index + 1].type == Token.TYPE.RBRACKET)\
                         or (self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'))\
                         or (self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and self.tokens[token_index + 1].value in ('*', '/', '^', '%')):
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_SEPARATOR,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_SEPARATOR_ERROR,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
+                        primary_info=temp_token.value,
                     )
 
             # 括号检查
             if temp_token.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET):
 
                 if temp_token.value not in VALID_BRACKETS:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_BRACKET,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.UNEXPECTED_BRACKET,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
+                        primary_info=temp_token.value,
                     )
 
             # 无理数参数检查
@@ -273,19 +272,19 @@ class Parser:
                     Token.TYPE.RBRACKET,
                     Token.TYPE.INTEGER
                 ]:
-                    raise OlocStaticCheckException(
-                        exception_type=OlocStaticCheckException.EXCEPTION_TYPE.INVALID_IRRPARAM,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_PARAM_ERROR,
                         expression=self.expression,
                         positions=list(range(*temp_token.range)),
-                        token_content=temp_token.value,
+                        primary_info=temp_token.value,
                     )
 
         if absolute_symbol_waiting_right:
-            raise OlocStaticCheckException(
-                exception_type=OlocStaticCheckException.EXCEPTION_TYPE.MISMATCHED_ABSOLUTE,
+            raise OlocSyntaxError(
+                exception_type=OlocSyntaxError.TYPE.ABSOLUTE_SYMBOL_MISMATCH,
                 expression=self.expression,
                 positions=[absolute_symbol_current_index],
-                token_content="|",
+                primary_info="|",
             )
 
     def _build(self):

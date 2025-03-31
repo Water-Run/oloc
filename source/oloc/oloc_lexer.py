@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-30
+:date: 2025-03-31
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -35,23 +35,23 @@ class Lexer:
     def _self_check(self) -> None:
         r"""
         Token流自检
-        :raise OlocInvalidTokenException: 如果Token不合法
+        :raise OlocValueError: 如果Token不合法
         :return: None
         """
         for check_token in self.tokens:
             if not check_token.is_legal:
-                raise OlocInvalidTokenException(
+                raise OlocValueError(
                     exception_type=check_token.get_exception_type(),
                     expression=self.expression,
                     positions=list(range(*[check_token.range[0], check_token.range[1]])),
-                    token_content=check_token.value if check_token else "",
+                    primary_info=check_token.value if check_token else "",
                 )
             if check_token.type == Token.TYPE.LONG_CUSTOM and check_token.value.startswith('<__reserved'):
-                raise OlocReservedWordException(
-                    exception_type=OlocReservedWordException.EXCEPTION_TYPE.IS_RESERVED,
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.RESERVED_WORD_CONFLICT,
                     expression=self.expression,
                     positions=list(range(*[check_token.range[0], check_token.range[1]])),
-                    conflict_str=check_token.value,
+                    primary_info=check_token.value,
                 )
 
     def _formal_complementation(self) -> None:
@@ -125,15 +125,15 @@ class Lexer:
         r"""
         检查传入的分数流(分子,分数线,分母)中的分母是否合法
         :param check_tokens: 被检查的Token
-        :raise OlocInvalidCalculationException: 如果分母为0
+        :raise OlocCalculationError: 如果分母为0
         :return: 原样返回
         """
         if int(check_tokens[2].value) == 0:
-            raise OlocInvalidCalculationException(
-                exception_type=OlocInvalidCalculationException.EXCEPTION_TYPE.DIVIDE_BY_ZERO,
+            raise OlocCalculationError(
+                exception_type=OlocCalculationError.TYPE.DIVIDE_BY_ZERO,
                 expression=self.expression,
                 positions=list(range(*[check_tokens[0].range[0], check_tokens[2].range[1]])),
-                computing_unit=check_tokens[0].value + check_tokens[1].value + check_tokens[2].value,
+                primary_info=check_tokens[0].value + check_tokens[1].value + check_tokens[2].value,
             )
         return check_tokens
 
@@ -374,7 +374,7 @@ class Lexer:
     def _bracket_checking_harmonisation(self) -> None:
         """
         括号检查与统一化
-        :raise OlocInvalidBracketException: 如果括号出现层级错误或不匹配
+        :raise OlocSyntaxError: 如果括号出现层级错误或不匹配
         :return: None
         """
         BRACKET_PRIORITY = {'(': 1, '[': 2, '{': 3, ')': 1, ']': 2, '}': 3}
@@ -385,48 +385,48 @@ class Lexer:
         for temp_token in self.tokens:
             if temp_token.type == Token.TYPE.LBRACKET:
                 if stack and BRACKET_PRIORITY[temp_token.value] > BRACKET_PRIORITY[stack[-1][0]]:
-                    raise OlocInvalidBracketException(
-                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.INCORRECT_BRACKET_HIERARCHY,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.BRACKET_HIERARCHY_ERROR,
                         expression=self.expression,
                         positions=[temp_token.range[0]],
-                        err_bracket=temp_token.value
+                        primary_info=temp_token.value
                     )
                 stack.append((temp_token.value, temp_token.range[0], BRACKET_PRIORITY[temp_token.value]))
 
             elif temp_token.type == Token.TYPE.RBRACKET:
                 if not stack:
-                    raise OlocInvalidBracketException(
-                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_RIGHT_BRACKET,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.RIGHT_BRACKET_MISMATCH,
                         expression=self.expression,
                         positions=[temp_token.range[0]],
-                        err_bracket=temp_token.value
+                        primary_info=temp_token.value
                     )
 
                 last_left_bracket, last_position, last_priority = stack.pop()
 
                 if BRACKET_MATCH[last_left_bracket] != temp_token.value:
-                    raise OlocInvalidBracketException(
-                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_LEFT_BRACKET,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.LEFT_BRACKET_MISMATCH,
                         expression=self.expression,
                         positions=[last_position],
-                        err_bracket=last_left_bracket
+                        primary_info=last_left_bracket
                     )
 
                 if BRACKET_PRIORITY[last_left_bracket] != BRACKET_PRIORITY[temp_token.value]:
-                    raise OlocInvalidBracketException(
-                        exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.INCORRECT_BRACKET_HIERARCHY,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.BRACKET_HIERARCHY_ERROR,
                         expression=self.expression,
                         positions=[last_position],
-                        err_bracket=last_left_bracket
+                        primary_info=last_left_bracket
                     )
 
         if stack:
             last_left_bracket, last_position, _ = stack.pop()
-            raise OlocInvalidBracketException(
-                exception_type=OlocInvalidBracketException.EXCEPTION_TYPE.MISMATCH_LEFT_BRACKET,
+            raise OlocSyntaxError(
+                exception_type=OlocSyntaxError.TYPE.LEFT_BRACKET_MISMATCH,
                 expression=self.expression,
                 positions=[last_position],
-                err_bracket=last_left_bracket
+                primary_info=last_left_bracket
             )
 
         for bracket_token in self.tokens:
@@ -460,7 +460,7 @@ class Lexer:
         r"""
         分词器
         :param expression: 待分词的表达式
-        :raise OlocIrrationalNumberFormatException: 如果无理数形式不合法
+        :raise OlocSyntaxError: 如果无理数形式不合法
         :return: 分词后的Token列表
         """
         function_names = utils.get_function_name_list()
@@ -483,8 +483,8 @@ class Lexer:
 
                 # 单个左尖括号是错误的
                 if index == len(expression) - 1:
-                    raise OlocIrrationalNumberFormatException(
-                        exception_type=OlocIrrationalNumberFormatException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_LEFT_BRACKET_MISMATCH,
                         expression=expression,
                         positions=[index, index],
                     )
@@ -498,8 +498,8 @@ class Lexer:
 
                 # 如果没找到匹配的右尖括号，抛出异常
                 if right_bracket_index is None:
-                    raise OlocIrrationalNumberFormatException(
-                        exception_type=OlocIrrationalNumberFormatException.EXCEPTION_TYPE.MISMATCH_LONG_LEFT_SIGN,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_LEFT_BRACKET_MISMATCH,
                         expression=expression,
                         positions=[index, index],
                     )

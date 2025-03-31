@@ -51,7 +51,7 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
     :param time_limit: 最大允许的计算时间（秒）
     :return: 计算的结果，封装在 OlocResult 中
     :raises: TypeError: 如果输入的参数类型不正确
-    :raises OlocTimeOutException: 如果计算时间超过限制
+    :raises OlocTimeOutError: 如果计算时间超过限制
     """
 
     # 类型检查
@@ -90,8 +90,8 @@ def calculate(expression: str, *, time_limit: float = -1) -> OlocResult:
         if process.is_alive():
             process.terminate()
             process.join()
-            raise OlocTimeOutException(
-                exception_type=OlocTimeOutException.EXCEPTION_TYPE.TIMEOUT,
+            raise OlocTimeOutError(
+                exception_type=OlocTimeOutError.EXCEPTION_TYPE.TIMEOUT,
                 expression=expression,
                 positions=list(range(len(expression))),
                 time_limit=time_limit,

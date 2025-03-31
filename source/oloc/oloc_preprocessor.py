@@ -29,7 +29,7 @@ class Preprocessor:
         r"""
         Removes trailing comments ending with `@` and free comments enclosed with `##` in the expression.
         :return: None
-        :raise OlocCommentException: If unmatched `#` occurs
+        :raise OlocSyntaxError: If unmatched `#` occurs
         """
 
         # Remove trailing comments
@@ -41,8 +41,8 @@ class Preprocessor:
 
         if len(hash_positions) % 2 != 0:
             unmatched_position = [hash_positions[-1]]
-            raise OlocCommentException(
-                exception_type=OlocCommentException.EXCEPTION_TYPE.MISMATCH_HASH,
+            raise OlocSyntaxError(
+                exception_type=OlocSyntaxError.TYPE.COMMENT_MISMATCH,
                 expression=self.expression,
                 positions=unmatched_position
             )
@@ -83,8 +83,8 @@ class Preprocessor:
                 if len(long_custom_start_stack) == 1:
                     custom_indices.append((long_custom_start_stack[0], exp_index))
                 if len(long_custom_start_stack) == 0:
-                    raise OlocIrrationalNumberFormatException(
-                        exception_type=OlocIrrationalNumberFormatException.EXCEPTION_TYPE.MISMATCH_LONG_RIGHT_SIGN,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_RIGHT_BRACKET_MISMATCH,
                         expression=char,
                         positions=[exp_index],
                     )
@@ -184,15 +184,15 @@ class Preprocessor:
     def _equals_sign_elimination(self) -> None:
         r"""
         Eliminates trailing `=` in the expression.
-        :raise OlocInvalidEqualSignException: If `=` appears in a non-trailing position
+        :raise OlocSyntaxError: If `=` appears in a non-trailing position
         :return: None
         """
         if self.expression.endswith('='):
             self.expression = self.expression[:-1]
         equal_sign_index = self.expression.find('=')
         if equal_sign_index != -1:
-            raise OlocInvalidEqualSignException(
-                exception_type=OlocInvalidEqualSignException.EXCEPTION_TYPE.MISPLACED,
+            raise OlocSyntaxError(
+                exception_type=OlocSyntaxError.TYPE.EQUAL_SIGN_MISPLACEMENT,
                 expression=self.expression,
                 positions=[equal_sign_index],
             )
@@ -201,8 +201,8 @@ class Preprocessor:
         r"""
         Eliminates redundant signs and numeric separators in the expression.
         :return: None
-        :raise OlocNumberSeparatorException: If there is an error in numeric separators.
-        :raise OlocFunctionParameterException: If function delimiters appear outside the function scope.
+        :raise OlocSyntaxError: If there is an error in numeric separators.
+        :raise OlocSyntaxError: If function delimiters appear outside the function scope.
         """
 
         # Eliminate consecutive signs
@@ -326,12 +326,12 @@ class Preprocessor:
             if char == ';':
                 # Check if it's inside a function
                 if not (stack and stack[-1][0] in {BlockType.FUNCTION_WITH_COMMA, BlockType.FUNCTION_WITHOUT_COMMA}):
-                    raise OlocFunctionParameterException(
-                        exception_type=OlocFunctionParameterException.EXCEPTION_TYPE.OUTSIDE_SEPARATOR,
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_SEPARATOR_OUTSIDE,
                         expression=self.expression,
                         positions=[i],
-                        err_param=';',
-                        err_info='Captured during preprocessing of digit delimiter conversions'
+                        primary_info=';',
+                        secondary_info='Captured during preprocessing of digit delimiter conversions'
                     )
                 i += 1
                 continue
@@ -342,8 +342,8 @@ class Preprocessor:
 
         # Raise an exception if invalid numeric separators are found
         if invalid_positions:
-            raise OlocNumberSeparatorException(
-                exception_type=OlocNumberSeparatorException.EXCEPTION_TYPE.INVALID_SEPARATOR,
+            raise OlocSyntaxError(
+                exception_type=OlocSyntaxError.TYPE.NUMERIC_SEPARATOR_ERROR,
                 expression=self.expression,
                 positions=invalid_positions,
             )

@@ -1,6 +1,18 @@
 r"""
 :author: WaterRun
-:date: 2025-03-30
+:date: 2025-03-31
+:file: oloc_exceptions.py
+:description: Oloc exceptions
+"""
+
+from abc import ABC, abstractmethod
+from enum import Enum
+from typing import List
+
+
+r"""
+:author: WaterRun
+:date: 2025-03-31
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -19,7 +31,7 @@ class OlocException(ABC, Exception):
     """
 
     @abstractmethod
-    class EXCEPTION_TYPE(Enum):
+    class TYPE(Enum):
         r"""
         异常类型的抽象内部类。
 
@@ -39,6 +51,9 @@ class OlocException(ABC, Exception):
         self.exception_type = exception_type
         self.expression = expression
         self.positions = positions
+        # 默认异常名称，由子类覆盖
+        if not hasattr(self, 'exception_name'):
+            self.exception_name = self.__class__.__name__
         super().__init__(self.__str__())
 
     def __str__(self):
@@ -55,7 +70,7 @@ class OlocException(ABC, Exception):
 
         marker_line = self._generate_marker_line()
         return (
-            f"{formatted_message}\n"
+            f"{self.exception_name}: {formatted_message}\n"
             f"{self.expression}\n"
             f"{marker_line}\n"
             f"Hint: {self.exception_type.value[1]}\n"
@@ -84,25 +99,24 @@ class OlocException(ABC, Exception):
             (self.exception_type, self.expression, self.positions)  # 返回初始化所需的参数
         )
 
-
-class OlocTimeOutException(OlocException):
+class OlocTimeOutError(OlocException):
     r"""
     当函数执行时间超出设定的最大时间时引发的异常
     """
 
-    class EXCEPTION_TYPE(Enum):
+    class TYPE(Enum):
         r"""
-        定义 OlocTimeOutException 的异常类型的枚举类。
+        定义 OlocTimeOutError 的异常类型的枚举类。
         """
         TIMEOUT = (
-            "OlocTimeOutException: Calculation time exceeds the set maximum time of {time_limit:.1f}s",
+            "OlocTimeOutError: Calculation time exceeds the set maximum time of {time_limit:.1f}s",
             "Check your expression or modify time_limit to a larger value."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], time_limit: float,
+    def __init__(self, exception_type: TYPE, expression: str, positions: List[int], time_limit: float,
                  elapsed_time: float):
         r"""
-        初始化 OlocTimeOutException，包含时间限制和实际耗时。
+        初始化 OlocTimeOutError，包含时间限制和实际耗时。
 
         :param exception_type: 异常的类型 (Enum)
         :param expression: 触发异常的原始表达式
@@ -124,492 +138,303 @@ class OlocTimeOutException(OlocException):
         )
 
 
-class OlocCommentException(OlocException):
+class OlocSyntaxError(OlocException):
     r"""
-    当注释的格式不匹配时引发的异常
+    当出现语法错误时抛出此异常
     """
 
-    class EXCEPTION_TYPE(Enum):
+    class TYPE(Enum):
         r"""
-        定义 OlocCommentException 的异常类型的枚举类。
+        定义 OlocSyntaxError 的异常类型的枚举类。
         """
-        MISMATCH_HASH = (
-            "OlocCommentException: Mismatch '#' detected",
+        # 注释相关异常
+        COMMENT_MISMATCH = (
+            "Mismatch '#' detected",
             "The content of free comments should be wrapped in a before and after '#'."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
-        r"""
-        初始化 OlocCommentException。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        """
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocNumberSeparatorException(OlocException):
-    r"""
-    当数字分隔符规则被违反时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocNumberSeparatorException 的异常类型的枚举类。
-        """
-        INVALID_SEPARATOR = (
-            "OlocNumberSeparatorException: Invalid numeric separator detected",
-            "Ensure commas are used correctly as numeric separators in rational numbers. If you expect `,` to be a "
-            "function parameter, check that the function name is a legal function name in oloc. Commas must not "
-            "appear at"
-            "the start, end, or consecutively. When using numeric separators in a function, only `;` can be used to "
-            "separate the arguments of the function."
-        )
-
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
-        r"""
-        初始化 OlocNumberSeparatorException。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        """
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocInvalidTokenException(OlocException):
-    r"""
-    当Token不合法(即,Token的is_legal为False时)在静态检查流程中引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocInvalidTokenException 的异常类型的枚举类。
-        """
-
-        UNKNOWN_TOKEN = (
-            "OlocInvalidTokenException: Token that Tokenizer could not parse `{token_content}`",
-            "Check the documentation for instructions and check the expression."
-        )
-
-        INVALID_PERCENTAGE = (
-            "OlocInvalidTokenException: Invalid percentage number `{token_content}`",
-            "A percentage must consist of a whole number or a finite number of decimals followed by a `%`. e.g. 100%, "
-            "0.125%"
-        )
-
-        INVALID_INFINITE_DECIMAL = (
-            "OlocInvalidTokenException: Invalid infinite-decimal number `{token_content}`",
-            "An infinite cyclic decimal must be followed by a finite cyclic decimal ending in 3-6 ` . ` or `:` "
-            "followed by an integer. e.g. 1.23..., 2.34......, 10.1:2. The declaration `:` cannot be used when the "
-            "first decimal place is a round-robin place."
-        )
-
-        INVALID_FINITE_DECIMAL = (
-            "OlocInvalidTokenException: Invalid finite-decimal number `{token_content}`",
-            "A finite repeating decimal must consist of an integer with integer digits and a decimal point. e.g. "
-            "3.14, 0.233"
-        )
-
-        INVALID_INTEGER = (
-            "OlocInvalidTokenException: Invalid integer number `{token_content}`",
-            "An integer must be composed of Arabic numerals from 0 to 9. e.g. 0, 1024, 54321"
-        )
-
-        INVALID_NATIVE_IRRATIONAL = (
-            "OlocInvalidTokenException: Invalid native-irrational number `{token_content}`",
-            "A primitive irrational number must be one of `π` or `𝑒`."
-        )
-
-        INVALID_SHORT_CUSTOM_IRRATIONAL = (
-            "OlocInvalidTokenException: Invalid short-custom-irrational number `{token_content}`",
-            "A short custom irrational number must be a non-operator and non-digit character, including an optional "
-            "`?` expression. The character between the end and `?` can only be a positive or negative sign or an "
-            "integer or a finite decimal (with a sign). e.g. x, y-?, i3.14?, s+2?"
-        )
-
-        INVALID_LONG_CUSTOM_IRRATIONAL = (
-            "OlocInvalidTokenException: Invalid long-custom-irrational number `{token_content}`",
-            "A long custom irrational number must be wrapped in `<>`, including an optional `?` expression. The "
-            "character between the end and `?` can only be a positive or negative sign or an integer or a finite "
-            "decimal (with a sign). e.g. <ir>, <无理数>+?, <A long one>-3?, <irrational>0.12?"
-        )
-
-        INVALID_OPERATOR = (
-            "OlocInvalidTokenException: Invalid operator `{token_content}`",
-            "Check the expression, or check the tutorial (and symbol-mapping-table)."
-        )
-
-        INVALID_BRACKET = (
-            "OlocInvalidTokenException: Invalid bracket `{token_content}`",
-            "The brackets can only be one of `()`, `[]`, `{}`. Check the expression, or refer to the tutorial for "
-            "information about grouping operators."
-        )
-
-        INVALID_FUNCTION = (
-            "OlocInvalidTokenException: Invalid function `{token_content}`",
-            "This may be caused by splicing several consecutive legal function names. Check out the tutorial or the "
-            "function-conversion-table for more information."
-        )
-
-        INVALID_PARAM_SEPARATOR = (
-            "OlocInvalidTokenException: Invalid param-separator `{token_content}`",
-            "The function parameter separator can only be `,` or `;`. If your parameters contain numeric separators, "
-            "the parameter separator can only be ';'."
-        )
-
-        INVALID_IRRATIONAL_PARAM = (
-            "OlocInvalidTokenException: Invalid irrational param `{token_content}`",
-            "An irrational number parameter expression can only be an integer or a signed or unsigned integer or "
-            "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
-        )
-
-
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
-        r"""
-        初始化 OlocInvalidTokenException，包含异常类型和 Token 内容。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        :param token_content: 引发异常的 Token 内容
-        """
-        self.token_content = token_content
-
-        main_message = exception_type.value[0].format(token_content=token_content)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocInvalidCalculationException(OlocException):
-    r"""
-    当出现不合法的计算时抛出此异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocInvalidTokenException 的异常类型的枚举类。
-        """
-
-        DIVIDE_BY_ZERO = (
-            "OlocInvalidCalculationException: Divide-by-zero detected in the computational expression `{"
-            "computing_unit}`",
-            "The divisor or denominator may not be zero. Check the expression."
-        )
-
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], computing_unit: str):
-        r"""
-        初始化 OlocInvalidCalculationException，包含异常类型和 Token 内容。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        :param computing_unit: 引发异常的计算单元内容
-        """
-        self.computing_unit = computing_unit
-
-        main_message = exception_type.value[0].format(computing_unit=computing_unit)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocIrrationalNumberFormatException(OlocException):
-    r"""
-    当存在无理数格式相关问题时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocIrrationalNumberFormatException 的异常类型的枚举类。
-        """
-        MISMATCH_LONG_LEFT_SIGN = (
-            "OlocIrrationalNumberFormatException: Mismatch '<' detected",
+        # 无理数格式相关异常
+        IRRATIONAL_LEFT_BRACKET_MISMATCH = (
+            "Mismatch '<' detected",
             "When declaring a custom long irrational number, `<` must match `>`. Check your expressions."
         )
-
-        MISMATCH_LONG_RIGHT_SIGN = (
-            "OlocIrrationalNumberFormatException: Mismatch '>' detected",
+        IRRATIONAL_RIGHT_BRACKET_MISMATCH = (
+            "Mismatch '>' detected",
             "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
-        r"""
-        初始化 OlocIrrationalNumberFormatException。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        """
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocInvalidBracketException(OlocException):
-    r"""
-    当存在括号相关问题时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocInvalidBracketException 的异常类型的枚举类。
-        """
-        MISMATCH_LEFT_BRACKET = (
-            "OlocInvalidBracketException: Mismatch `{err_bracket}` detected",
+        # 括号相关异常
+        LEFT_BRACKET_MISMATCH = (
+            "Mismatch `{primary_info}` detected",
             "The left bracket must be matched by an identical right bracket. Check your expressions."
         )
-
-        MISMATCH_RIGHT_BRACKET = (
-            "OlocInvalidBracketException: Mismatch `{err_bracket}` detected",
+        RIGHT_BRACKET_MISMATCH = (
+            "Mismatch `{primary_info}` detected",
             "The right bracket must be matched by an identical left bracket. Check your expressions."
         )
-
-        INCORRECT_BRACKET_HIERARCHY = (
-            "OlocInvalidBracketException: Bracket `{err_bracket}` hierarchy error",
+        BRACKET_HIERARCHY_ERROR = (
+            "Bracket `{primary_info}` hierarchy error",
             "Parentheses must follow the hierarchy: `{}` `[]` `()` in descending order."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_bracket: str):
-        r"""
-        初始化 OlocInvalidCalculationException，包含异常类型和 Token 内容。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        :param err_bracket: 引发异常的括号
-        """
-        self.err_bracket = err_bracket
-
-        main_message = exception_type.value[0].format(err_bracket=err_bracket)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocInvalidEqualSignException(OlocException):
-    r"""
-    当等于号位于非结尾时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocInvalidEqualSignException 的异常类型的枚举类。
-        """
-        MISPLACED = (
-            "OlocInvalidEqualSignException: Misplaced '=' detected",
+        # 等号位置异常
+        EQUAL_SIGN_MISPLACEMENT = (
+            "Misplaced '=' detected",
             "The `=` can only appear in the last part of a valid expression."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int]):
-        r"""
-        初始化 OlocInvalidEqualSignException。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        """
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocFunctionParameterException(OlocException):
-    r"""
-    当存在函数参数相关问题时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocFunctionParameterException 的异常类型的枚举类。
-        """
-
-        OUTSIDE_SEPARATOR = (
-            "OlocFunctionParameterException: Function separator `{err_param} detected outside of function ({err_info})",
+        # 函数参数异常
+        FUNCTION_SEPARATOR_OUTSIDE = (
+            "Function separator `{primary_info}` detected outside of function ({secondary_info})",
             "The function separator must be inside the function. If you expect the separator to be inside a function, "
             "check that the function name is valid."
         )
-
-        POWER = (
-            "OlocFunctionParameterException: The parameter `{err_param}` in the pow() is incorrect ({err_info})",
+        POWER_FUNCTION_PARAM_ERROR = (
+            "The parameter `{primary_info}` in the pow() is incorrect ({secondary_info})",
             "Check the documentation for the parameter description of pow()."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], err_param: str,
-                 err_info: str):
-        r"""
-        初始化 OlocFunctionParameterException，包含异常类型和 Token 内容。
+        # 数字分隔符异常
+        NUMERIC_SEPARATOR_ERROR = (
+            "Invalid numeric separator detected",
+            "Ensure commas are used correctly as numeric separators in rational numbers. If you expect `,` to be a "
+            "function parameter, check that the function name is a legal function name in oloc. Commas must not "
+            "appear at the start, end, or consecutively. When using numeric separators in a function, only `;` can be used to "
+            "separate the arguments of the function."
+        )
 
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        :param err_param: 引发异常的参数内容
-        :param err_info: 引发异常的信息内容
-        """
-        self.err_param = err_param
-        self.err_info = err_info
-
-        main_message = exception_type.value[0].format(err_param=err_param, err_info=err_info)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocReservedWordException(OlocException):
-    r"""
-    当存在保留字冲突相关问题时引发的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocReservedWordException 的异常类型的枚举类。
-        """
-        IS_RESERVED = (
-            "OlocReservedWordException: The name `{conflict_str}` is a reserved word",
+        # 保留字冲突异常
+        RESERVED_WORD_CONFLICT = (
+            "The name `{primary_info}` is a reserved word",
             "In oloc, reserved words begin with `__reserved`. You cannot use a name that conflicts with it."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], conflict_str: str):
-        r"""
-        初始化 OlocReservedWordException，包含异常类型和 Token 内容。
-
-        :param exception_type: 异常的类型 (Enum)
-        :param expression: 触发异常的原始表达式
-        :param positions: 表示问题位置的列表
-        :param conflict_str: 引发异常的冲突内容
-        """
-        self.conflict_str = conflict_str
-
-        main_message = exception_type.value[0].format(conflict_str=conflict_str)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
-        super().__init__(exception_type, expression, positions)
-
-
-class OlocStaticCheckException(OlocException):
-    r"""
-    当词法分析器静态检查捕获错误时抛出的异常
-    """
-
-    class EXCEPTION_TYPE(Enum):
-        r"""
-        定义 OlocStaticCheckException 的异常类型的枚举类。
-        """
-
-        OPERATOR_DOT = (
-            "OlocStaticCheckException: Dot symbols detected during the static checking phase `{"
-            "token_content}`",
+        # 静态检查异常
+        DOT_SYNTAX_ERROR = (
+            "Dot symbols detected during the static checking phase `{primary_info}`",
             "It's likely that there are illegal decimals. Decimals must have one and only one decimal point, "
-            "distinguishing between preceding integer and decimal places. Checking the expression or submitting an"
+            "distinguishing between preceding integer and decimal places. Checking the expression or submitting an "
             "issue."
         )
-
-        OPERATOR_COLON = (
-            "OlocStaticCheckException: Colon symbols detected during the static checking phase `{"
-            "token_content}`",
+        COLON_SYNTAX_ERROR = (
+            "Colon symbols detected during the static checking phase `{primary_info}`",
             "This can be caused by incorrectly displaying the infinite loop decimal statement. "
-            "Checking the expression or submitting an"
-            "issue."
+            "Checking the expression or submitting an issue."
         )
-
-        INVALID_OPERATOR = (
-            "OlocStaticCheckException: Operator that should not be present during the static checking phase `{"
-            "token_content}`",
+        UNEXPECTED_OPERATOR = (
+            "Operator that should not be present during the static checking phase `{primary_info}`",
             "This operator should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
-
-        OPERATOR_PLACE = (
-            "OlocStaticCheckException: Misplaced operator `{"
-            "token_content}`",
+        OPERATOR_MISPLACEMENT = (
+            "Misplaced operator `{primary_info}`",
             "Syntactic qualifications for unary and binary operators, in particular. Check the documentation for "
-            "information."
-            "Checking the expression or submitting an"
-            "issue."
+            "information. Checking the expression or submitting an issue."
         )
-
-        FUNCTION_NAME = (
-            "OlocStaticCheckException: Function names that should not appear in the static checking phase `{"
-            "token_content}`",
+        INVALID_FUNCTION_NAME = (
+            "Function names that should not appear in the static checking phase `{primary_info}`",
             "This function should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
-
-        FUNCTION_PLACE = (
-            "OlocStaticCheckException: Misplaced function call `{"
-            "token_content}`",
+        FUNCTION_MISPLACEMENT = (
+            "Misplaced function call `{primary_info}`",
             "Function declarations must be followed by a left bracket. If the function is not the first element, "
-            "it may be preceded by left brackets or an operator. Checking the expression or submitting an"
-            "issue."
+            "it may be preceded by left brackets or an operator. Checking the expression or submitting an issue."
         )
-
-        INVALID_BRACKET = (
-            "OlocStaticCheckException: Bracket that should not be present during the static checking phase `{"
-            "token_content}`",
+        UNEXPECTED_BRACKET = (
+            "Bracket that should not be present during the static checking phase `{primary_info}`",
             "This bracket should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
-
-        INVALID_IRRPARAM = (
-            "OlocStaticCheckException: Irrational number of parameters `{token_content}` for which static checking "
-            "fails",
+        IRRATIONAL_PARAM_ERROR = (
+            "Irrational number of parameters `{primary_info}` for which static checking fails",
             "This may be due to the fact that the previous Token of the irrational number parameter is not legal. An "
             "irrational number argument can only come after an irrational number or a result (such as a function) "
             "that may be irrational. Check the expression to ensure that the structure of the irrational number "
             "argument is legal."
         )
-
-        INVALID_SEPARATOR = (
-            "OlocStaticCheckException: Invalid function parameter separator detected `{"
-            "token_content}`",
+        FUNCTION_PARAM_SEPARATOR_ERROR = (
+            "Invalid function parameter separator detected `{primary_info}`",
             "A legal function argument separator can only be preceded by a number or a right bracket. "
             "If the latter item begins with an operator, it must be in the form of a legal unary operator. "
-            "Checking the expression or submitting an"
-            "issue."
+            "Checking the expression or submitting an issue."
         )
-
-        INVALID_TYPES = (
-            "OlocStaticCheckException: Token types that should not be present `{"
-            "token_content}`",
+        UNEXPECTED_TOKEN_TYPE = (
+            "Token types that should not be present `{primary_info}`",
             "Token of this type should not be retained during the static checking phase. Checking the expression or "
             "submitting an issue."
         )
-
-        MISMATCHED_ABSOLUTE = (
-            "OlocStaticCheckException: Mismatched absolute symbol `{"
-            "token_content}`",
+        ABSOLUTE_SYMBOL_MISMATCH = (
+            "Mismatched absolute symbol `{primary_info}`",
             "Absolute value symbols must be paired left and right. Checking the expression or "
             "submitting an issue."
         )
 
-    def __init__(self, exception_type: EXCEPTION_TYPE, expression: str, positions: List[int], token_content: str):
+    def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
+                 primary_info: str = None, secondary_info: str = None):
         r"""
-        初始化 OlocStaticCheckException，包含异常类型和 Token 内容。
+        初始化 OlocSyntaxError，包含异常类型和相关信息。
 
         :param exception_type: 异常的类型 (Enum)
         :param expression: 触发异常的原始表达式
         :param positions: 表示问题位置的列表
-        :param token_content: 引发异常的 Token 内容
+        :param primary_info: 主要异常信息，例如错误的符号、标记等
+        :param secondary_info: 辅助异常信息，提供额外的上下文
         """
-        self.token_content = token_content
+        self.exception_name = "OlocSyntaxError"
+        self.primary_info = primary_info
+        self.secondary_info = secondary_info
 
-        main_message = exception_type.value[0].format(token_content=token_content)
-        suggestion = exception_type.value[1]
-
-        self.message = f"{main_message} {suggestion}"
-
-        # 调用父类初始化
         super().__init__(exception_type, expression, positions)
+
+    def __reduce__(self):
+        r"""
+        自定义序列化逻辑，用于支持 multiprocessing.Queue 的序列化。
+        """
+        return (
+            self.__class__,
+            (self.exception_type, self.expression, self.positions, self.primary_info, self.secondary_info)
+        )
+
+
+class OlocCalculationError(OlocException):
+    r"""
+    当出现计算错误时抛出此异常
+    """
+
+    class TYPE(Enum):
+        r"""
+        定义 OlocCalculationError 的异常类型的枚举类。
+        """
+        DIVIDE_BY_ZERO = (
+            "Divide-by-zero detected in the computational expression `{primary_info}`",
+            "The divisor or denominator may not be zero. Check the expression."
+        )
+
+    def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
+                 primary_info: str = None, secondary_info: str = None):
+        r"""
+        初始化 OlocCalculationError，包含异常类型和计算单元内容。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param primary_info: 主要异常信息，例如引发异常的计算单元
+        :param secondary_info: 辅助异常信息，提供额外的上下文
+        """
+        self.exception_name = "OlocCalculationError"
+        self.primary_info = primary_info
+        self.secondary_info = secondary_info
+
+        super().__init__(exception_type, expression, positions)
+
+    def __reduce__(self):
+        r"""
+        自定义序列化逻辑，用于支持 multiprocessing.Queue 的序列化。
+        """
+        return (
+            self.__class__,
+            (self.exception_type, self.expression, self.positions, self.primary_info, self.secondary_info)
+        )
+
+
+class OlocValueError(OlocException):
+    r"""
+    当出现无效值或格式错误时抛出此异常
+    """
+
+    class TYPE(Enum):
+        r"""
+        定义 OlocValueError 的异常类型的枚举类。
+        """
+        # Token错误
+        UNKNOWN_TOKEN = (
+            "Token that Tokenizer could not parse `{primary_info}`",
+            "Check the documentation for instructions and check the expression."
+        )
+        INVALID_PERCENTAGE = (
+            "Invalid percentage number `{primary_info}`",
+            "A percentage must consist of a whole number or a finite number of decimals followed by a `%`. e.g. 100%, "
+            "0.125%"
+        )
+        INVALID_INFINITE_DECIMAL = (
+            "Invalid infinite-decimal number `{primary_info}`",
+            "An infinite cyclic decimal must be followed by a finite cyclic decimal ending in 3-6 ` . ` or `:` "
+            "followed by an integer. e.g. 1.23..., 2.34......, 10.1:2. The declaration `:` cannot be used when the "
+            "first decimal place is a round-robin place."
+        )
+        INVALID_FINITE_DECIMAL = (
+            "Invalid finite-decimal number `{primary_info}`",
+            "A finite repeating decimal must consist of an integer with integer digits and a decimal point. e.g. "
+            "3.14, 0.233"
+        )
+        INVALID_INTEGER = (
+            "Invalid integer number `{primary_info}`",
+            "An integer must be composed of Arabic numerals from 0 to 9. e.g. 0, 1024, 54321"
+        )
+        INVALID_NATIVE_IRRATIONAL = (
+            "Invalid native-irrational number `{primary_info}`",
+            "A primitive irrational number must be one of `π` or `𝑒`."
+        )
+        INVALID_SHORT_CUSTOM_IRRATIONAL = (
+            "Invalid short-custom-irrational number `{primary_info}`",
+            "A short custom irrational number must be a non-operator and non-digit character, including an optional "
+            "`?` expression. The character between the end and `?` can only be a positive or negative sign or an "
+            "integer or a finite decimal (with a sign). e.g. x, y-?, i3.14?, s+2?"
+        )
+        INVALID_LONG_CUSTOM_IRRATIONAL = (
+            "Invalid long-custom-irrational number `{primary_info}`",
+            "A long custom irrational number must be wrapped in `<>`, including an optional `?` expression. The "
+            "character between the end and `?` can only be a positive or negative sign or an integer or a finite "
+            "decimal (with a sign). e.g. <ir>, <无理数>+?, <A long one>-3?, <irrational>0.12?"
+        )
+        INVALID_OPERATOR = (
+            "Invalid operator `{primary_info}`",
+            "Check the expression, or check the tutorial (and symbol-mapping-table)."
+        )
+        INVALID_BRACKET = (
+            "Invalid bracket `{primary_info}`",
+            "The brackets can only be one of `()`, `[]`, `{}`. Check the expression, or refer to the tutorial for "
+            "information about grouping operators."
+        )
+        INVALID_FUNCTION = (
+            "Invalid function `{primary_info}`",
+            "This may be caused by splicing several consecutive legal function names. Check out the tutorial or the "
+            "function-conversion-table for more information."
+        )
+        INVALID_PARAM_SEPARATOR = (
+            "Invalid param-separator `{primary_info}`",
+            "The function parameter separator can only be `,` or `;`. If your parameters contain numeric separators, "
+            "the parameter separator can only be ';'."
+        )
+        INVALID_IRRATIONAL_PARAM = (
+            "Invalid irrational param `{primary_info}`",
+            "An irrational number parameter expression can only be an integer or a signed or unsigned integer or "
+            "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
+        )
+
+    def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
+                 primary_info: str = None, secondary_info: str = None):
+        r"""
+        初始化 OlocValueError，包含异常类型和主要信息。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param primary_info: 主要异常信息，例如引发异常的Token内容
+        :param secondary_info: 辅助异常信息，提供额外的上下文
+        """
+        self.exception_name = "OlocValueError"
+        self.primary_info = primary_info
+        self.secondary_info = secondary_info
+
+        super().__init__(exception_type, expression, positions)
+
+    def __reduce__(self):
+        r"""
+        自定义序列化逻辑，用于支持 multiprocessing.Queue 的序列化。
+        """
+        return (
+            self.__class__,
+            (self.exception_type, self.expression, self.positions, self.primary_info, self.secondary_info)
+        )
