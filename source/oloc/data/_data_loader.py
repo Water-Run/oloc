@@ -15,7 +15,7 @@ retain_decimal_places: int = 7
 
 symbol_mapping_table: dict[dict[str:list[str]]] = {
     # 空
-    "": [" ", "_", "rad", "radians", "个", "的", "'s", "的", "'s"],
+    "": [" ", "_", "rad", "radians", "个", "的", "'s", "的", "'s", "以"],
 
     # 等号
     "=": ["==", "=", "equal", "equals", "eq", "is", "are", "=>", "->", "等于", "是"],

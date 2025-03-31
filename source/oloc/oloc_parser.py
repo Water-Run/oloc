@@ -10,36 +10,8 @@ import time
 import oloc_utils as utils
 from oloc_lexer import Lexer
 from oloc_token import Token
+from oloc_ast import ASTNode, ASTTree
 from oloc_exceptions import *
-
-
-class Unit:
-    r"""
-    运算体单元
-    """
-
-    class TYPE(Enum):
-        r"""
-        运算体单元类型
-        """
-        BIN_EXP = 'BinaryExpression'
-        LITERAL = 'Literal'
-        FUN_CAL = 'FunctionCall'
-        GRP_EXP = 'GroupExpression'
-
-    def __init__(self, unit_type: TYPE, token_flow=list[Token]):
-        self.type = unit_type
-        self.flow = token_flow
-        self.sub: list[Unit] = []
-
-    def __repr__(self):
-        result = (f"Unit: {self.type}\n"
-                  f"{self.flow}\n"
-                  f"{len(self.sub)} sub(s): ")
-        for index, temp_sub in self.sub:
-            result += f"Sub {index}: "
-            result += str(temp_sub)
-        return result
 
 
 class Parser:
@@ -50,8 +22,10 @@ class Parser:
 
     def __init__(self, tokens: list[Token]):
         self.tokens, self.expression = Lexer.update(tokens)
-        self.units: list[Unit] = []
+        self.ast = None
         self.time_cost = -1
+        # 用于追踪当前分析的位置
+        self.current_index = 0
 
     def _static_check(self):
         r"""
@@ -74,12 +48,6 @@ class Parser:
             Token.TYPE.IRRATIONAL_PARAM,
             Token.TYPE.FUNCTION,
             Token.TYPE.PARAM_SEPARATOR,
-        )
-        VALID_NUMBERS = (
-            Token.TYPE.INTEGER,
-            Token.TYPE.LONG_CUSTOM,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.NATIVE_IRRATIONAL,
         )
 
         absolute_symbol_waiting_right = False
@@ -289,34 +257,401 @@ class Parser:
 
     def _build(self):
         r"""
-        生成Unit流
+        构建AST
         :return: None
         """
-        LITERAL = (
-            Token.TYPE.INTEGER,
-            Token.TYPE.NATIVE_IRRATIONAL,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.LONG_CUSTOM,
+        if not self.tokens:
+            return
+
+        self.current_index = 0
+        root_node = self._parse_expression()
+        self.ast = ASTTree(root_node)
+
+    def _parse_expression(self):
+        r"""
+        解析整个表达式
+        :return: 表达式的根节点
+        """
+        return self._parse_add_sub()
+
+    def _parse_add_sub(self):
+        r"""
+        解析加减法表达式
+        :return: 加减法表达式节点
+        """
+        left = self._parse_mul_div()
+
+        while self.current_index < len(self.tokens):
+            token = self.tokens[self.current_index]
+            if token.type == Token.TYPE.OPERATOR and token.value in ('+', '-'):
+                # 创建二元表达式节点
+                op_token = token
+                self.current_index += 1
+                right = self._parse_mul_div()
+
+                binary_node = ASTNode(ASTNode.TYPE.BIN_EXP, [op_token])
+                binary_node.add_child(left)
+                binary_node.add_child(right)
+                left = binary_node
+            else:
+                break
+
+        return left
+
+    def _parse_mul_div(self):
+        r"""
+        解析乘除法和取余表达式
+        :return: 乘除法表达式节点
+        """
+        left = self._parse_power()
+
+        while self.current_index < len(self.tokens):
+            token = self.tokens[self.current_index]
+            if token.type == Token.TYPE.OPERATOR and token.value in ('*', '/', '%'):
+                # 创建二元表达式节点
+                op_token = token
+                self.current_index += 1
+                right = self._parse_power()
+
+                binary_node = ASTNode(ASTNode.TYPE.BIN_EXP, [op_token])
+                binary_node.add_child(left)
+                binary_node.add_child(right)
+                left = binary_node
+            else:
+                break
+
+        return left
+
+    def _parse_power(self):
+        r"""
+        解析幂运算表达式
+        :return: 幂运算表达式节点
+        """
+        left = self._parse_unary()
+
+        if self.current_index < len(self.tokens):
+            token = self.tokens[self.current_index]
+            if token.type == Token.TYPE.OPERATOR and token.value == '^':
+                # 创建二元表达式节点
+                op_token = token
+                self.current_index += 1
+                # 幂运算是右结合的
+                right = self._parse_power()
+
+                binary_node = ASTNode(ASTNode.TYPE.BIN_EXP, [op_token])
+                binary_node.add_child(left)
+                binary_node.add_child(right)
+                return binary_node
+
+        return left
+
+    def _parse_unary(self):
+        r"""
+        解析一元运算符表达式
+        :return: 一元表达式节点
+        """
+        if self.current_index >= len(self.tokens):
+            return None
+
+        token = self.tokens[self.current_index]
+
+        # 处理前置一元运算符
+        if token.type == Token.TYPE.OPERATOR and token.value in ('+', '-', '√', '|'):
+            self.current_index += 1
+            if token.value == '|':
+                # 绝对值运算符需要找到匹配的右侧 |
+                operand = self._parse_expression()
+                if self.current_index < len(self.tokens) and self.tokens[self.current_index].value == '|':
+                    self.current_index += 1  # 跳过右侧 |
+                else:
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.ABSOLUTE_SYMBOL_MISMATCH,
+                        expression=self.expression,
+                        positions=[token.range[0]],
+                        primary_info="|"
+                    )
+            else:
+                operand = self._parse_unary()
+
+            unary_node = ASTNode(ASTNode.TYPE.URY_EXP, [token])
+            unary_node.add_child(operand)
+            return unary_node
+
+        # 处理常规表达式后跟随后置一元运算符
+        expr = self._parse_primary()
+
+        while self.current_index < len(self.tokens):
+            token = self.tokens[self.current_index]
+            if token.type == Token.TYPE.OPERATOR and token.value in ('!', '°'):
+                self.current_index += 1
+                unary_node = ASTNode(ASTNode.TYPE.URY_EXP, [token])
+                unary_node.add_child(expr)
+                expr = unary_node
+            else:
+                break
+
+        return expr
+
+    def _parse_primary(self):
+        r"""
+        解析基本元素（数字、无理数、函数调用、分组表达式）
+        :return: 基本元素节点
+        """
+        if self.current_index >= len(self.tokens):
+            return None
+
+        token = self.tokens[self.current_index]
+
+        # 处理字面量
+        if token.type in (Token.TYPE.INTEGER, Token.TYPE.NATIVE_IRRATIONAL,
+                         Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM):
+            self.current_index += 1
+            # 检查是否有无理数参数
+            if (self.current_index < len(self.tokens) and
+                self.tokens[self.current_index].type == Token.TYPE.IRRATIONAL_PARAM):
+                # 将无理数参数与无理数一起作为字面量处理
+                param_token = self.tokens[self.current_index]
+                self.current_index += 1
+                return ASTNode(ASTNode.TYPE.LITERAL, [token, param_token])
+            return ASTNode(ASTNode.TYPE.LITERAL, [token])
+
+        # 处理函数调用
+        elif token.type == Token.TYPE.FUNCTION:
+            function_token = token
+            self.current_index += 1
+
+            # 确保有左括号
+            if self.current_index >= len(self.tokens) or self.tokens[self.current_index].type != Token.TYPE.LBRACKET:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.FUNCTION_MISPLACEMENT,
+                    expression=self.expression,
+                    positions=list(range(*function_token.range)),
+                    primary_info=function_token.value
+                )
+
+            left_bracket = self.tokens[self.current_index]
+            self.current_index += 1
+
+            # 解析函数参数
+            params = self._parse_function_params()
+
+            # 确保有右括号
+            if self.current_index >= len(self.tokens) or self.tokens[self.current_index].type != Token.TYPE.RBRACKET:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.RIGHT_BRACKET_MISMATCH,
+                    expression=self.expression,
+                    positions=[left_bracket.range[0]],
+                    primary_info=left_bracket.value
+                )
+
+            right_bracket = self.tokens[self.current_index]
+            self.current_index += 1
+
+            function_node = ASTNode(ASTNode.TYPE.FUN_CAL, [function_token, left_bracket, right_bracket])
+            for param in params:
+                function_node.add_child(param)
+
+            return function_node
+
+        # 处理分组表达式
+        elif token.type == Token.TYPE.LBRACKET:
+            left_bracket = token
+            self.current_index += 1
+
+            # 解析括号内的表达式
+            inner_expr = self._parse_expression()
+
+            # 确保有右括号
+            if self.current_index >= len(self.tokens) or self.tokens[self.current_index].type != Token.TYPE.RBRACKET:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.LEFT_BRACKET_MISMATCH,
+                    expression=self.expression,
+                    positions=[left_bracket.range[0]],
+                    primary_info=left_bracket.value
+                )
+
+            right_bracket = self.tokens[self.current_index]
+            self.current_index += 1
+
+            group_node = ASTNode(ASTNode.TYPE.GRP_EXP, [left_bracket, right_bracket])
+            group_node.add_child(inner_expr)
+
+            return group_node
+
+        # 处理其他情况，这里应该不会到达，因为静态检查已经验证了所有token
+        raise OlocSyntaxError(
+            exception_type=OlocSyntaxError.TYPE.UNEXPECTED_TOKEN_TYPE,
+            expression=self.expression,
+            positions=list(range(*token.range)),
+            primary_info=token.type
         )
-        for token_index, temp_token in enumerate(self.tokens):
-            ...
+
+    def _parse_function_params(self):
+        r"""
+        解析函数参数
+        :return: 参数节点列表
+        """
+        params = []
+
+        # 如果直接是右括号，表示无参数
+        if self.current_index < len(self.tokens) and self.tokens[self.current_index].type == Token.TYPE.RBRACKET:
+            return params
+
+        while True:
+            # 解析一个参数
+            param = self._parse_expression()
+            params.append(param)
+
+            # 检查是否结束参数列表
+            if self.current_index >= len(self.tokens):
+                break
+
+            if self.tokens[self.current_index].type == Token.TYPE.RBRACKET:
+                break
+
+            # 检查参数分隔符
+            if self.tokens[self.current_index].type != Token.TYPE.PARAM_SEPARATOR:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_SEPARATOR_ERROR,
+                    expression=self.expression,
+                    positions=list(range(*self.tokens[self.current_index].range)),
+                    primary_info=self.tokens[self.current_index].value
+                )
+
+            self.current_index += 1  # 跳过分隔符
+
+        return params
 
     def _syntax_check(self):
         r"""
         语法检查
         :return: None
         """
+        if not self.ast or not self.ast.root:
+            return
+
+        # 深度优先遍历AST进行语法检查
+        self._check_node(self.ast.root)
+
+    def _check_node(self, node):
+        r"""
+        检查单个节点的语法正确性
+        :param node: 要检查的节点
+        :raise OlocSyntaxError: 当节点语法不正确时
+        :return: None
+        """
+        if not node:
+            return
+
+        # 根据节点类型进行检查
+        if node.type == ASTNode.TYPE.BIN_EXP:
+            # 二元表达式需要有两个子节点
+            if len(node.children) != 2:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.BINARY_EXPRESSION_ERROR,
+                    expression=self.expression,
+                    positions=[token.range[0] for token in node.tokens],
+                    primary_info=node.tokens[0].value if node.tokens else ""
+                )
+
+            # 检查子节点
+            self._check_node(node.children[0])
+            self._check_node(node.children[1])
+
+        elif node.type == ASTNode.TYPE.URY_EXP:
+            # 一元表达式需要有一个子节点
+            if len(node.children) != 1:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.UNARY_EXPRESSION_ERROR,
+                    expression=self.expression,
+                    positions=[token.range[0] for token in node.tokens],
+                    primary_info=node.tokens[0].value if node.tokens else ""
+                )
+
+            # 检查子节点
+            self._check_node(node.children[0])
+
+        elif node.type == ASTNode.TYPE.FUN_CAL:
+            # 检查函数调用
+            func_name = node.tokens[0].value
+            expected_param_count = self._get_expected_param_count(func_name)
+
+            if expected_param_count != -1 and len(node.children) != expected_param_count:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
+                    expression=self.expression,
+                    positions=[token.range[0] for token in node.tokens],
+                    primary_info=func_name,
+                    secondary_info=f"Expected {expected_param_count} parameters, got {len(node.children)}"
+                )
+
+            # 检查每个参数
+            for child in node.children:
+                self._check_node(child)
+
+        elif node.type == ASTNode.TYPE.GRP_EXP:
+            # 分组表达式需要有一个子节点
+            if len(node.children) != 1:
+                raise OlocSyntaxError(
+                    exception_type=OlocSyntaxError.TYPE.GROUP_EXPRESSION_ERROR,
+                    expression=self.expression,
+                    positions=[token.range[0] for token in node.tokens],
+                    primary_info=""
+                )
+
+            # 检查子节点
+            self._check_node(node.children[0])
+
+    def _get_expected_param_count(self, func_name):
+        r"""
+        获取函数预期的参数数量
+        :param func_name: 函数名
+        :return: 参数数量，-1表示可变参数
+        """
+        # 这里需要根据oloc的函数定义提供参数数量信息
+        function_param_counts = {
+            'pow': 2,
+            'sqrt': 1,
+            'square': 1,
+            'cube': 1,
+            'reciprocal': 1,
+            'exp': 1,
+            'mod': 2,
+            'fact': 1,
+            'abs': 1,
+            'sign': 1,
+            'gcd': 2,
+            'lcm': 2,
+            'sin': 1,
+            'cos': 1,
+            'tan': 1,
+            'cosec': 1,
+            'sec': 1,
+            'cot': 1,
+            'asin': 1,
+            'acos': 1,
+            'atan': 1,
+            'acosec': 1,
+            'asec': 1,
+            'acot': 1,
+            'log': 2,
+            'lg': 1,
+            'ln': 1
+        }
+
+        return function_param_counts.get(func_name, -1)  # -1表示可变参数或未知函数
 
     def execute(self):
         r"""
         执行语法分析
-        :return: None
+        :return: AST树
         """
         start_time = time.time_ns()
         self._static_check()
-        # self._build()
-        # self._syntax_check()
+        self._build()
+        self._syntax_check()
         self.time_cost = time.time_ns() - start_time
+
 
 """test"""
 if __name__ == '__main__':
@@ -338,10 +673,9 @@ if __name__ == '__main__':
                 lexer.execute()
                 parser = Parser(lexer.tokens)
                 parser.execute()
+                ast = parser.ast
                 print(test, end=" => ")
-                for token in parser.tokens:
-                    print(token.value, end=" ")
-                print("")
+                print(ast)
                 time_costs.append(preprocessor.time_cost + lexer.time_cost + parser.time_cost)
             except IndexError as ie:
                 raise ie
@@ -362,5 +696,6 @@ if __name__ == '__main__':
         lexer.execute()
         parser = Parser(lexer.tokens)
         parser.execute()
-        print(parser.tokens)
+        ast = parser.ast
+        print(ast)
         print(preprocessor.time_cost + lexer.time_cost + parser.time_cost)
