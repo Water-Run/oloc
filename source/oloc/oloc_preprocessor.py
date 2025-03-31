@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-30
+:date: 2025-03-31
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -91,18 +91,6 @@ class Preprocessor:
                 long_custom_start_stack.pop()
         return custom_indices
 
-    def _is_protected(self, target_index: int, protected_indices: list[tuple[int, int]]) -> bool:
-        r"""
-        Checks if a certain index is in the protected area.
-        :param target_index: The target index
-        :param protected_indices: A list of protected index ranges
-        :return: Whether it is protected
-        """
-        for start, end in protected_indices:
-            if start <= target_index < end:
-                return True
-        return False
-
     def _replace_symbols(self, mapping_table: dict, protected_indices: list[tuple[int, int]]) -> str:
         r"""
         Performs symbol mapping on the expression.
@@ -110,29 +98,42 @@ class Preprocessor:
         :param protected_indices: A list of protected target_index ranges
         :return: The processed expression
         """
+
+        def _is_protected(target_index: int, indices: list[tuple[int, int]]) -> bool:
+            r"""
+            Checks if a certain index is in the protected area.
+            :param target_index: The target index
+            :param indices: A list of protected index ranges
+            :return: Whether it is protected
+            """
+            for start, end in indices:
+                if start <= target_index < end:
+                    return True
+            return False
+
         result = []
-        i = 0
-        while i < len(self.expression):
-            if self._is_protected(i, protected_indices):
+        index = 0
+        while index < len(self.expression):
+            if _is_protected(index, protected_indices):
                 # If the current target_index is in a protected area, directly add the character
-                result.append(self.expression[i])
-                i += 1
+                result.append(self.expression[index])
+                index += 1
             else:
                 replaced = False
                 # Traverse the mapping table and attempt replacement
                 for key, values in mapping_table.items():
                     for value in values:
-                        if self.expression.startswith(value, i):
+                        if self.expression.startswith(value, index):
                             result.append(key)
-                            i += len(value)
+                            index += len(value)
                             replaced = True
                             break
                     if replaced:
                         break
                 if not replaced:
                     # If not replaced, directly add the character
-                    result.append(self.expression[i])
-                    i += 1
+                    result.append(self.expression[index])
+                    index += 1
         return ''.join(result)
 
     def _symbol_mapper(self) -> None:
@@ -198,37 +199,36 @@ class Preprocessor:
 
     def _formal_elimination(self) -> None:
         r"""
-        消除表达式中冗余的正负号和数字分隔符。
+        Eliminates redundant signs and numeric separators in the expression.
         :return: None
-        :raise OlocNumberSeparatorException: 如果数字分隔符中存在错误。
-        :raise OlocFunctionParameterException: 如果出现在函数之外的函数分隔符
+        :raise OlocNumberSeparatorException: If there is an error in numeric separators.
+        :raise OlocFunctionParameterException: If function delimiters appear outside the function scope.
         """
 
-        # 消除连续正负号
+        # Eliminate consecutive signs
         def _simplify_signs(match: re.Match) -> str:
             r"""
-            根据正负号消除原则，简化连续的正负号。
-
-            :param match: 匹配到的符号序列（re.Match 对象）
-            :return: 简化后的单个符号（'+' 或 '-'）。
+            Simplifies consecutive signs based on sign elimination rules.
+            :param match: Matched sequence of signs (re.Match object)
+            :return: Simplified single sign ('+' or '-').
             """
-            sign_sequence = match.group()  # 获取匹配的符号序列
+            sign_sequence = match.group()  # Get the matched sequence of signs
             return '-' if sign_sequence.count('-') % 2 == 1 else '+'
 
-        # 消除表达式中的冗余正负号
+        # Eliminate redundant signs in the expression
         self.expression = re.sub(r'[+-]+', _simplify_signs, self.expression)
 
-        # 去除开头多余的正号（如 "+a" -> "a"）
+        # Remove redundant '+' at the start (e.g., "+a" -> "a")
         if self.expression.startswith('+'):
             self.expression = self.expression[1:]
 
-        # 获取函数名称列表
+        # Get the list of function names
         function_names = self._function_name_list
 
-        # 定义块类型枚举
+        # Define an enumeration for block types
         class BlockType(Enum):
             r"""
-            子单元的类型字符串枚举
+            Enumeration of block type strings.
             """
             FUNCTION_WITH_COMMA = "FUNCTION_WITH_COMMA"
             FUNCTION_WITHOUT_COMMA = "FUNCTION_WITHOUT_COMMA"
@@ -236,11 +236,11 @@ class Preprocessor:
 
         def _has_semicolon(start_index: int) -> bool:
             r"""
-            向后尝试判断函数参数是否以`;`作为分隔符。
-            通过遍历表达式内容，找到当前函数参数的分隔符格式。
+            Checks if function parameters are separated by `;`.
+            Traverses the expression content to find the delimiter format for the current function parameters.
 
-            :param start_index: 当前检查位。
-            :return: 是否有`;`形式的函数分隔符。
+            :param start_index: Index to start the check.
+            :return: Whether `;` is used as a delimiter.
             """
             bracket_count = 1
             for exp_index in range(start_index, len(self.expression)):
@@ -250,27 +250,27 @@ class Preprocessor:
                 elif exp_char == ')':
                     bracket_count -= 1
                     if bracket_count == 0:
-                        return False  # 找到匹配的右括号，未发现 `;` 分隔符
+                        return False  # Found matching right parenthesis, no `;` delimiter detected
                 elif exp_char == ';' and bracket_count == 1:
-                    return True  # 在当前括号层发现 `;`
+                    return True  # Detected `;` at the current bracket level
             return False
 
-        # 初始化变量
-        stack = []  # 用于跟踪嵌套块的类型
-        invalid_positions = []  # 用于记录无效的数字分隔符位置
-        result = []  # 最终结果的字符列表
-        i = 0  # 当前字符索引
+        # Initialize variables
+        stack = []  # Tracks nested block types
+        invalid_positions = []  # Records invalid numeric separator positions
+        result = []  # List of characters for the final result
+        i = 0  # Current character index
 
-        # 主循环遍历表达式中的字符
+        # Main loop to traverse the characters in the expression
         while i < len(self.expression):
             char = self.expression[i]
 
-            # 检查是否是函数名的开始
+            # Check if it's the start of a function name
             matched_function = next(
                 (
                     fn for fn in function_names
-                    if self.expression.startswith(fn, i) and i + len(fn) < len(self.expression) and \
-                       self.expression[i + len(fn)] == '('
+                    if self.expression.startswith(fn, i) and i + len(fn) < len(self.expression) and
+                    self.expression[i + len(fn)] == '('
                 ),
                 None,
             )
@@ -280,9 +280,9 @@ class Preprocessor:
                 i += len(matched_function)
                 continue
 
-            # 处理左括号
+            # Handle left parenthesis
             if char == '(':
-                # 检查是否为函数的左括号
+                # Check if it's a function's left parenthesis
                 is_function_bracket = any(
                     self.expression.startswith(fn, i - len(fn))
                     for fn in function_names
@@ -300,7 +300,7 @@ class Preprocessor:
                 i += 1
                 continue
 
-            # 处理右括号
+            # Handle right parenthesis
             if char == ')':
                 if stack:
                     stack.pop()
@@ -324,7 +324,7 @@ class Preprocessor:
                 continue
 
             if char == ';':
-                # 检查是否在函数内部
+                # Check if it's inside a function
                 if not (stack and stack[-1][0] in {BlockType.FUNCTION_WITH_COMMA, BlockType.FUNCTION_WITHOUT_COMMA}):
                     raise OlocFunctionParameterException(
                         exception_type=OlocFunctionParameterException.EXCEPTION_TYPE.OUTSIDE_SEPARATOR,
@@ -336,11 +336,11 @@ class Preprocessor:
                 i += 1
                 continue
 
-            # 其他字符直接添加到结果
+            # Add other characters directly to the result
             result.append(char)
             i += 1
 
-        # 如果发现无效的数字分隔符，抛出异常
+        # Raise an exception if invalid numeric separators are found
         if invalid_positions:
             raise OlocNumberSeparatorException(
                 exception_type=OlocNumberSeparatorException.EXCEPTION_TYPE.INVALID_SEPARATOR,
@@ -348,7 +348,7 @@ class Preprocessor:
                 positions=invalid_positions,
             )
 
-        # 更新表达式
+        # Update the expression
         self.expression = ''.join(result)
         self.expression = self.expression.replace(";", ",")
 

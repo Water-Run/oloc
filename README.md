@@ -41,7 +41,7 @@
 
 `oloc` offers **comprehensive documentation support**.  
 
-1. **Read the usage tutorial at [Usage Tutorial](doc/zh/使用教程/使用教程目录.md)**  
+1. **Read the usage tutorial at [Usage Tutorial](doc/en/User Guide/User Guide Directory.md)**  
 2. **Understand the working principles at [Project Description](doc/zh/项目说明/项目说明梗概.md)**  
 
 > This document applies to `oloc` version: `0.1.0`.

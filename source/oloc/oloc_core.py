@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-30
+:date: 2025-03-31
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -35,7 +35,7 @@ def _execute_calculation(expression: str, result_queue: Queue) -> None:
 
         # 结果封装
         result = OlocResult(lexer.expression, [])
-        result_queue.put(OlocResult(result.expression, [result.expression]))
+        result_queue.put(OlocResult(result.expression, []))
 
     except Exception as e:
         result_queue.put(e)

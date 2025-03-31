@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-30
+:date: 2025-03-31
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -33,8 +33,8 @@ def output_filter(tokens: list[Token]) -> str:
         :param interval: 分隔符间隔
         :return: 添加后的分隔符列表
         """
-        result = []
-        return result
+        after_add = []
+        return after_add
 
     # 字符串处理
     for index, temp_token in enumerate(tokens):
@@ -59,17 +59,16 @@ class OlocResult:
     一旦实例化,OlocResult 的属性无法修改或删除。
 
     :param expression: 要计算的原始表达式
-    :param result: 表达式计算结果的字符串列表
+    :param token_flows: 表达式计算结果的Token流列表
     :raises TypeError: 如果输入的参数类型不正确
     """
 
-    def __init__(self, expression: str, result: List[str]) -> None:
-        if not isinstance(expression, str):
-            raise TypeError("Expression must be a string.")
-        if not isinstance(result, list) or not all(isinstance(s, str) for s in result):
-            raise TypeError("Result must be a list of strings.")
+    def __init__(self, expression: str, token_flows: list[list[Token]]) -> None:
         self._expression = expression
-        self._result = result
+        self._flows = token_flows
+        self._result: list[str] = []
+        for tokens in self._flows:
+            self.result.append(output_filter(tokens))
         self._raw_result: str | None = None
 
     @property
