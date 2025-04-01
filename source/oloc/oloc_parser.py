@@ -50,8 +50,8 @@ class Parser:
             Token.TYPE.PARAM_SEPARATOR,
         )
 
-        absolute_symbol_waiting_right = False
-        absolute_symbol_current_index = -1
+        # 使用栈跟踪绝对值符号的位置
+        absolute_symbol_stack = []
 
         if len(self.tokens) == 0:
             self.tokens = [Token(Token.TYPE.INTEGER, "0", [0, 1])]
@@ -89,12 +89,10 @@ class Parser:
                         )
 
                     case "|":
-
-                        absolute_symbol_waiting_right = not absolute_symbol_waiting_right
-                        absolute_symbol_current_index = token_index
-
-                        if token_index != len(self.tokens) - 1 and self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
-                                self.tokens[token_index + 1].value in ('°', '!', '|'):
+                        # 检查是否有不当的前缀或后缀
+                        if token_index != len(self.tokens) - 1 and self.tokens[
+                            token_index + 1].type == Token.TYPE.OPERATOR and \
+                                self.tokens[token_index + 1].value in ('°', '!'):
                             raise OlocSyntaxError(
                                 exception_type=OlocSyntaxError.TYPE.ENCLOSING_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
@@ -103,13 +101,22 @@ class Parser:
                             )
 
                         if token_index > 0 and self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
-                                self.tokens[token_index - 1].value in ('*', '/', '°', '%', '!', '|'):
+                                self.tokens[token_index - 1].value in ('*', '/', '°', '%', '!'):
                             raise OlocSyntaxError(
                                 exception_type=OlocSyntaxError.TYPE.ENCLOSING_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
                             )
+
+                        # 每个绝对值符号既可以是开始也可以是结束
+                        # 如果栈为空，这肯定是一个开始绝对值符号
+                        if not absolute_symbol_stack:
+                            absolute_symbol_stack.append(token_index)
+                        else:
+                            # 否则，我们将其视为一个结束绝对值符号
+                            # 弹出栈顶，表示匹配了一对绝对值符号
+                            absolute_symbol_stack.pop()
 
                     case "√" | "+" | "-":
 
@@ -149,7 +156,7 @@ class Parser:
                                 primary_info=temp_token.value,
                             )
 
-                    case  "*" | "/" | "^" | "%":
+                    case "*" | "/" | "^" | "%":
 
                         if token_index not in range(1, len(self.tokens) - 1):
                             raise OlocSyntaxError(
@@ -196,8 +203,10 @@ class Parser:
                         primary_info=temp_token.value,
                     )
 
-                if (token_index - 1 >= 0 and self.tokens[token_index - 1].type not in (Token.TYPE.LBRACKET, Token.TYPE.OPERATOR, Token.TYPE.PARAM_SEPARATOR)) or \
-                        (token_index + 1 == len(self.tokens) or self.tokens[token_index + 1].type != Token.TYPE.LBRACKET):
+                if (token_index - 1 >= 0 and self.tokens[token_index - 1].type not in (
+                Token.TYPE.LBRACKET, Token.TYPE.OPERATOR, Token.TYPE.PARAM_SEPARATOR)) or \
+                        (token_index + 1 == len(self.tokens) or self.tokens[
+                            token_index + 1].type != Token.TYPE.LBRACKET):
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_MISPLACEMENT,
                         expression=self.expression,
@@ -208,10 +217,12 @@ class Parser:
             # 函数分隔符检查
             if temp_token.type == Token.TYPE.PARAM_SEPARATOR:
                 if (token_index not in range(1, len(self.tokens) - 1)) \
-                        or (self.tokens[token_index - 1].type == Token.TYPE.LBRACKET)\
-                        or (self.tokens[token_index + 1].type == Token.TYPE.RBRACKET)\
-                        or (self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'))\
-                        or (self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and self.tokens[token_index + 1].value in ('*', '/', '^', '%')):
+                        or (self.tokens[token_index - 1].type == Token.TYPE.LBRACKET) \
+                        or (self.tokens[token_index + 1].type == Token.TYPE.RBRACKET) \
+                        or (self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and self.tokens[
+                    token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%')) \
+                        or (self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and self.tokens[
+                    token_index + 1].value in ('*', '/', '^', '%')):
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_SEPARATOR_ERROR,
                         expression=self.expression,
@@ -247,11 +258,14 @@ class Parser:
                         primary_info=temp_token.value,
                     )
 
-        if absolute_symbol_waiting_right:
+        # 检查栈中是否还有未匹配的绝对值符号
+        if absolute_symbol_stack:
+            # 报告第一个未匹配的绝对值符号
+            mismatched_index = absolute_symbol_stack[0]
             raise OlocSyntaxError(
                 exception_type=OlocSyntaxError.TYPE.ABSOLUTE_SYMBOL_MISMATCH,
                 expression=self.expression,
-                positions=[absolute_symbol_current_index],
+                positions=[mismatched_index],
                 primary_info="|",
             )
 
