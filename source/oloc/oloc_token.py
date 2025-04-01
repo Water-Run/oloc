@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-31
+:date: 2025-04-01
 :file: oloc_token.py
 :description: oloc token
 """
@@ -103,7 +103,8 @@ class Token:
         Checks the legality of an integer-type token.
         :return: Whether it is valid
         """
-        return self.value.isdigit()
+
+        return self.value.isdigit() and (self.value == '0' or not self.value.startswith('0'))
 
     def _check_finite_decimal(self) -> bool:
         r"""

@@ -84,9 +84,10 @@ class Preprocessor:
                     custom_indices.append((long_custom_start_stack[0], exp_index))
                 if len(long_custom_start_stack) == 0:
                     raise OlocSyntaxError(
-                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_RIGHT_BRACKET_MISMATCH,
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_BRACKET_MISMATCH,
                         expression=char,
                         positions=[exp_index],
+                        primary_info='>',
                     )
                 long_custom_start_stack.pop()
         return custom_indices

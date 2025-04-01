@@ -484,9 +484,10 @@ class Lexer:
                 # 单个左尖括号是错误的
                 if index == len(expression) - 1:
                     raise OlocSyntaxError(
-                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_LEFT_BRACKET_MISMATCH,
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_BRACKET_MISMATCH,
                         expression=expression,
                         positions=[index, index],
+                        primary_info='<',
                     )
 
                 # 查找匹配的右尖括号
@@ -499,9 +500,10 @@ class Lexer:
                 # 如果没找到匹配的右尖括号，抛出异常
                 if right_bracket_index is None:
                     raise OlocSyntaxError(
-                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_LEFT_BRACKET_MISMATCH,
+                        exception_type=OlocSyntaxError.TYPE.IRRATIONAL_BRACKET_MISMATCH,
                         expression=expression,
                         positions=[index, index],
+                        primary_info='<',
                     )
 
                 # 标记整个范围为LONG_CUSTOM

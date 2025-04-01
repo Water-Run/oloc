@@ -1,18 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-31
-:file: oloc_exceptions.py
-:description: Oloc exceptions
-"""
-
-from abc import ABC, abstractmethod
-from enum import Enum
-from typing import List
-
-
-r"""
-:author: WaterRun
-:date: 2025-03-31
+:date: 2025-04-01
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -99,6 +87,7 @@ class OlocException(ABC, Exception):
             (self.exception_type, self.expression, self.positions)  # 返回初始化所需的参数
         )
 
+
 class OlocTimeOutError(OlocException):
     r"""
     当函数执行时间超出设定的最大时间时引发的异常
@@ -147,105 +136,45 @@ class OlocSyntaxError(OlocException):
         r"""
         定义 OlocSyntaxError 的异常类型的枚举类。
         """
-        # 注释相关异常
+        # ===== 注释相关异常 =====
         COMMENT_MISMATCH = (
             "Mismatch '#' detected",
             "The content of free comments should be wrapped in a before and after '#'."
         )
 
-        # 无理数格式相关异常
-        IRRATIONAL_LEFT_BRACKET_MISMATCH = (
-            "Mismatch '<' detected",
-            "When declaring a custom long irrational number, `<` must match `>`. Check your expressions."
-        )
-        IRRATIONAL_RIGHT_BRACKET_MISMATCH = (
-            "Mismatch '>' detected",
-            "When declaring a custom long irrational number, `>` must match `<`. Check your expressions."
-        )
-
-        # 括号相关异常
+        # ===== 括号和分隔符相关异常 =====
         LEFT_BRACKET_MISMATCH = (
             "Mismatch `{primary_info}` detected",
             "The left bracket must be matched by an identical right bracket. Check your expressions."
         )
+
         RIGHT_BRACKET_MISMATCH = (
             "Mismatch `{primary_info}` detected",
             "The right bracket must be matched by an identical left bracket. Check your expressions."
         )
+
         BRACKET_HIERARCHY_ERROR = (
             "Bracket `{primary_info}` hierarchy error",
             "Parentheses must follow the hierarchy: `{}` `[]` `()` in descending order."
         )
 
-        # 等号位置异常
-        EQUAL_SIGN_MISPLACEMENT = (
-            "Misplaced '=' detected",
-            "The `=` can only appear in the last part of a valid expression."
-        )
-
-        # 函数参数异常
-        FUNCTION_SEPARATOR_OUTSIDE = (
-            "Function separator `{primary_info}` detected outside of function ({secondary_info})",
-            "The function separator must be inside the function. If you expect the separator to be inside a function, "
-            "check that the function name is valid."
-        )
-        POWER_FUNCTION_PARAM_ERROR = (
-            "The parameter `{primary_info}` in the pow() is incorrect ({secondary_info})",
-            "Check the documentation for the parameter description of pow()."
-        )
-
-        # 数字分隔符异常
-        NUMERIC_SEPARATOR_ERROR = (
-            "Invalid numeric separator detected",
-            "Ensure commas are used correctly as numeric separators in rational numbers. If you expect `,` to be a "
-            "function parameter, check that the function name is a legal function name in oloc. Commas must not "
-            "appear at the start, end, or consecutively. When using numeric separators in a function, only `;` can be used to "
-            "separate the arguments of the function."
-        )
-
-        # 保留字冲突异常
-        RESERVED_WORD_CONFLICT = (
-            "The name `{primary_info}` is a reserved word",
-            "In oloc, reserved words begin with `__reserved`. You cannot use a name that conflicts with it."
-        )
-
-        # 静态检查异常
-        DOT_SYNTAX_ERROR = (
-            "Dot symbols detected during the static checking phase `{primary_info}`",
-            "It's likely that there are illegal decimals. Decimals must have one and only one decimal point, "
-            "distinguishing between preceding integer and decimal places. Checking the expression or submitting an "
-            "issue."
-        )
-        COLON_SYNTAX_ERROR = (
-            "Colon symbols detected during the static checking phase `{primary_info}`",
-            "This can be caused by incorrectly displaying the infinite loop decimal statement. "
-            "Checking the expression or submitting an issue."
-        )
-        UNEXPECTED_OPERATOR = (
-            "Operator that should not be present during the static checking phase `{primary_info}`",
-            "This operator should not be present during static processing. Checking the expression or submitting an "
-            "issue."
-        )
-        OPERATOR_MISPLACEMENT = (
-            "Misplaced operator `{primary_info}`",
-            "Syntactic qualifications for unary and binary operators, in particular. Check the documentation for "
-            "information. Checking the expression or submitting an issue."
-        )
-        INVALID_FUNCTION_NAME = (
-            "Function names that should not appear in the static checking phase `{primary_info}`",
-            "This function should not be present during static processing. Checking the expression or submitting an "
-            "issue."
-        )
-        FUNCTION_MISPLACEMENT = (
-            "Misplaced function call `{primary_info}`",
-            "Function declarations must be followed by a left bracket. If the function is not the first element, "
-            "it may be preceded by left brackets or an operator. Checking the expression or submitting an issue."
-        )
         UNEXPECTED_BRACKET = (
             "Bracket that should not be present during the static checking phase `{primary_info}`",
             "This bracket should not be present during static processing. Checking the expression or submitting an "
             "issue."
         )
+
+        ABSOLUTE_SYMBOL_MISMATCH = (
+            "Mismatched absolute symbol `{primary_info}`",
+            "Absolute value symbols must be paired left and right. Checking the expression or submitting an issue."
+        )
+
+        # ===== 无理数相关异常 =====
+        IRRATIONAL_BRACKET_MISMATCH = (
+            "Mismatch `{primary_info}` detected",
+            "When declaring a custom long irrational number, `<` must match `>`. Check your expressions."
+        )
+
         IRRATIONAL_PARAM_ERROR = (
             "Irrational number of parameters `{primary_info}` for which static checking fails",
             "This may be due to the fact that the previous Token of the irrational number parameter is not legal. An "
@@ -253,20 +182,105 @@ class OlocSyntaxError(OlocException):
             "that may be irrational. Check the expression to ensure that the structure of the irrational number "
             "argument is legal."
         )
+
+        # ===== 数字和分隔符相关异常 =====
+        NUMERIC_SEPARATOR_ERROR = (
+            "Invalid numeric separator detected",
+            "Commas in numbers cannot be at start/end or consecutive. If intended as function parameter, "
+            "verify function name is valid. In functions with numeric separators, use ';' for argument separation."
+        )
+
+        DOT_SYNTAX_ERROR = (
+            "Dot symbols detected during the static checking phase `{primary_info}`",
+            "It's likely that there are illegal decimals. Decimals must have one and only one decimal point, "
+            "distinguishing between preceding integer and decimal places."
+        )
+
+        COLON_SYNTAX_ERROR = (
+            "Colon symbols detected during the static checking phase `{primary_info}`",
+            "This can be caused by incorrectly displaying the infinite loop decimal statement."
+        )
+
+        # ===== 函数相关异常 =====
+        FUNCTION_MISPLACEMENT = (
+            "Misplaced function call `{primary_info}`",
+            "Function calls must be followed by a left parenthesis '('. If the function is not the first element, "
+            "it can only be preceded by operators or left parentheses."
+        )
+
+        FUNCTION_SEPARATOR_OUTSIDE = (
+            "Function separator `{primary_info}` detected outside of function ({secondary_info})",
+            "The function separator must be inside the function. If you expect the separator to be inside a function, "
+            "check that the function name is valid."
+        )
+
         FUNCTION_PARAM_SEPARATOR_ERROR = (
             "Invalid function parameter separator detected `{primary_info}`",
-            "A legal function argument separator can only be preceded by a number or a right bracket. "
-            "If the latter item begins with an operator, it must be in the form of a legal unary operator. "
-            "Checking the expression or submitting an issue."
+            "A legal function argument separator can only be preceded by a number or a right bracket. If the latter "
+            "item begins with an operator, it must be in the form of a legal unary operator."
         )
+
+        FUNCTION_PARAM_COUNT_ERROR = (
+            "Incorrect parameter count for function `{primary_info}` ({secondary_info})",
+            "The number of parameters must match the function's requirements. Check the function definition or "
+            "documentation for the correct parameter count."
+        )
+
+        INVALID_FUNCTION_NAME = (
+            "Function names that should not appear in the static checking phase `{primary_info}`",
+            "This function should not be present during static processing. Checking the expression or submitting an "
+            "issue."
+        )
+
+        # ===== 运算符相关异常 =====
+        PREFIX_OPERATOR_MISPLACEMENT = (
+            "Misplaced prefix operator `{primary_info}`",
+            "Prefix operators must be placed directly before an expression. Examples: √4, -x"
+        )
+
+        POSTFIX_OPERATOR_MISPLACEMENT = (
+            "Misplaced postfix operator `{primary_info}`",
+            "Postfix operators must be placed directly after an expression. Example: n!"
+        )
+
+        ENCLOSING_OPERATOR_MISPLACEMENT = (
+            "Misplaced enclosing operator `{primary_info}`",
+            "Enclosing operators like absolute value bars must properly surround an expression. Example: |x+y|"
+        )
+
+        BINARY_OPERATOR_MISPLACEMENT = (
+            "Misplaced binary operator `{primary_info}`",
+            "Binary operators must be placed between two expressions. Examples: a+b, x*y"
+        )
+
+        UNEXPECTED_OPERATOR = (
+            "Operator that should not be present during the static checking phase `{primary_info}`",
+            "This operator should not be present during static processing. Checking the expression or submitting an "
+            "issue."
+        )
+
+        # ===== 表达式结构相关异常 =====
+        EQUAL_SIGN_MISPLACEMENT = (
+            "Misplaced '=' detected",
+            "The `=` can only appear in the last part of a valid expression."
+        )
+
+        GROUP_EXPRESSION_ERROR = (
+            "Invalid grouped expression structure",
+            "A grouped expression must contain exactly one expression inside the parentheses. Empty groups () or "
+            "multiple comma-separated expressions are not allowed."
+        )
+
+        # ===== 命名和保留字相关异常 =====
+        RESERVED_WORD_CONFLICT = (
+            "The name `{primary_info}` is a reserved word",
+            "In oloc, reserved words begin with `__reserved`. You cannot use a name that conflicts with it."
+        )
+
+        # ===== 其他通用异常 =====
         UNEXPECTED_TOKEN_TYPE = (
             "Token types that should not be present `{primary_info}`",
             "Token of this type should not be retained during the static checking phase. Checking the expression or "
-            "submitting an issue."
-        )
-        ABSOLUTE_SYMBOL_MISMATCH = (
-            "Mismatched absolute symbol `{primary_info}`",
-            "Absolute value symbols must be paired left and right. Checking the expression or "
             "submitting an issue."
         )
 
@@ -347,66 +361,78 @@ class OlocValueError(OlocException):
         r"""
         定义 OlocValueError 的异常类型的枚举类。
         """
-        # Token错误
+
         UNKNOWN_TOKEN = (
             "Token that Tokenizer could not parse `{primary_info}`",
             "Check the documentation for instructions and check the expression."
         )
+
         INVALID_PERCENTAGE = (
             "Invalid percentage number `{primary_info}`",
             "A percentage must consist of a whole number or a finite number of decimals followed by a `%`. e.g. 100%, "
             "0.125%"
         )
+
         INVALID_INFINITE_DECIMAL = (
             "Invalid infinite-decimal number `{primary_info}`",
             "An infinite cyclic decimal must be followed by a finite cyclic decimal ending in 3-6 ` . ` or `:` "
             "followed by an integer. e.g. 1.23..., 2.34......, 10.1:2. The declaration `:` cannot be used when the "
             "first decimal place is a round-robin place."
         )
+
         INVALID_FINITE_DECIMAL = (
             "Invalid finite-decimal number `{primary_info}`",
             "A finite repeating decimal must consist of an integer with integer digits and a decimal point. e.g. "
             "3.14, 0.233"
         )
+
         INVALID_INTEGER = (
             "Invalid integer number `{primary_info}`",
             "An integer must be composed of Arabic numerals from 0 to 9. e.g. 0, 1024, 54321"
         )
+
         INVALID_NATIVE_IRRATIONAL = (
             "Invalid native-irrational number `{primary_info}`",
             "A primitive irrational number must be one of `π` or `𝑒`."
         )
+
         INVALID_SHORT_CUSTOM_IRRATIONAL = (
             "Invalid short-custom-irrational number `{primary_info}`",
             "A short custom irrational number must be a non-operator and non-digit character, including an optional "
             "`?` expression. The character between the end and `?` can only be a positive or negative sign or an "
             "integer or a finite decimal (with a sign). e.g. x, y-?, i3.14?, s+2?"
         )
+
         INVALID_LONG_CUSTOM_IRRATIONAL = (
             "Invalid long-custom-irrational number `{primary_info}`",
             "A long custom irrational number must be wrapped in `<>`, including an optional `?` expression. The "
             "character between the end and `?` can only be a positive or negative sign or an integer or a finite "
             "decimal (with a sign). e.g. <ir>, <无理数>+?, <A long one>-3?, <irrational>0.12?"
         )
+
         INVALID_OPERATOR = (
             "Invalid operator `{primary_info}`",
             "Check the expression, or check the tutorial (and symbol-mapping-table)."
         )
+
         INVALID_BRACKET = (
             "Invalid bracket `{primary_info}`",
             "The brackets can only be one of `()`, `[]`, `{}`. Check the expression, or refer to the tutorial for "
             "information about grouping operators."
         )
+
         INVALID_FUNCTION = (
             "Invalid function `{primary_info}`",
             "This may be caused by splicing several consecutive legal function names. Check out the tutorial or the "
             "function-conversion-table for more information."
         )
+
         INVALID_PARAM_SEPARATOR = (
             "Invalid param-separator `{primary_info}`",
             "The function parameter separator can only be `,` or `;`. If your parameters contain numeric separators, "
             "the parameter separator can only be ';'."
         )
+
         INVALID_IRRATIONAL_PARAM = (
             "Invalid irrational param `{primary_info}`",
             "An irrational number parameter expression can only be an integer or a signed or unsigned integer or "

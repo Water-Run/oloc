@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-31
+:date: 2025-04-01
 :file: oloc_core.py
 :description: Oloc ast
 """
@@ -8,9 +8,12 @@ r"""
 from enum import Enum
 from oloc_token import Token
 
+
 class ASTNode:
     r"""
     抽象语法树节点
+    :param node_type: 节点的类型
+    :param tokens: 节点包含的Token流
     """
 
     class TYPE(Enum):
@@ -29,7 +32,7 @@ class ASTNode:
         self.children = []
         self.parent = None
 
-    def add_child(self, child):
+    def add_child(self, child: 'ASTNode') -> None:
         r"""
         添加子节点
         :param child: 要添加的子节点
@@ -57,7 +60,9 @@ class ASTNode:
 class ASTTree:
     r"""
     抽象语法树
+    :param root: 根节点
     """
+
     def __init__(self, root: ASTNode = None):
         self.root = root
         self.node_count = 0 if root is None else self._count_nodes(root)
@@ -83,9 +88,9 @@ class ASTTree:
         :return: 字符串
         """
         if not self.root:
-            return "Empty AST Tree"
+            return f"AST: {self._count_nodes(self.root)} node\n(Empty)"
 
-        lines = ["AST Tree:"]
+        lines = [f"AST: {self._count_nodes(self.root)} node"]
         self._build_tree_string(self.root, "", True, lines)
         return "\n".join(lines)
 
@@ -112,19 +117,6 @@ class ASTTree:
         for i, child in enumerate(node.children):
             is_last_child = i == len(node.children) - 1
             self._build_tree_string(child, new_prefix, is_last_child, lines)
-
-    def traverse(self, order="pre"):
-        r"""
-        遍历树
-        :param order: 遍历顺序，"pre"为前序，"in"为中序，"post"为后序
-        :return: 节点列表
-        """
-        if not self.root:
-            return []
-
-        result = []
-        self._traverse_node(self.root, order, result)
-        return result
 
     def _traverse_node(self, node: ASTNode, order: str, result: list):
         r"""

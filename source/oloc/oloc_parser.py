@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-31
+:date: 2025-04-01
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -96,7 +96,7 @@ class Parser:
                         if token_index != len(self.tokens) - 1 and self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index + 1].value in ('°', '!', '|'):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.ENCLOSING_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -105,7 +105,7 @@ class Parser:
                         if token_index > 0 and self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index - 1].value in ('*', '/', '°', '%', '!', '|'):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.ENCLOSING_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -115,7 +115,7 @@ class Parser:
 
                         if not token_index != len(self.tokens) - 1:
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.PREFIX_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -124,7 +124,7 @@ class Parser:
                         if self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index + 1].value in ('*', '/', '°', '^', '%', '!'):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.PREFIX_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -134,7 +134,7 @@ class Parser:
 
                         if not token_index > 0:
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.POSTFIX_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -143,7 +143,7 @@ class Parser:
                         if self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.BINARY_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -153,7 +153,7 @@ class Parser:
 
                         if token_index not in range(1, len(self.tokens) - 1):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.BINARY_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -162,7 +162,7 @@ class Parser:
                         if self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.BINARY_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -171,7 +171,7 @@ class Parser:
                         if self.tokens[token_index + 1].type == Token.TYPE.OPERATOR and \
                                 self.tokens[token_index + 1].value in ('*', '/', '°', '^', '%', '!'):
                             raise OlocSyntaxError(
-                                exception_type=OlocSyntaxError.TYPE.OPERATOR_MISPLACEMENT,
+                                exception_type=OlocSyntaxError.TYPE.BINARY_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
                                 positions=list(range(*temp_token.range)),
                                 primary_info=temp_token.value,
@@ -580,7 +580,8 @@ class Parser:
                 raise OlocSyntaxError(
                     exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
                     expression=self.expression,
-                    positions=[token.range[0] for token in node.tokens],
+                    positions=[pos for token in node.tokens for pos in (
+                        range(token.range[0], token.range[1] + 1) if token.type == Token.TYPE.FUNCTION else [token.range[0]])],
                     primary_info=func_name,
                     secondary_info=f"Expected {expected_param_count} parameters, got {len(node.children)}"
                 )
@@ -596,7 +597,6 @@ class Parser:
                     exception_type=OlocSyntaxError.TYPE.GROUP_EXPRESSION_ERROR,
                     expression=self.expression,
                     positions=[token.range[0] for token in node.tokens],
-                    primary_info=""
                 )
 
             # 检查子节点
@@ -673,9 +673,11 @@ if __name__ == '__main__':
                 lexer.execute()
                 parser = Parser(lexer.tokens)
                 parser.execute()
-                ast = parser.ast
-                print(test, end=" => ")
-                print(ast)
+                print(test, end="\n=")
+                print(preprocessor.expression, end="\n=")
+                print(lexer.expression, end="\n=")
+                print(parser.expression)
+                print(parser.ast)
                 time_costs.append(preprocessor.time_cost + lexer.time_cost + parser.time_cost)
             except IndexError as ie:
                 raise ie
