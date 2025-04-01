@@ -32,4 +32,4 @@ If you want to access step-by-step calculation results, refer to the `result` at
 
 ---  
 ***Next Chapter: [Numbers](Numbers.md)***  
-*[Return to Directory](User Guide Directory.md)*
+*[Return to Directory](User%20Guide%20Directory.md)*
