@@ -464,3 +464,54 @@ class OlocValueError(OlocException):
             self.__class__,
             (self.exception_type, self.expression, self.positions, self.primary_info, self.secondary_info)
         )
+
+
+class OlocConversionError(OlocException):
+    r"""
+    当结果进行转换时出现错误抛出此异常
+    """
+
+    class TYPE(Enum):
+        r"""
+        定义 OlocValueError 的异常类型的枚举类。
+        """
+
+        MISSING_PARAM = (
+            "Detection of custom irrationals with missing irrational parameters in floating point conversions `{"
+            "primary_info}`",
+            "If you need to convert a custom irrational number to another form, you must give it an irrational number "
+            "parameter."
+        )
+
+        NATIVE_PARAM = (
+            "The argument `secondary_info` to the primitive irrational number `primary_info` is invalid",
+            "The argument of a primitive irrational number can only be an positive integer, indicating the number of "
+            "decimal"
+            "places to be preserved. e.g. `4?` indicates that four decimal places are preserved."
+        )
+
+    def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
+                 primary_info: str = None, secondary_info: str = None):
+        r"""
+        初始化 OlocConversionError，包含异常类型和主要信息。
+
+        :param exception_type: 异常的类型 (Enum)
+        :param expression: 触发异常的原始表达式
+        :param positions: 表示问题位置的列表
+        :param primary_info: 主要异常信息，例如引发异常的Token内容
+        :param secondary_info: 辅助异常信息，提供额外的上下文
+        """
+        self.exception_name = "OlocConversionError"
+        self.primary_info = primary_info
+        self.secondary_info = secondary_info
+
+        super().__init__(exception_type, expression, positions)
+
+    def __reduce__(self):
+        r"""
+        自定义序列化逻辑，用于支持 multiprocessing.Queue 的序列化。
+        """
+        return (
+            self.__class__,
+            (self.exception_type, self.expression, self.positions, self.primary_info, self.secondary_info)
+        )

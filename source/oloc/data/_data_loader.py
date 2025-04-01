@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-26
+:date: 2025-04-01
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -3523,6 +3523,7 @@ test_case10 = [
 ]
 
 test_cases = test_case1 + test_case2 + test_case3 + test_case4 + test_case5 + test_case6 + test_case7 + test_case8 + test_case9 + test_case10
+#test_cases = test_case1
 
 ss.write("test_cases", test_cases, file="oloctest.ini")
 
