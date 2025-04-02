@@ -30,6 +30,32 @@ If you want to access step-by-step calculation results, refer to the `result` at
 
 > Before diving into the detailed tutorial, feel free to experiment with it intuitively.  
 
+### Command-Line Program
+
+`cli` is the command-line terminal program provided by `oloc_release`:
+
+*Startup:*
+
+```python
+import oloc_release
+oloc_release.cli()
+```
+
+After starting, enter `:help` to get the usage guide.
+
+### GUI Program
+
+`gui` is the graphical program provided by `oloc_release`, implemented with `tkinter`:
+
+*Startup:*
+
+```python
+import oloc_release
+oloc_release.gui()
+```
+
+After starting, click the `help` tab at the top to access the usage guide.
+
 ---  
 ***Next Chapter: [Numbers](Numbers.md)***  
 *[Return to Directory](User%20Guide%20Directory.md)*

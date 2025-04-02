@@ -37,6 +37,8 @@
 `oloc` relies on the `simpsave` library for data storage functionality (e.g., symbol mapping tables).  
 > `simpsave` is a simple Python-native data persistence library. See [simpsave](https://github.com/Water-Run/SimpSave).  
 
+In `oloc_release`, a ready-to-use `CLI` computation terminal and a `GUI` implemented by `Tkinter` are also provided.  
+
 ## Documentation  
 
 `oloc` offers **comprehensive documentation support**.  

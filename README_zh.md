@@ -32,6 +32,8 @@
 `oloc`依赖库`simpsave`实现数据的存储功能(如符号映射表).  
 > `simpsave`是一个简单的`python`原生数据存储库.见[simpsave](https://github.com/Water-Run/SimpSave)  
 
+在`oloc_release`中,还提供了一个即开即用的`CLI`计算终端和由`Tkinter`实现的`GUI`.  
+
 ## 文档  
 
 `oloc`有着**完善的文档支持**.  

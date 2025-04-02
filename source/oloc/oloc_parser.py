@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-02
+:date: 2025-04-03
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -658,7 +658,7 @@ class Parser:
     def execute(self):
         r"""
         执行语法分析
-        :return: AST树
+        :return: None
         """
         start_time = time.time_ns()
         self._static_check()

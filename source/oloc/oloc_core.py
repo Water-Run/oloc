@@ -1,19 +1,21 @@
 r"""
 :author: WaterRun
-:date: 2025-04-01
+:date: 2025-04-03
 :file: oloc_core.py
 :description: Core of oloc
 """
 import time
-
 import simpsave as ss
+from multiprocessing import Process, Queue
+
+import oloc_utils as utils
 from oloc_result import OlocResult
 from oloc_exceptions import *
-from multiprocessing import Process, Queue
+
 from oloc_preprocessor import Preprocessor
 from oloc_lexer import Lexer
 from oloc_parser import Parser
-import oloc_utils as utils
+from oloc_evaluator import Evaluator
 
 
 def _process_expression(expression: str) -> OlocResult:
@@ -36,8 +38,12 @@ def _process_expression(expression: str) -> OlocResult:
     parser = Parser(lexer.tokens)
     parser.execute()
 
+    # 求值
+    evaluator = Evaluator(parser.expression, parser.tokens, parser.ast)
+    evaluator.evaluate()
+
     # 结果封装
-    return OlocResult(parser.expression, [])
+    return OlocResult(expression, evaluator.result)
 
 
 def _execute_calculation(expression: str, result_queue: Queue) -> None:
