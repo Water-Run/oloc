@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-01
+:date: 2025-04-02
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -269,6 +269,16 @@ class OlocSyntaxError(OlocException):
             "Invalid grouped expression structure",
             "A grouped expression must contain exactly one expression inside the parentheses. Empty groups () or "
             "multiple comma-separated expressions are not allowed."
+        )
+
+        BINARY_EXPRESSION_ERROR = (
+            "Binary expression operator `{primary_info}` node error",
+            "Binary expressions require two child nodes. Check your expression."
+        )
+
+        UNARY_EXPRESSION_ERROR = (
+            "Unary expression operator `{primary_info}` node error",
+            "Unary expressions require one child nodes. Check your expression."
         )
 
         # ===== 命名和保留字相关异常 =====
