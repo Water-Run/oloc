@@ -1,9 +1,10 @@
 r"""
 :author: WaterRun
-:date: 2025-04-01
+:date: 2025-04-03
 :file: oloc_result.py
 :description: Oloc result
 """
+
 from typing import Any
 from fractions import Fraction
 from oloc_token import Token
@@ -61,16 +62,17 @@ class OlocResult:
 
     :param expression: 要计算的原始表达式
     :param token_flows: 表达式计算结果的Token流列表
-    :raises TypeError: 如果输入的参数类型不正确
+    :param time_cost: 计算耗时
     """
 
-    def __init__(self, expression: str, token_flows: list[list[Token]]) -> None:
+    def __init__(self, expression: str, token_flows: list[list[Token]], time_cost: float) -> None:
         self._expression = expression
         self._flows = token_flows
         self._result: list[str] = []
         for tokens in self._flows:
             self.result.append(output_filter(tokens))
         self._raw_result: str | None = None
+        self._time_cost = time_cost
 
     @property
     def expression(self) -> str:
@@ -87,6 +89,14 @@ class OlocResult:
         :return: 结果字符串列表
         """
         return self._result
+
+    @property
+    def time_cost(self) -> float:
+        r"""
+        获取计算耗时
+        :return: 计算耗时(ms)
+        """
+        return self._time_cost
 
     def __str__(self) -> str:
         r"""

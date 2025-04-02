@@ -30,6 +30,8 @@ If you want to access step-by-step calculation results, refer to the `result` at
 
 > Before diving into the detailed tutorial, feel free to experiment with it intuitively.  
 
+## Use `oloc_release`  
+
 ### Command-Line Program
 
 `cli` is the command-line terminal program provided by `oloc_release`:
