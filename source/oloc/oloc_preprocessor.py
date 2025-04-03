@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-03-31
+:date: 2025-04-03
 :file: oloc_preprocessor.py
 :description: Oloc preprocessor
 """
@@ -24,6 +24,11 @@ class Preprocessor:
         self._symbol_mapping_table = utils.get_symbol_mapping_table()
         self._function_mapping_table = utils.get_function_mapping_table()
         self._function_name_list = utils.get_function_name_list()
+
+    def __repr__(self):
+        return (f"Preprocessor: \n"
+                f"expression: {self.expression}\n"
+                f"time cost: {'(Not execute)' if self.time_cost == -1 else self.time_cost / 1000000} ms\n")
 
     def _remove_comment(self) -> None:
         r"""

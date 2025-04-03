@@ -1,16 +1,16 @@
 r"""
 :author: WaterRun
-:date: 2025-03-31
+:date: 2025-04-03
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
 
 import time
+from math import gcd
 
 import oloc_utils as utils
-from oloc_evaluator import Evaluator
-from oloc_exceptions import *
 from oloc_token import Token
+from oloc_exceptions import *
 
 
 class Lexer:
@@ -23,6 +23,18 @@ class Lexer:
         self.expression = expression
         self.tokens: list[Token] = []
         self.time_cost = -1
+
+    def __repr__(self):
+        result = (f"Lexer: \n"
+                  f"expression: {self.expression}\n"
+                  f"expression (spilt between token): ")
+        for token in self.tokens:
+            result += f"{token.value} "
+        result += "\ntoken flow: \n"
+        for index, token in enumerate(self.tokens):
+            result += f"{index}\t{token}\n"
+        result += f"time cost: {'(Not execute)' if self.time_cost == -1 else self.time_cost / 1000000} ms\n"
+        return result
 
     def _convert_token_flow(self) -> None:
         r"""
@@ -337,6 +349,55 @@ class Lexer:
                 Token(Token.TYPE.FINITE_DECIMAL, percentage_str,
                       [percentage.range[0], percentage.range[0] + len(percentage_str)]))
 
+        def _simplify_fraction(fraction_tokens: list[Token, Token, Token]) -> list[Token] or list[Token, Token, Token]:
+            r"""
+            化简传入的分数Token流
+            :param fraction_tokens: 传入的分数Token流, 依次是整数, 分数线, 整数
+            :return: 化简后的分数Token流, 或整数Token流(如果可能)
+            """
+            numerator = int(fraction_tokens[0].value)  # 分子
+            denominator = int(fraction_tokens[2].value)  # 分母
+
+            # 计算分子和分母的最大公约数
+            divisor = gcd(numerator, denominator)
+
+            # 化简分子和分母
+            simplified_numerator = numerator // divisor
+            simplified_denominator = denominator // divisor
+
+            # 如果能化简为整数
+            if simplified_denominator == 1:
+                # 返回单个整数Token
+                return [
+                    Token(
+                        Token.TYPE.INTEGER,
+                        str(simplified_numerator),
+                        [fraction_tokens[0].range[0], fraction_tokens[2].range[1]]  # 范围覆盖整个分数的原范围
+                    )
+                ]
+
+            # 返回化简后的分数Token流
+            return [
+                Token(
+                    Token.TYPE.INTEGER,
+                    str(simplified_numerator),
+                    [fraction_tokens[0].range[0], fraction_tokens[0].range[0] + len(str(simplified_numerator))]
+                ),
+                Token(
+                    Token.TYPE.OPERATOR,
+                    "/",
+                    [fraction_tokens[0].range[0] + len(str(simplified_numerator)),
+                     fraction_tokens[0].range[0] + len(str(simplified_numerator)) + 1]
+                ),
+                Token(
+                    Token.TYPE.INTEGER,
+                    str(simplified_denominator),
+                    [fraction_tokens[0].range[0] + len(str(simplified_numerator)) + 1,
+                     fraction_tokens[0].range[0] + len(str(simplified_numerator)) + 1 + len(
+                         str(simplified_denominator))]
+                )
+            ]
+
         fractionalized_tokens = []
 
         convert_num_types = [
@@ -353,7 +414,7 @@ class Lexer:
                     token_index + 2 < len(self.tokens) and \
                     self.tokens[token_index + 1].value == "/" and \
                     self.tokens[token_index + 2].type == Token.TYPE.INTEGER:
-                fractionalized_tokens += Evaluator.simplify(
+                fractionalized_tokens += _simplify_fraction(
                     self._check_denominator([temp_token, self.tokens[token_index + 1], self.tokens[token_index + 2]]))
                 token_index += 2
             elif convert_type in convert_num_types:
@@ -364,7 +425,7 @@ class Lexer:
                         tokens_to_fractionalized = self._check_denominator(_convert_infinite_decimal(temp_token))
                     case Token.TYPE.PERCENTAGE:
                         tokens_to_fractionalized = self._check_denominator(_convert_percentage(temp_token))
-                fractionalized_tokens += _add_bracket(Evaluator.simplify(tokens_to_fractionalized))
+                fractionalized_tokens += _add_bracket(_simplify_fraction(tokens_to_fractionalized))
             else:
                 fractionalized_tokens += [temp_token]
             token_index += 1

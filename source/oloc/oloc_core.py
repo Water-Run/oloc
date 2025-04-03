@@ -27,17 +27,21 @@ def _process_expression(expression: str) -> OlocResult:
     :return: The processing result wrapped in an OlocResult object.
     :raises: Various types of oloc exceptions, depending on possible errors during processing.
     """
+    print("\n\n==================")
     # Preprocessing
     preprocessor = Preprocessor(expression)
     preprocessor.execute()
+    print(preprocessor)
 
     # Lexical analysis
     lexer = Lexer(preprocessor.expression)
     lexer.execute()
+    print(lexer)
 
     # Syntax analysis
     parser = Parser(lexer.tokens)
     parser.execute()
+    print(parser)
 
     # Evaluation
     evaluator = Evaluator(parser.expression, parser.tokens, parser.ast)
@@ -169,4 +173,4 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, pause_if_exc
 
 """test"""
 if __name__ == "__main__":
-    run_test("./data/oloctest.ini", "test_cases", 0.3)
+    run_test("./data/oloctest.ini", "test_cases", -1)

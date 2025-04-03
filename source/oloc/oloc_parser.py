@@ -24,8 +24,20 @@ class Parser:
         self.tokens, self.expression = Lexer.update(tokens)
         self.ast = None
         self.time_cost = -1
-        # 用于追踪当前分析的位置
-        self.current_index = 0
+        self._current_index = 0
+
+    def __repr__(self):
+        result = (f"Parser: \n"
+                  f"expression: {self.expression}\n"
+                  f"expression (spilt between token): ")
+        for token in self.tokens:
+            result += f"{token.value} "
+        result += "\ntoken flow: \n"
+        for index, token in enumerate(self.tokens):
+            result += f"{index}\t{token}\n"
+        result += f"ast: \n{self.ast}"
+        result += f"\ntime cost: {'(Not execute)' if self.time_cost == -1 else self.time_cost / 1000000} ms\n"
+        return result
 
     def _static_check(self):
         r"""
@@ -277,7 +289,7 @@ class Parser:
         if not self.tokens:
             return
 
-        self.current_index = 0
+        self._current_index = 0
         root_node = self._parse_expression()
         self.ast = ASTTree(root_node)
 
@@ -295,12 +307,12 @@ class Parser:
         """
         left = self._parse_mul_div()
 
-        while self.current_index < len(self.tokens):
-            token = self.tokens[self.current_index]
+        while self._current_index < len(self.tokens):
+            token = self.tokens[self._current_index]
             if token.type == Token.TYPE.OPERATOR and token.value in ('+', '-'):
                 # 创建二元表达式节点
                 op_token = token
-                self.current_index += 1
+                self._current_index += 1
                 right = self._parse_mul_div()
 
                 binary_node = ASTNode(ASTNode.TYPE.BIN_EXP, [op_token])
@@ -319,12 +331,12 @@ class Parser:
         """
         left = self._parse_power()
 
-        while self.current_index < len(self.tokens):
-            token = self.tokens[self.current_index]
+        while self._current_index < len(self.tokens):
+            token = self.tokens[self._current_index]
             if token.type == Token.TYPE.OPERATOR and token.value in ('*', '/', '%'):
                 # 创建二元表达式节点
                 op_token = token
-                self.current_index += 1
+                self._current_index += 1
                 right = self._parse_power()
 
                 binary_node = ASTNode(ASTNode.TYPE.BIN_EXP, [op_token])
@@ -343,12 +355,12 @@ class Parser:
         """
         left = self._parse_unary()
 
-        if self.current_index < len(self.tokens):
-            token = self.tokens[self.current_index]
+        if self._current_index < len(self.tokens):
+            token = self.tokens[self._current_index]
             if token.type == Token.TYPE.OPERATOR and token.value == '^':
                 # 创建二元表达式节点
                 op_token = token
-                self.current_index += 1
+                self._current_index += 1
                 # 幂运算是右结合的
                 right = self._parse_power()
 
@@ -364,19 +376,19 @@ class Parser:
         解析一元运算符表达式
         :return: 一元表达式节点
         """
-        if self.current_index >= len(self.tokens):
+        if self._current_index >= len(self.tokens):
             return None
 
-        token = self.tokens[self.current_index]
+        token = self.tokens[self._current_index]
 
         # 处理前置一元运算符
         if token.type == Token.TYPE.OPERATOR and token.value in ('+', '-', '√', '|'):
-            self.current_index += 1
+            self._current_index += 1
             if token.value == '|':
                 # 绝对值运算符需要找到匹配的右侧 |
                 operand = self._parse_expression()
-                if self.current_index < len(self.tokens) and self.tokens[self.current_index].value == '|':
-                    self.current_index += 1  # 跳过右侧 |
+                if self._current_index < len(self.tokens) and self.tokens[self._current_index].value == '|':
+                    self._current_index += 1  # 跳过右侧 |
                 else:
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.ABSOLUTE_SYMBOL_MISMATCH,
@@ -394,10 +406,10 @@ class Parser:
         # 处理常规表达式后跟随后置一元运算符
         expr = self._parse_primary()
 
-        while self.current_index < len(self.tokens):
-            token = self.tokens[self.current_index]
+        while self._current_index < len(self.tokens):
+            token = self.tokens[self._current_index]
             if token.type == Token.TYPE.OPERATOR and token.value in ('!', '°'):
-                self.current_index += 1
+                self._current_index += 1
                 unary_node = ASTNode(ASTNode.TYPE.URY_EXP, [token])
                 unary_node.add_child(expr)
                 expr = unary_node
@@ -411,31 +423,31 @@ class Parser:
         解析基本元素（数字、无理数、函数调用、分组表达式）
         :return: 基本元素节点
         """
-        if self.current_index >= len(self.tokens):
+        if self._current_index >= len(self.tokens):
             return None
 
-        token = self.tokens[self.current_index]
+        token = self.tokens[self._current_index]
 
         # 处理字面量
         if token.type in (Token.TYPE.INTEGER, Token.TYPE.NATIVE_IRRATIONAL,
                          Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM):
-            self.current_index += 1
+            self._current_index += 1
             # 检查是否有无理数参数
-            if (self.current_index < len(self.tokens) and
-                self.tokens[self.current_index].type == Token.TYPE.IRRATIONAL_PARAM):
+            if (self._current_index < len(self.tokens) and
+                self.tokens[self._current_index].type == Token.TYPE.IRRATIONAL_PARAM):
                 # 将无理数参数与无理数一起作为字面量处理
-                param_token = self.tokens[self.current_index]
-                self.current_index += 1
+                param_token = self.tokens[self._current_index]
+                self._current_index += 1
                 return ASTNode(ASTNode.TYPE.LITERAL, [token, param_token])
             return ASTNode(ASTNode.TYPE.LITERAL, [token])
 
         # 处理函数调用
         elif token.type == Token.TYPE.FUNCTION:
             function_token = token
-            self.current_index += 1
+            self._current_index += 1
 
             # 确保有左括号
-            if self.current_index >= len(self.tokens) or self.tokens[self.current_index].type != Token.TYPE.LBRACKET:
+            if self._current_index >= len(self.tokens) or self.tokens[self._current_index].type != Token.TYPE.LBRACKET:
                 raise OlocSyntaxError(
                     exception_type=OlocSyntaxError.TYPE.FUNCTION_MISPLACEMENT,
                     expression=self.expression,
@@ -443,14 +455,14 @@ class Parser:
                     primary_info=function_token.value
                 )
 
-            left_bracket = self.tokens[self.current_index]
-            self.current_index += 1
+            left_bracket = self.tokens[self._current_index]
+            self._current_index += 1
 
             # 解析函数参数
             params = self._parse_function_params()
 
             # 确保有右括号
-            if self.current_index >= len(self.tokens) or self.tokens[self.current_index].type != Token.TYPE.RBRACKET:
+            if self._current_index >= len(self.tokens) or self.tokens[self._current_index].type != Token.TYPE.RBRACKET:
                 raise OlocSyntaxError(
                     exception_type=OlocSyntaxError.TYPE.RIGHT_BRACKET_MISMATCH,
                     expression=self.expression,
@@ -458,8 +470,8 @@ class Parser:
                     primary_info=left_bracket.value
                 )
 
-            right_bracket = self.tokens[self.current_index]
-            self.current_index += 1
+            right_bracket = self.tokens[self._current_index]
+            self._current_index += 1
 
             function_node = ASTNode(ASTNode.TYPE.FUN_CAL, [function_token, left_bracket, right_bracket])
             for param in params:
@@ -470,13 +482,13 @@ class Parser:
         # 处理分组表达式
         elif token.type == Token.TYPE.LBRACKET:
             left_bracket = token
-            self.current_index += 1
+            self._current_index += 1
 
             # 解析括号内的表达式
             inner_expr = self._parse_expression()
 
             # 确保有右括号
-            if self.current_index >= len(self.tokens) or self.tokens[self.current_index].type != Token.TYPE.RBRACKET:
+            if self._current_index >= len(self.tokens) or self.tokens[self._current_index].type != Token.TYPE.RBRACKET:
                 raise OlocSyntaxError(
                     exception_type=OlocSyntaxError.TYPE.LEFT_BRACKET_MISMATCH,
                     expression=self.expression,
@@ -484,8 +496,8 @@ class Parser:
                     primary_info=left_bracket.value
                 )
 
-            right_bracket = self.tokens[self.current_index]
-            self.current_index += 1
+            right_bracket = self.tokens[self._current_index]
+            self._current_index += 1
 
             group_node = ASTNode(ASTNode.TYPE.GRP_EXP, [left_bracket, right_bracket])
             group_node.add_child(inner_expr)
@@ -508,7 +520,7 @@ class Parser:
         params = []
 
         # 如果直接是右括号，表示无参数
-        if self.current_index < len(self.tokens) and self.tokens[self.current_index].type == Token.TYPE.RBRACKET:
+        if self._current_index < len(self.tokens) and self.tokens[self._current_index].type == Token.TYPE.RBRACKET:
             return params
 
         while True:
@@ -517,22 +529,22 @@ class Parser:
             params.append(param)
 
             # 检查是否结束参数列表
-            if self.current_index >= len(self.tokens):
+            if self._current_index >= len(self.tokens):
                 break
 
-            if self.tokens[self.current_index].type == Token.TYPE.RBRACKET:
+            if self.tokens[self._current_index].type == Token.TYPE.RBRACKET:
                 break
 
             # 检查参数分隔符
-            if self.tokens[self.current_index].type != Token.TYPE.PARAM_SEPARATOR:
+            if self.tokens[self._current_index].type != Token.TYPE.PARAM_SEPARATOR:
                 raise OlocSyntaxError(
                     exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_SEPARATOR_ERROR,
                     expression=self.expression,
-                    positions=list(range(*self.tokens[self.current_index].range)),
-                    primary_info=self.tokens[self.current_index].value
+                    positions=list(range(*self.tokens[self._current_index].range)),
+                    primary_info=self.tokens[self._current_index].value
                 )
 
-            self.current_index += 1  # 跳过分隔符
+            self._current_index += 1  # 跳过分隔符
 
         return params
 
