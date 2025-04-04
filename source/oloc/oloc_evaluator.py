@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-03
+:date: 2025-04-04
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
@@ -11,21 +11,6 @@ from oloc_token import Token
 from oloc_lexer import Lexer
 from oloc_ast import ASTTree, ASTNode
 from oloc_exceptions import *
-
-
-class Number:
-    r"""
-    数字单元
-    """
-
-    class TYPE(Enum):
-
-        RATIONAL = "ral"
-        IRRATIONAL = 'irr'
-
-    def __init__(self, token: Token, number_type: TYPE):
-        self.token = token
-        self.number_type = number_type
 
 
 class Evaluator:
@@ -42,6 +27,22 @@ class Evaluator:
         self.ast = ast
         self.result: list[list[Token]] = [self.tokens]
         self.time_cost = -1
+
+    def __repr__(self):
+        result = (f"Evaluator: \n"
+                  f"expression: {self.expression}\n"
+                  f"expression (spilt between token): ")
+        for token in self.tokens:
+            result += f"{token.value} "
+        result += "\ntoken flow: \n"
+        for index, token in enumerate(self.tokens):
+            result += f"{index}\t{token}\n"
+        result += f"ast: \n{self.ast}"
+        result += "\n result:\n"
+        for result_index, result_list in enumerate(result):
+            result += f"{result_index}: {result_list}"
+        result += f"\ntime cost: {'(Not execute)' if self.time_cost == -1 else self.time_cost / 1000000} ms\n"
+        return result
 
     def evaluate(self):
         r"""
@@ -64,7 +65,7 @@ class Evaluator:
 
     # 四则运算
     @staticmethod
-    def addition(augend: Number, addend: Number) -> list[Token]:
+    def addition(augend: list[Token], addend: list[Token]) -> list[Token]:
         r"""
         计算加法
         :param augend: 被加数
@@ -72,18 +73,8 @@ class Evaluator:
         :return: 加法运算的结果
         """
 
-        # 有理数相加
-        if augend.TYPE == addend.TYPE == Number.TYPE.RATIONAL:
-            ...
-        # 无理数相加
-        elif augend.TYPE == addend.TYPE == Number.TYPE.IRRATIONAL:
-            ...
-        # 有理数加无理数
-        else:
-            ...
-
     @staticmethod
-    def subtraction(minuend: Number, subtrahend: Number) -> list[Token]:
+    def subtraction(minuend: list[Token], subtrahend: list[Token]) -> list[Token]:
         r"""
         计算减法
         :param minuend: 被减数
@@ -92,7 +83,7 @@ class Evaluator:
         """
 
     @staticmethod
-    def multiplication(factor_1: Number, factor_2: Number) -> list[Token]:
+    def multiplication(factor_1: list[Token], factor_2: list[Token]) -> list[Token]:
         r"""
         计算乘法
         :param factor_1: 因数1
@@ -101,7 +92,7 @@ class Evaluator:
         """
 
     @staticmethod
-    def division(dividend: Number, divisor: Number) -> list[Token]:
+    def division(dividend: list[Token], divisor: list[Token]) -> list[Token]:
         r"""
         计算除法.结果化至最简形式
         :param dividend: 被除数

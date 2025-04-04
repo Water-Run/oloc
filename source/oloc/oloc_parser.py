@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-03
+:date: 2025-04-04
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -49,18 +49,6 @@ class Parser:
         VALID_OPERATORS = ('+', '-', '*', '/', '√', '°', '^', '%', '!', '|')
         VALID_BRACKETS = ('(', ')')
         VALID_FUNCTION = tuple(utils.get_function_mapping_table().keys())
-        VALID_TYPES = (
-            Token.TYPE.INTEGER,
-            Token.TYPE.OPERATOR,
-            Token.TYPE.RBRACKET,
-            Token.TYPE.LBRACKET,
-            Token.TYPE.LONG_CUSTOM,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.NATIVE_IRRATIONAL,
-            Token.TYPE.IRRATIONAL_PARAM,
-            Token.TYPE.FUNCTION,
-            Token.TYPE.PARAM_SEPARATOR,
-        )
 
         # 使用栈跟踪绝对值符号的位置
         absolute_symbol_stack = []
@@ -71,7 +59,7 @@ class Parser:
         for token_index, temp_token in enumerate(self.tokens):
 
             # 类型检查
-            if temp_token.type not in VALID_TYPES:
+            if not temp_token.is_valid_type_in_static_check():
                 raise OlocSyntaxError(
                     exception_type=OlocSyntaxError.TYPE.UNEXPECTED_TOKEN_TYPE,
                     expression=self.expression,

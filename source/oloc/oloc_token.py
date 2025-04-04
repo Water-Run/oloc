@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-01
+:date: 2025-04-04
 :file: oloc_token.py
 :description: oloc token
 """
@@ -22,30 +22,30 @@ class Token:
         Enumeration of all possible token types
         """
         # Number types
-        PERCENTAGE = 'percentage'  # Percentage: 100%
-        INFINITE_DECIMAL = 'infinite recurring decimal'  # Infinite decimal: 3.3... or 2.3:4
-        FINITE_DECIMAL = 'finite decimal'  # Finite decimal: 3.14
-        INTEGER = 'integer'  # Integer: 42
+        PERCENTAGE = 'Percentage'  # Percentage: 100%
+        INFINITE_DECIMAL = 'InfiniteRecurringDecimal'  # Infinite decimal: 3.3... or 2.3:4
+        FINITE_DECIMAL = 'FiniteDecimal'  # Finite decimal: 3.14
+        INTEGER = 'Integer'  # Integer: 42
 
         # Irrational number types
-        NATIVE_IRRATIONAL = 'native irrational number'  # Native irrational numbers: π, e
-        SHORT_CUSTOM = 'short custom irrational'  # Short custom irrational numbers: x, y
-        LONG_CUSTOM = 'long custom irrational'  # Long custom irrational numbers: <name>
+        NATIVE_IRRATIONAL = 'NativeIrrationalNumber'  # Native irrational numbers: π, e
+        SHORT_CUSTOM = 'ShortCustomIrrational'  # Short custom irrational numbers: x, y
+        LONG_CUSTOM = 'LongCustomIrrational'  # Long custom irrational numbers: <name>
 
         # Irrational parameter type
-        IRRATIONAL_PARAM = 'irrational param'
+        IRRATIONAL_PARAM = 'IrrationalParam'
 
         # Operators
-        OPERATOR = 'operator'  # Operators: +, -, *, /, etc.
-        LBRACKET = 'left bracket'  # Left brackets: (, [, {
-        RBRACKET = 'right bracket'  # Right brackets: ), ], }
+        OPERATOR = 'Operator'  # Operators: +, -, *, /, etc.
+        LBRACKET = 'LeftBracket'  # Left brackets: (, [, {
+        RBRACKET = 'RightBracket'  # Right brackets: ), ], }
 
         # Function-related
-        FUNCTION = 'function'  # Functions: sin, pow, etc.
-        PARAM_SEPARATOR = 'parameter separator'  # Parameter separators: , or ;
+        FUNCTION = 'Function'  # Functions: sin, pow, etc.
+        PARAM_SEPARATOR = 'ParameterSeparator'  # Parameter separators: , or ;
 
         # Unknown type
-        UNKNOWN = 'unknown'  # Unrecognized characters
+        UNKNOWN = 'Unknown'  # Unrecognized characters
 
     def __init__(self, token_type: TYPE, token_value: str = "", token_range: list[int, int] = None):
         if token_range is None:
@@ -258,3 +258,52 @@ class Token:
                 return False
 
         return True
+
+    def is_bracket(self) -> bool:
+        r"""
+        Determine if a Token is a parenthesis
+        :return: True if Token is a parenthesis, False otherwise
+        """
+        return self.type in (Token.TYPE.LBRACKET, Token.TYPE.RBRACKET)
+
+    def is_number(self) -> bool:
+        r"""
+        Determine if a Token is a number
+        :return: True if Token is a number, False otherwise
+        """
+        return self.type in (Token.TYPE.INTEGER,
+                             Token.TYPE.FINITE_DECIMAL, Token.TYPE.INFINITE_DECIMAL, Token.TYPE.PERCENTAGE,
+                             Token.TYPE.NATIVE_IRRATIONAL, Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM)
+
+    def is_rational(self) -> bool:
+        r"""
+        Determine if a Token is a rational
+        :return: True if Token is a rational, False otherwise
+        """
+        return self.type in (Token.TYPE.INTEGER,
+                             Token.TYPE.FINITE_DECIMAL, Token.TYPE.INFINITE_DECIMAL, Token.TYPE.PERCENTAGE)
+
+    def is_irrational(self) -> bool:
+        r"""
+        Determine if a Token is an irrational
+        :return: True if Token is an irrational, False otherwise
+        """
+        return self.type in (Token.TYPE.NATIVE_IRRATIONAL, Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM)
+
+    def is_valid_type_in_static_check(self) -> bool:
+        r"""
+        Determine if a Token is valid type in static check
+        :return: True if Token is valid type in static check, False otherwise
+        """
+        return self.type in (
+            Token.TYPE.INTEGER,
+            Token.TYPE.OPERATOR,
+            Token.TYPE.RBRACKET,
+            Token.TYPE.LBRACKET,
+            Token.TYPE.LONG_CUSTOM,
+            Token.TYPE.SHORT_CUSTOM,
+            Token.TYPE.NATIVE_IRRATIONAL,
+            Token.TYPE.IRRATIONAL_PARAM,
+            Token.TYPE.FUNCTION,
+            Token.TYPE.PARAM_SEPARATOR,
+        )

@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-03
+:date: 2025-04-04
 :file: oloc_cli.py
 :description: Oloc CLI
 """
@@ -34,9 +34,11 @@ class _Config:
         配置子终端
         :return: None
         """
+        print("oloc cli config console: \n"
+              "")
 
     def __repr__(self):
-        return (f"oloc cli config:\n"
+        return (f"oloc cli config: \n"
                 f"show steps: {_Config.show_steps}\n"
                 f"show time cost: {_Config.show_time_cost}\n"
                 f"show error detail: {_Config.show_error_detail}")
@@ -68,7 +70,6 @@ def cli():
     print(f"oloc CLI: oloc simple command-line program\n"
           "Type `:help` to get help, and `:exit` to exit the program.\n"
           "`>>` indicates waiting for an input expression.")
-    print('GitHub: https://github.com/Water-Run/oloc')
 
     invalid_count = 0
 
@@ -91,6 +92,8 @@ def cli():
                           'https://github.com/Water-Run/oloc')
                 else:
                     print('Invalid Command')
+
+    print('GitHub: https://github.com/Water-Run/oloc')
 
 
 if __name__ == '__main__':
