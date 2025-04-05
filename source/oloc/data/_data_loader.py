@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-01
+:date: 2025-04-05
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -18,7 +18,7 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "": [" ", "_", "rad", "radians", "个", "的", "'s", "的", "'s", "以"],
 
     # 等号
-    "=": ["==", "=", "equal", "equals", "eq", "is", "are", "=>", "->", "等于", "是"],
+    "=": ["==", "=", "equals", "equal", "eq", "is", "are", "=>", "->", "等于", "是"],
 
     # 作为函数的运算符
     "√": ["√", "┌", "根号"],
@@ -37,10 +37,6 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     # 特殊运算符
     "?": ["?", "def", "dflt", "default", "指定"],
 
-    # 原生无理数
-    "π": ["π", "pi", "PI", "Pi", "P", "p", "派", "圆周率"],
-    "𝑒": ["𝑒", "e", "自然底数", "自然"],
-
     # 小数
     ":": [":", "循环位"],
     "...": ["...", "repeat", "循环"],
@@ -58,17 +54,30 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "{": ["{", "左大括号"],
     "}": ["}", "右大括号"],
 
-    # 数字
-    "0": ["0", "zero", "零", "〇"],
-    "1": ["1", "one", "一"],
-    "2": ["2", "two", "二"],
-    "3": ["3", "three", "三"],
-    "4": ["4", "four", "四"],
-    "5": ["5", "five", "五"],
-    "6": ["6", "six", "六"],
-    "7": ["7", "seven", "七"],
-    "8": ["8", "eight", "八"],
-    "9": ["9", "nine", "九"],
+    # 大数
+    "000000000000000000": ["垓", "Quintillion", "quintillion"],
+    "00000000000000": ["京", "Quadrillion", "quadrillion"],
+    "0000000000": ["兆", "Trillion", "trillion"],
+    "00000000": ["亿", "Billion", "billion"],
+    "0000": ["万", "Million", "million"],
+    "000": ["千", "Thousand", "thousand"],
+    "00": ["百", "Hundred", "hundred"],
+
+    # 一般数字
+    "0": ["0", "zero", "Zero", "ZERO", "零", "〇", "十", "Ten", "ten", "TEN"],
+    "1": ["1", "one", "One", "ONE", "一"],
+    "2": ["2", "two", "Two", "TWO", "二"],
+    "3": ["3", "three", "Three", "THREE", "三"],
+    "4": ["4", "four", "Four", "FOUR", "四"],
+    "5": ["5", "five", "Five", "FIVE", "五"],
+    "6": ["6", "six", "Six", "SIX", "六"],
+    "7": ["7", "seven", "Seven", "SEVEN", "七"],
+    "8": ["8", "eight", "Eight", "EIGHT", "八"],
+    "9": ["9", "nine", "Nine", "NINE", "九"],
+
+    # 原生无理数
+    "π": ["π", "pi", "PI", "Pi", "P", "p", "派", "圆周率"],
+    "𝑒": ["𝑒", "e", "自然底数", "自然"],
 }
 
 function_mapping_table: dict[str, str] = {

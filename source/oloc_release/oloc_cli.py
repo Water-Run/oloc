@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-04
+:date: 2025-04-05
 :file: oloc_cli.py
 :description: Oloc CLI
 """
@@ -47,11 +47,11 @@ class _Config:
         raise TypeError(f"{cls.__name__} is a static class and cannot be instantiated.")
 
 
-def _parser(command: str) -> bool:
+def _parser(command: str) -> any:
     r"""
-    执行指令,并输出结果
+    执行指令,并返回结果
     :param command: 待执行的指令
-    :return: 指令是否成功解析
+    :return: 返回的结果:OlocResult或异常
     """
 
 

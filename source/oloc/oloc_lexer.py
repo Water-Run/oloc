@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-03
+:date: 2025-04-05
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -72,22 +72,6 @@ class Lexer:
         :return: None
         """
 
-        NUMBERS = {
-            Token.TYPE.FINITE_DECIMAL,
-            Token.TYPE.INFINITE_DECIMAL,
-            Token.TYPE.PERCENTAGE,
-            Token.TYPE.INTEGER,
-            Token.TYPE.NATIVE_IRRATIONAL,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.LONG_CUSTOM
-        }
-
-        IRRATIONALS = {
-            Token.TYPE.LONG_CUSTOM,
-            Token.TYPE.SHORT_CUSTOM,
-            Token.TYPE.NATIVE_IRRATIONAL
-        }
-
         def _add_multiply(add_index: int):
             r"""
             添加乘号至 Token 流
@@ -106,28 +90,28 @@ class Lexer:
 
             conditions = [
                 # 情况 1: 数字后接 (
-                (lambda t1, t2: t1 in NUMBERS and t2 == Token.TYPE.LBRACKET),
+                (lambda token_front, token_rear: token_front.is_number() and token_rear.type == Token.TYPE.LBRACKET),
 
                 # 情况 2: 无理数参数后接 (
-                (lambda t1, t2: t1 == Token.TYPE.IRRATIONAL_PARAM and t2 == Token.TYPE.LBRACKET),
+                (lambda token_front, token_rear: token_front.type == Token.TYPE.IRRATIONAL_PARAM and token_rear.type == Token.TYPE.LBRACKET),
 
                 # 情况 3: ) 后接数字
-                (lambda t1, t2: t1 == Token.TYPE.RBRACKET and t2 in NUMBERS),
+                (lambda token_front, token_rear: token_front.type == Token.TYPE.RBRACKET and token_rear.is_number()),
 
                 # 情况 4: 无理数后接无理数
-                (lambda t1, t2: t1 in IRRATIONALS and t2 in IRRATIONALS),
+                (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_irrational()),
 
                 # 情况 5: 数字后接无理数
-                (lambda t1, t2: t1 in NUMBERS and t2 in IRRATIONALS),
+                (lambda token_front, token_rear: token_front.is_number() and token_rear.is_irrational()),
 
                 # 情况 6: 无理数后接数字
-                (lambda t1, t2: t1 in IRRATIONALS and t2 in NUMBERS),
+                (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_number()),
 
                 # 情况 7: 数字或右括号后接函数名
-                (lambda t1, t2: t1 in list(NUMBERS) + [Token.TYPE.RBRACKET] and t2 == Token.TYPE.FUNCTION)
+                (lambda token_front, token_rear: (token_front.type == Token.TYPE.RBRACKET or token_front.is_number()) and token_rear.type == Token.TYPE.FUNCTION)
             ]
 
-            if any(condition(current_token.type, next_token.type) for condition in conditions):
+            if any(condition(current_token, next_token) for condition in conditions):
                 _add_multiply(token_index)
 
             token_index += 1

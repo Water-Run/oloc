@@ -1,22 +1,22 @@
 r"""
 :author: WaterRun
-:date: 2025-04-03
+:date: 2025-04-05
 :file: oloc_core.py
 :description: Core of oloc
 """
 
 import time
+import random
 import simpsave as ss
 from multiprocessing import Process, Queue
 
 import oloc_utils as utils
 from oloc_result import OlocResult
-from oloc_exceptions import *
-
 from oloc_preprocessor import Preprocessor
 from oloc_lexer import Lexer
 from oloc_parser import Parser
 from oloc_evaluator import Evaluator
+from oloc_exceptions import *
 
 
 def _process_expression(expression: str) -> OlocResult:
@@ -141,7 +141,8 @@ def is_reserved(symbol: str) -> bool:
     return any(keyword in symbol for keyword in reserved_keywords)
 
 
-def run_test(test_file: str, test_key: str, time_limit: float = -1, pause_if_exception: bool = False) -> None:
+def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_exception: bool = False,
+             random_choice: int = -1) -> None:
     r"""
     Run a test case set.
 
@@ -149,28 +150,47 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, pause_if_exc
     :param test_key: The key in the simpsave configuration to test.
     :param time_limit: Calculation time limit in seconds. A negative value means no limit.
     :param pause_if_exception: Whether to pause execution if an exception occurs.
+    :param random_choice: Randomly select the number of cases. If the value is less than 0, no random selection is made; if the value is greater than the number of cases, all cases are selected.
     :return: None
     """
     start = time.time()
     try:
+        # Read test cases from the file using the provided key
         tests = ss.read(test_key, file=test_file)
     except KeyError as k_error:
         print(f'--SimpSave Key Error--\n{k_error}')
+        return
     except ValueError as v_error:
         print(f'--SimpSave Value Error--\n{v_error}')
+        return
     except FileNotFoundError as f_error:
         print(f'--SimpSave File Not Found Error--\n{f_error}')
+        return
     else:
+        # Handle random selection of test cases
+        if random_choice >= 0:
+            if random_choice > len(tests):
+                print(
+                    f"random_choice ({random_choice}) exceeds the number of tests ({len(tests)}). Selecting all tests.")
+            else:
+                print(f"Selecting {random_choice} random test cases from {len(tests)} total cases.")
+                tests = random.sample(tests, min(random_choice, len(tests)))
+
+        # Iterate through the selected test cases
         for test in tests:
             try:
+                # Perform the calculation and print the result
                 print(calculate(test, time_limit=time_limit).expression)
             except Exception as error:
+                # Handle exceptions and optionally pause
                 print(error)
                 if pause_if_exception:
                     input("Press Enter to continue...")
-        print(f"Finished {len(tests)} cases in {time.time() - start:.4f} seconds")
+
+        # Print summary
+        print(f"Finished {len(tests)} cases in {time.time() - start: .4f} seconds")
 
 
 """test"""
 if __name__ == "__main__":
-    run_test("./data/oloctest.ini", "test_cases", -1)
+    run_test("./data/oloctest.ini", "test_cases", -1, pause_if_exception=False, random_choice=50)

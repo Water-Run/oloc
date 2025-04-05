@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-04
+:date: 2025-04-05
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -702,7 +702,7 @@ if __name__ == '__main__':
               f"Avg Time Cost For {len(time_costs)} cases ({err_count} skip): {sum(time_costs) / len(time_costs) / 1000000} ms\n"
               )
 
-    run_test()
+    #run_test()
 
     while True:
         expression = input(">>")
