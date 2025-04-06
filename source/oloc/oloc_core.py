@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-06
+:date: 2025-04-07
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -168,18 +168,17 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
         if random_choice >= 0:
             if random_choice > len(tests):
                 print(
-                    f"random_choice ({random_choice}) exceeds the number of tests ({len(tests)}). Selecting all tests.")
+                    f"random_choice ({random_choice}) exceeds the number of tests ({len(tests)}). Selecting all tests...")
             else:
-                print(f"Selecting {random_choice} random test cases from {len(tests)} total cases.")
+                print(f"Selecting {random_choice} random test cases from {len(tests)} total cases...")
                 tests = random.sample(tests, min(random_choice, len(tests)))
 
         # Iterate through the selected test cases
         skip_count = 0
         for test in tests:
-            print(f"{test} => ", end="")
             try:
                 # Perform the calculation and print the result
-                print(f"{calculate(test, time_limit=time_limit).expression}")
+                print(calculate(test, time_limit=time_limit).format_detail())
             except Exception as error:
                 # Handle exceptions and optionally pause
                 print("\n\n================================")
@@ -196,5 +195,5 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
 """test"""
 if __name__ == "__main__":
     while True:
-        run_test("./data/oloctest.ini", "test_cases", -1, random_choice=100)
+        run_test("./data/oloctest.ini", "test_cases", -1, random_choice=3)
         input(">>>")

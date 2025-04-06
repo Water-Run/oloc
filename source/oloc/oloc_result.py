@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-06
+:date: 2025-04-07
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -54,7 +54,8 @@ def output_filter(tokens: list[Token]) -> str:
     number_seperator = "," if configs["custom"]["underline-style number separator"] else "_"
 
     ascii_native_irrational_map = {"π": "pi", "𝑒": "e"}
-    superscript_map = {'1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '0': '⁰'}
+    superscript_map = {'1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
+                       '0': '⁰'}
 
     result = ""
 
@@ -65,17 +66,20 @@ def output_filter(tokens: list[Token]) -> str:
         if temp_token.type == Token.TYPE.IRRATIONAL_PARAM and not configs["custom"]["retain irrational param"]:
             continue
 
-        elif temp_token.type == Token.TYPE.NATIVE_IRRATIONAL and configs["custom"]["non-ascii character form native irrational"]:
+        elif temp_token.type == Token.TYPE.NATIVE_IRRATIONAL and configs["custom"][
+            "non-ascii character form native irrational"]:
             result += ascii_native_irrational_map[temp_token.value]
 
         elif temp_token.type == Token.TYPE.INTEGER:
-            result += _add_separator(temp_token, number_seperator, configs["readability"]["number separators add thresholds"], configs["readability"]["number separator interval"])
+            result += _add_separator(temp_token, number_seperator,
+                                     configs["readability"]["number separators add thresholds"],
+                                     configs["readability"]["number separator interval"])
 
         else:
             result += temp_token.value
 
         # 添加Token间隔空格
-        if 1 < index < len(tokens) - 1:
+        if index != len(tokens) - 1:
             result += between_token
 
     return result
@@ -159,7 +163,8 @@ class OlocResult:
         获取总计算耗时
         :return: 计算耗时(ms)
         """
-        return (self._time_cost + self._preprocessor.time_cost + self._lexer.time_cost + self._parser.time_cost + self._evaluator.time_cost) / 1000000
+        return (
+                self._time_cost + self._preprocessor.time_cost + self._lexer.time_cost + self._parser.time_cost + self._evaluator.time_cost) / 1000000
 
     @property
     def detail(self) -> dict:
@@ -181,7 +186,7 @@ class OlocResult:
         返回 OlocResult 对象的字符串表示形式。
         :return: 对象的字符串表示形式
         """
-        return f"OlocResult(expression={self._expression!r}, result={self._result!r})"
+        return f"OlocResult({self._expression} => {self._result[-1]}; {self.time_cost / 1_000_000} ms)"
 
     def __float__(self) -> float:
         r"""
@@ -210,9 +215,13 @@ class OlocResult:
         :return: 格式化计算细节字符串
         """
         if simp:
-            return f""
+            result = f"{self._expression}\n"
+            for temp_result in self._result:
+                result += f"={temp_result}\n"
+            result += f"{self.time_cost} ms"
         else:
-            return f""
+            result = ""
+        return result
 
     def __setattr__(self, name: str, value: Any) -> None:
         r"""

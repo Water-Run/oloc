@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-06
+:date: 2025-04-07
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -92,12 +92,17 @@ function_mapping_table: dict[str, str] = {
     "abs": ["absolute", "abs"],
     "sign": ["sign"],
     "rad": ["radius", "rad"],
+    "gcd": ["gcd"],
+    "lcm": ["lcm"],
     "lg": ["lg"],
     "ln": ["ln"],
     "log": ["log"],
     "sin": ["sine", "sin"],
     "cos": ["cosine", "cos"],
     "tan": ["tangent", "tan"],
+    "csc": ["cssec", "csc"],
+    "sec": ["sec"],
+    "cot": ["cot"],
 }
 
 r"""

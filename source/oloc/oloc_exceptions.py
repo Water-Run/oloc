@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-02
+:date: 2025-04-07
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -62,7 +62,7 @@ class OlocException(ABC, Exception):
             f"{self.expression}\n"
             f"{marker_line}\n"
             f"Hint: {self.exception_type.value[1]}\n"
-            f"--------------------------------------------------------------------------------------------\n"
+            f"---------------------------------------------------------------------------------------------\n"
             f"Try visit https://github.com/Water-Run/oloc for more information on oloc related tutorials :)"
         )
 
@@ -447,6 +447,12 @@ class OlocValueError(OlocException):
             "Invalid irrational param `{primary_info}`",
             "An irrational number parameter expression can only be an integer or a signed or unsigned integer or "
             "decimal with a plus or minus sign. (Native irrational numbers only parse the integer part)."
+        )
+
+        NOT_IN_DOMAIN = (
+            "The argument `{primary_info}` does not satisfy the domain of definition of the function `{secondary_info}`",
+            "The arguments of a function are restricted by the domain of definition. Read the documentation and check "
+            "the expression."
         )
 
     def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
