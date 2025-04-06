@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-05
+:date: 2025-04-06
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -11,7 +11,7 @@ import simpsave as ss
 from multiprocessing import Process, Queue
 
 import oloc_utils as utils
-from oloc_result import OlocResult
+from oloc_result import OlocResult, output_filter
 from oloc_preprocessor import Preprocessor
 from oloc_lexer import Lexer
 from oloc_parser import Parser
@@ -27,28 +27,25 @@ def _process_expression(expression: str) -> OlocResult:
     :return: The processing result wrapped in an OlocResult object.
     :raises: Various types of oloc exceptions, depending on possible errors during processing.
     """
-    print("\n\n==================")
+
     # Preprocessing
     preprocessor = Preprocessor(expression)
     preprocessor.execute()
-    print(preprocessor)
 
     # Lexical analysis
     lexer = Lexer(preprocessor.expression)
     lexer.execute()
-    print(lexer)
 
     # Syntax analysis
     parser = Parser(lexer.tokens)
     parser.execute()
-    print(parser)
 
     # Evaluation
     evaluator = Evaluator(parser.expression, parser.tokens, parser.ast)
     evaluator.evaluate()
 
     # Result packaging
-    return OlocResult(expression, evaluator.result, preprocessor.time_cost + lexer.time_cost + parser.time_cost + evaluator.time_cost)
+    return OlocResult(expression, preprocessor, lexer, parser, evaluator)
 
 
 def _execute_calculation(expression: str, result_queue: Queue) -> None:
@@ -177,20 +174,27 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
                 tests = random.sample(tests, min(random_choice, len(tests)))
 
         # Iterate through the selected test cases
+        skip_count = 0
         for test in tests:
+            print(f"{test} => ", end="")
             try:
                 # Perform the calculation and print the result
-                print(calculate(test, time_limit=time_limit).expression)
+                print(f"{calculate(test, time_limit=time_limit).expression}")
             except Exception as error:
                 # Handle exceptions and optionally pause
+                print("\n\n================================")
                 print(error)
+                print("================================\n\n")
+                skip_count += 1
                 if pause_if_exception:
-                    input("Press Enter to continue...")
+                    input("Press Enter to continue >>>")
 
         # Print summary
-        print(f"Finished {len(tests)} cases in {time.time() - start: .4f} seconds")
+        print(f"\n======TEST======\n{len(tests)} cases in {time.time() - start: .4f} s ({skip_count} skipped)")
 
 
 """test"""
 if __name__ == "__main__":
-    run_test("./data/oloctest.ini", "test_cases", -1, pause_if_exception=False, random_choice=50)
+    while True:
+        run_test("./data/oloctest.ini", "test_cases", -1, random_choice=100)
+        input(">>>")

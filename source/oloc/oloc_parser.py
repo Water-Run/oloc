@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-05
+:date: 2025-04-06
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -120,7 +120,7 @@ class Parser:
 
                     case "√" | "+" | "-":
 
-                        if not token_index != len(self.tokens) - 1:
+                        if token_index == len(self.tokens) - 1:
                             raise OlocSyntaxError(
                                 exception_type=OlocSyntaxError.TYPE.PREFIX_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
@@ -147,8 +147,9 @@ class Parser:
                                 primary_info=temp_token.value,
                             )
 
-                        if self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
-                                self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'):
+                        if (self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
+                                self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'))\
+                                or not (self.tokens[token_index - 1].is_number() or self.tokens[token_index - 1].type == Token.TYPE.OPERATOR):
                             raise OlocSyntaxError(
                                 exception_type=OlocSyntaxError.TYPE.BINARY_OPERATOR_MISPLACEMENT,
                                 expression=self.expression,
@@ -491,14 +492,6 @@ class Parser:
             group_node.add_child(inner_expr)
 
             return group_node
-
-        # 处理其他情况，这里应该不会到达，因为静态检查已经验证了所有token
-        raise OlocSyntaxError(
-            exception_type=OlocSyntaxError.TYPE.UNEXPECTED_TOKEN_TYPE,
-            expression=self.expression,
-            positions=list(range(*token.range)),
-            primary_info=token.type
-        )
 
     def _parse_function_params(self):
         r"""

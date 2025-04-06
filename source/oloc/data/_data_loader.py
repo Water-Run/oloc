@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-05
+:date: 2025-04-06
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -112,12 +112,14 @@ formatting_output_function_options_table: dict[str, dict[str:any]] = {
         },
     "readability":
         {
-            "space between tokens": True,
-            "number separators add thresholds": -1,
+            "space between tokens": 1,
+            "number separators add thresholds": 5,
             "number separator interval": 3,
             "scientific notation adding thresholds": -1,
-            "superscript": True,
-            "commonly-used-decimal conversions": True,
+            "superscript": False,
+            "commonly-used-decimal conversions": {
+                "1/2": "0.5",
+            },
         },
     "custom":
         {
