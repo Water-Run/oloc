@@ -252,26 +252,26 @@ class OlocResult:
                 # 基本数字类型
                 Token.TYPE.INTEGER: 1,
                 Token.TYPE.FINITE_DECIMAL: 1.5,
-                Token.TYPE.PERCENTAGE: 1.5,
+                Token.TYPE.PERCENTAGE: 2,
                 Token.TYPE.INFINITE_DECIMAL: 2.5,
 
                 # 无理数类型
                 Token.TYPE.NATIVE_IRRATIONAL: 2,
                 Token.TYPE.SHORT_CUSTOM: 2.5,
                 Token.TYPE.LONG_CUSTOM: 3,
-                Token.TYPE.IRRATIONAL_PARAM: 2.5,
+                Token.TYPE.IRRATIONAL_PARAM: 0,
 
                 # 运算符
-                Token.TYPE.OPERATOR: 1,
+                Token.TYPE.OPERATOR: 1.5,
                 Token.TYPE.LBRACKET: 1,
                 Token.TYPE.RBRACKET: 1,
 
                 # 函数和分隔符
-                Token.TYPE.FUNCTION: 3,
+                Token.TYPE.FUNCTION: 5,
                 Token.TYPE.PARAM_SEPARATOR: 0.5,
 
                 # 其他
-                Token.TYPE.UNKNOWN: 5
+                Token.TYPE.UNKNOWN: 10
             }
 
             # 按类型统计token数量

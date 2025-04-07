@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
@@ -55,13 +55,8 @@ class Evaluator:
         # 递归求值AST树
         final_tokens = self._evaluate_node(self.ast.root)
 
-        # 更新最终结果
-        self.tokens = final_tokens
-
         # 更新表达式字符串
-        updated_tokens, updated_expr = Lexer.update(final_tokens)
-        self.tokens = updated_tokens
-        self.expression = updated_expr
+        self.tokens, self.expression = Lexer.update(final_tokens)
 
         # 确保最终结果添加到历史中
         if self.result[-1] != final_tokens:
@@ -123,13 +118,13 @@ class Evaluator:
             operator = node.tokens[0].value
 
             if operator == "+":
-                result = self.addition(left_result, right_result)
+                result = Calculation.addition(left_result, right_result)
             elif operator == "-":
-                result = self.subtraction(left_result, right_result)
+                result = Calculation.subtraction(left_result, right_result)
             elif operator == "*":
-                result = self.multiplication(left_result, right_result)
+                result = Calculation.multiplication(left_result, right_result)
             elif operator == "/":
-                result = self.division(left_result, right_result)
+                result = Calculation.division(left_result, right_result)
             elif operator == "^":
                 # 幂运算
                 result = Function.Pow.pow(left_result, right_result)
@@ -164,7 +159,7 @@ class Evaluator:
             operator = node.tokens[0].value
 
             if operator == "-":
-                result = self._negate_expression(operand_result)
+                result = Calculation.negate_expression(operand_result)
             elif operator == "+":
                 result = operand_result  # 正号不改变值
             elif operator == "√":
@@ -201,61 +196,60 @@ class Evaluator:
 
             if func_name == "pow":
                 if len(args_results) != 2:
-                    raise OlocCalculationError(
-                        OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
-                        self.expression,
-                        [node.tokens[0].range[0]],
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
+                        expression=self.expression,
+                        positions=[node.tokens[0].range[0]],
                         primary_info="pow",
                         secondary_info="expected 2 arguments"
                     )
                 result = Function.Pow.pow(args_results[0], args_results[1])
             elif func_name == "sqrt":
                 if len(args_results) != 1:
-                    raise OlocCalculationError(
-                        OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
-                        self.expression,
-                        [node.tokens[0].range[0]],
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
+                        expression=self.expression,
+                        positions=[node.tokens[0].range[0]],
                         primary_info="sqrt",
                         secondary_info="expected 1 argument"
                     )
                 result = Function.Pow.sqrt(args_results[0])
             elif func_name == "sq":
                 if len(args_results) != 1:
-                    raise OlocCalculationError(
-                        OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
-                        self.expression,
-                        [node.tokens[0].range[0]],
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
+                        expression=self.expression,
+                        positions=[node.tokens[0].range[0]],
                         primary_info="sq",
                         secondary_info="expected 1 argument"
                     )
                 result = Function.Pow.sq(args_results[0])
             elif func_name == "cub":
                 if len(args_results) != 1:
-                    raise OlocCalculationError(
-                        OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
-                        self.expression,
-                        [node.tokens[0].range[0]],
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
+                        expression=self.expression,
+                        positions=[node.tokens[0].range[0]],
                         primary_info="cub",
                         secondary_info="expected 1 argument"
                     )
                 result = Function.Pow.cub(args_results[0])
             elif func_name == "rec":
                 if len(args_results) != 1:
-                    raise OlocCalculationError(
-                        OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
-                        self.expression,
-                        [node.tokens[0].range[0]],
+                    raise OlocSyntaxError(
+                        exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
+                        expression=self.expression,
+                        positions=[node.tokens[0].range[0]],
                         primary_info="rec",
                         secondary_info="expected 1 argument"
                     )
                 result = Function.Pow.rec(args_results[0])
             else:
-                # 不支持的函数
                 raise OlocCalculationError(
-                    OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
-                    self.expression,
-                    [node.tokens[0].range[0]],
-                    primary_info=f"Unsupported function: {func_name}"
+                    exception_type=OlocCalculationError.TYPE.UNSUPPORTED_FUNCTION,
+                    expression=self.expression,
+                    positions=[node.tokens[0].range[0]],
+                    primary_info=func_name
                 )
 
             # 记录函数计算后的状态
@@ -315,8 +309,11 @@ class Evaluator:
         self._evaluate()
         self.time_cost = time.time_ns() - start_time
 
+
+class Calculation:
+
     r"""
-    静态方法
+    执行计算的静态类
     """
 
     # 四则运算
@@ -329,14 +326,14 @@ class Evaluator:
         :return: 加法运算的结果
         """
         # 1. 特殊情况: 任一操作数为0
-        if Evaluator._is_zero(augend):
+        if Calculation.is_zero(augend):
             return addend
-        if Evaluator._is_zero(addend):
+        if Calculation.is_zero(addend):
             return augend
 
         # 2. 处理整数和分数的加法
-        if Evaluator._is_numeric(augend) and Evaluator._is_numeric(addend):
-            return Evaluator._add_numeric(augend, addend)
+        if Calculation.is_numeric(augend) and Calculation.is_numeric(addend):
+            return Calculation.add_numeric(augend, addend)
 
         # 3. 处理变量情况
 
@@ -367,18 +364,18 @@ class Evaluator:
         :return: 减法运算的结果
         """
         # 1. 特殊情况: 减数为0
-        if Evaluator._is_zero(subtrahend):
+        if Calculation.is_zero(subtrahend):
             return minuend
 
         # 2. 特殊情况: 被减数为0
-        if Evaluator._is_zero(minuend):
-            return Evaluator._negate_expression(subtrahend)
+        if Calculation.is_zero(minuend):
+            return Calculation.negate_expression(subtrahend)
 
         # 3. 处理整数和分数的减法
-        if Evaluator._is_numeric(minuend) and Evaluator._is_numeric(subtrahend):
+        if Calculation.is_numeric(minuend) and Calculation.is_numeric(subtrahend):
             # 转换为加法: a - b = a + (-b)
-            negated_subtrahend = Evaluator._negate_expression(subtrahend)
-            return Evaluator._add_numeric(minuend, negated_subtrahend)
+            negated_subtrahend = Calculation.negate_expression(subtrahend)
+            return Calculation.add_numeric(minuend, negated_subtrahend)
 
         # 4. 处理变量情况
 
@@ -413,29 +410,29 @@ class Evaluator:
         :return: 乘法运算的结果
         """
         # 1. 特殊情况: 任一因数为0
-        if Evaluator._is_zero(factor_1) or Evaluator._is_zero(factor_2):
+        if Calculation.is_zero(factor_1) or Calculation.is_zero(factor_2):
             return [Token(Token.TYPE.INTEGER, "0", [0, 0])]
 
         # 2. 特殊情况: 任一因数为1
-        if Evaluator._is_one(factor_1):
+        if Calculation.is_one(factor_1):
             return factor_2
-        if Evaluator._is_one(factor_2):
+        if Calculation.is_one(factor_2):
             return factor_1
 
         # 3. 处理整数和分数的乘法
-        if Evaluator._is_numeric(factor_1) and Evaluator._is_numeric(factor_2):
-            return Evaluator._multiply_numeric(factor_1, factor_2)
+        if Calculation.is_numeric(factor_1) and Calculation.is_numeric(factor_2):
+            return Calculation.multiply_numeric(factor_1, factor_2)
 
         # 4. 处理变量与数值的乘法
 
         # 4.1 数值 * 变量
-        if (Evaluator._is_numeric(factor_1) and len(factor_2) == 1 and
+        if (Calculation.is_numeric(factor_1) and len(factor_2) == 1 and
                 factor_2[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
             # 整数/分数 * 变量
             return factor_1 + [Token(Token.TYPE.OPERATOR, "*", [0, 0])] + factor_2
 
         # 4.2 变量 * 数值
-        if (Evaluator._is_numeric(factor_2) and len(factor_1) == 1 and
+        if (Calculation.is_numeric(factor_2) and len(factor_1) == 1 and
                 factor_1[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
             # 变量 * 整数/分数 (标准化为 整数/分数 * 变量)
             return factor_2 + [Token(Token.TYPE.OPERATOR, "*", [0, 0])] + factor_1
@@ -455,7 +452,7 @@ class Evaluator:
         :return: 除法运算的结果
         """
         # 1. 错误情况: 除数为0
-        if Evaluator._is_zero(divisor):
+        if Calculation.is_zero(divisor):
             raise OlocCalculationError(
                 OlocCalculationError.TYPE.DIVIDE_BY_ZERO,
                 "Division by zero",
@@ -464,23 +461,23 @@ class Evaluator:
             )
 
         # 2. 特殊情况: 被除数为0
-        if Evaluator._is_zero(dividend):
+        if Calculation.is_zero(dividend):
             return [Token(Token.TYPE.INTEGER, "0", [0, 0])]
 
         # 3. 特殊情况: 除数为1
-        if Evaluator._is_one(divisor):
+        if Calculation.is_one(divisor):
             return dividend
 
         # 4. 处理整数和分数的除法
-        if Evaluator._is_numeric(dividend) and Evaluator._is_numeric(divisor):
+        if Calculation.is_numeric(dividend) and Calculation.is_numeric(divisor):
             # 转换为乘法: a / b = a * (1/b)
-            reciprocal = Evaluator._get_reciprocal(divisor)
-            return Evaluator._multiply_numeric(dividend, reciprocal)
+            reciprocal = Calculation.get_reciprocal(divisor)
+            return Calculation.multiply_numeric(dividend, reciprocal)
 
         # 5. 处理变量与整数/分数的除法
         if (len(dividend) == 1 and
                 dividend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
-                Evaluator._is_numeric(divisor)):
+                Calculation.is_numeric(divisor)):
             # 变量 / 整数/分数
             if len(divisor) == 1:  # 整数
                 # 创建分数形式
@@ -534,7 +531,7 @@ class Evaluator:
 
     # 辅助方法
     @staticmethod
-    def _is_zero(tokens: list[Token]) -> bool:
+    def is_zero(tokens: list[Token]) -> bool:
         """判断Token列表是否表示0"""
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "0":
             return True
@@ -546,7 +543,7 @@ class Evaluator:
         return False
 
     @staticmethod
-    def _is_one(tokens: list[Token]) -> bool:
+    def is_one(tokens: list[Token]) -> bool:
         """判断Token列表是否表示1"""
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "1":
             return True
@@ -558,7 +555,7 @@ class Evaluator:
         return False
 
     @staticmethod
-    def _is_numeric(tokens: list[Token]) -> bool:
+    def is_numeric(tokens: list[Token]) -> bool:
         """判断Token列表是否表示纯数值（整数或分数）"""
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
             return True
@@ -570,7 +567,7 @@ class Evaluator:
         return False
 
     @staticmethod
-    def _to_fraction(tokens: list[Token]) -> tuple:
+    def to_fraction(tokens: list[Token]) -> tuple:
         """将Token列表转换为分数表示（分子,分母）"""
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
             return int(tokens[0].value), 1
@@ -581,35 +578,35 @@ class Evaluator:
         raise ValueError(f"Cannot convert to fraction: {tokens}")
 
     @staticmethod
-    def _add_numeric(a: list[Token], b: list[Token]) -> list[Token]:
+    def add_numeric(a: list[Token], b: list[Token]) -> list[Token]:
         """处理纯数值（整数或分数）的加法"""
         # 转换为分数形式
-        num_a, den_a = Evaluator._to_fraction(a)
-        num_b, den_b = Evaluator._to_fraction(b)
+        num_a, den_a = Calculation.to_fraction(a)
+        num_b, den_b = Calculation.to_fraction(b)
 
         # 计算: a/b + c/d = (a*d + c*b)/(b*d)
         num_result = num_a * den_b + num_b * den_a
         den_result = den_a * den_b
 
         # 化简
-        return Evaluator._create_fraction(num_result, den_result)
+        return Calculation.create_fraction(num_result, den_result)
 
     @staticmethod
-    def _multiply_numeric(a: list[Token], b: list[Token]) -> list[Token]:
+    def multiply_numeric(a: list[Token], b: list[Token]) -> list[Token]:
         """处理纯数值（整数或分数）的乘法"""
         # 转换为分数形式
-        num_a, den_a = Evaluator._to_fraction(a)
-        num_b, den_b = Evaluator._to_fraction(b)
+        num_a, den_a = Calculation.to_fraction(a)
+        num_b, den_b = Calculation.to_fraction(b)
 
         # 计算: (a/b) * (c/d) = (a*c)/(b*d)
         num_result = num_a * num_b
         den_result = den_a * den_b
 
         # 化简
-        return Evaluator._create_fraction(num_result, den_result)
+        return Calculation.create_fraction(num_result, den_result)
 
     @staticmethod
-    def _negate_expression(tokens: list[Token]) -> list[Token]:
+    def negate_expression(tokens: list[Token]) -> list[Token]:
         """对表达式取反"""
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
             # 整数取反
@@ -620,7 +617,7 @@ class Evaluator:
             # 分数取反，取反分子
             num = -int(tokens[0].value)
             den = int(tokens[2].value)
-            return Evaluator._create_fraction(num, den)
+            return Calculation.create_fraction(num, den)
 
         # 复杂表达式，添加负号和括号
         neg_op = Token(Token.TYPE.OPERATOR, "-", [0, 0])
@@ -634,9 +631,9 @@ class Evaluator:
             return [neg_op] + tokens
 
     @staticmethod
-    def _get_reciprocal(tokens: list[Token]) -> list[Token]:
+    def get_reciprocal(tokens: list[Token]) -> list[Token]:
         """计算倒数"""
-        num, den = Evaluator._to_fraction(tokens)
+        num, den = Calculation.to_fraction(tokens)
 
         # 检查分子是否为0
         if num == 0:
@@ -648,10 +645,10 @@ class Evaluator:
             )
 
         # 计算倒数: (a/b)^-1 = b/a
-        return Evaluator._create_fraction(den, num)
+        return Calculation.create_fraction(den, num)
 
     @staticmethod
-    def _create_fraction(numerator: int, denominator: int) -> list[Token]:
+    def create_fraction(numerator: int, denominator: int) -> list[Token]:
         """创建分数Token列表，自动化简"""
         # 检查除数是否为0
         if denominator == 0:
@@ -714,7 +711,7 @@ class Function:
             :return: 计算结果
             """
             # 特殊情况: 0^0
-            if Evaluator._is_zero(x) and Evaluator._is_zero(y):
+            if Calculation.is_zero(x) and Calculation.is_zero(y):
                 raise OlocCalculationError(
                     OlocCalculationError.TYPE.ZERO_TO_THE_POWER_OF_ZERO,
                     "Zero to the power of zero",
@@ -723,19 +720,19 @@ class Function:
                 )
 
             # 特殊情况: x^0 = 1
-            if Evaluator._is_zero(y):
+            if Calculation.is_zero(y):
                 return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
 
             # 特殊情况: x^1 = x
-            if Evaluator._is_one(y):
+            if Calculation.is_one(y):
                 return x
 
             # 特殊情况: 0^y = 0 (y不为0)
-            if Evaluator._is_zero(x):
+            if Calculation.is_zero(x):
                 return [Token(Token.TYPE.INTEGER, "0", [0, 0])]
 
             # 特殊情况: 1^y = 1
-            if Evaluator._is_one(x):
+            if Calculation.is_one(x):
                 return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
 
             # 处理整数的整数次幂
@@ -756,20 +753,20 @@ class Function:
             # 处理分数的整数次幂
             if (len(x) == 3 and x[1].value == "/" and
                     len(y) == 1 and y[0].type == Token.TYPE.INTEGER):
-                num, den = Evaluator._to_fraction(x)
+                num, den = Calculation.to_fraction(x)
                 exponent = int(y[0].value)
 
                 if exponent > 0:
                     # 正整数次幂: (a/b)^n = a^n/b^n
                     num_result = num ** exponent
                     den_result = den ** exponent
-                    return Evaluator._create_fraction(num_result, den_result)
+                    return Calculation.create_fraction(num_result, den_result)
                 elif exponent < 0:
                     # 负整数次幂: (a/b)^(-n) = (b/a)^n
                     exponent = -exponent
                     num_result = den ** exponent
                     den_result = num ** exponent
-                    return Evaluator._create_fraction(num_result, den_result)
+                    return Calculation.create_fraction(num_result, den_result)
 
             # 无法直接计算的情况，保持原始表达式形式
             return x + [Token(Token.TYPE.OPERATOR, "^", [0, 0])] + y

@@ -1,50 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-04-05
+:date: 2025-04-08
 :file: oloc_cli.py
 :description: Oloc CLI
 """
 
-
-from ..oloc import oloc_core as oloc
-
-
-class _Config:
-    r"""
-    CLI配置
-    """
-
-    show_steps = False
-    show_time_cost = False
-    show_error_detail = False
-
-    @staticmethod
-    def reset():
-        r"""
-        重置配置
-        :return: None
-        """
-        _Config.show_steps = False
-        _Config.show_time_cost = False
-        _Config.show_error_detail = False
-
-    @staticmethod
-    def console():
-        r"""
-        配置子终端
-        :return: None
-        """
-        print("oloc cli config console: \n"
-              "")
-
-    def __repr__(self):
-        return (f"oloc cli config: \n"
-                f"show steps: {_Config.show_steps}\n"
-                f"show time cost: {_Config.show_time_cost}\n"
-                f"show error detail: {_Config.show_error_detail}")
-
-    def __new__(cls, *args, **kwargs):
-        raise TypeError(f"{cls.__name__} is a static class and cannot be instantiated.")
+from enum import Enum
 
 
 def _parser(command: str) -> any:
@@ -67,11 +28,22 @@ def cli():
     CLI程序
     :return: None
     """
-    print(f"oloc CLI: oloc simple command-line program\n"
+    print(f"oloc cli: oloc simple command-line program\n"
+          f"version: 0.1.0\n"
           "Type `:help` to get help, and `:exit` to exit the program.\n"
           "`>>` indicates waiting for an input expression.")
 
     invalid_count = 0
+
+    class MODES(Enum):
+        r"""
+        输出模式枚举
+        """
+        RESULT = 'Result'
+        STEPS = 'Steps'
+        DETAIL = 'Detail'
+
+    mode = MODES.RESULT
 
     while True:
         command = input(">>")
@@ -82,7 +54,19 @@ def cli():
         elif command.startswith(":help"):
             _help()
         elif command.startswith(":config"):
-            _Config.console()
+            match command[7:].strip():
+                case '-r':
+                    mode = MODES.RESULT
+                    print(f'set mode: {mode}')
+                case '-s':
+                    mode = MODES.STEPS
+                    print(f'set mode: {mode}')
+                case '-d':
+                    mode = MODES.DETAIL
+                    print(f'set mode: {mode}')
+                case '-show':
+                    print(f'Config Info: \n'
+                          f'mode: {mode}')
         else:
             if not _parser(command):
                 invalid_count += 1

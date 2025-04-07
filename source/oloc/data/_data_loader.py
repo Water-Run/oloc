@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
@@ -23,7 +23,7 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "=": ["==", "=", "equals", "equal", "eq", "is", "are", "=>", "->", "等于", "是"],
 
     # 作为函数的运算符
-    "√": ["√", "┌", "根号"],
+    "√": ["√", "┌", "Γ", "根号"],
     "°": ["°", "degree", "deg", "^o", "度"],
     "^": ["^", "**"],
     "%": ["%", "余"],

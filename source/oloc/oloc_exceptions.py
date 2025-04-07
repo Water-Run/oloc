@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -338,6 +338,12 @@ class OlocCalculationError(OlocException):
         ZERO_TO_THE_POWER_OF_ZERO = (
             "Undefined result detected in the computational expression `{primary_info}`",
             "The expression `0^0` is mathematically ambiguous. "
+        )
+
+        UNSUPPORTED_FUNCTION = (
+            "Unsupported function detected `{primary_info}`",
+            "The evaluator accepted an invalid function name. This may be because the function is not implemented. "
+            "Consult the documentation or submit an issue."
         )
 
     def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
