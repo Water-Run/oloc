@@ -1,11 +1,34 @@
 r"""
 :author: WaterRun
-:date: 2025-04-06
+:date: 2025-04-07
 :file: oloc_utils.py
 :description: Oloc utils
 """
 
 import simpsave as ss
+
+"""
+版本信息
+"""
+
+
+def get_version() -> str:
+    r"""
+    Read oloc version from ./data/olocconfig.ini
+    :return: Oloc version
+    :raise RuntimeError: If table cannot be read or there is an error in the table contents
+    """
+    try:
+        result: str = ss.read('version', file='./data/olocconfig.ini')
+    except (KeyError, ValueError, FileNotFoundError):
+        raise RuntimeError(
+            "olocdata.ini is not accessible or has the wrong format (losing `version`). \nVisit "
+            "https://github.com/Water-Run/oloc for documentation to fix.")
+
+    if not (isinstance(result, str)):
+        raise RuntimeError("There is a formatting error in the oloc version in olocdata.ini. Visit "
+                           "https://github.com/Water-Run/oloc for documentation to fix.")
+    return result
 
 """
 运算符优先级

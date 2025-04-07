@@ -58,9 +58,19 @@ def output_filter(tokens: list[Token]) -> str:
                        '0': '⁰'}
 
     result = ""
+    add_superscript = False
 
     # 字符串处理
     for index, temp_token in enumerate(tokens):
+
+        if temp_token.type != Token.TYPE.INTEGER:
+            add_superscript = False
+        if configs["readability"]["superscript"] and temp_token.type == Token.TYPE.OPERATOR and temp_token.value == "^":
+            add_superscript = True
+            continue
+
+        if index != 0 and index != len(tokens) - 1 and not add_superscript:
+            result += between_token
 
         # 当不启用保留无理数参数时,舍弃无理数参数
         if temp_token.type == Token.TYPE.IRRATIONAL_PARAM and not configs["custom"]["retain irrational param"]:
@@ -71,16 +81,15 @@ def output_filter(tokens: list[Token]) -> str:
             result += ascii_native_irrational_map[temp_token.value]
 
         elif temp_token.type == Token.TYPE.INTEGER:
-            result += _add_separator(temp_token, number_seperator,
+            if add_superscript:
+                for char in temp_token.value:
+                    result += superscript_map[char]
+            else:
+                result += _add_separator(temp_token, number_seperator,
                                      configs["readability"]["number separators add thresholds"],
                                      configs["readability"]["number separator interval"])
-
         else:
             result += temp_token.value
-
-        # 添加Token间隔空格
-        if index != len(tokens) - 1:
-            result += between_token
 
     return result
 
@@ -112,7 +121,10 @@ class OlocResult:
         for tokens in self._evaluator.result:
             self._result.append(output_filter(tokens))
 
-        self._time_cost = time.time_ns() - start
+        self._version = utils.get_version()
+
+        self._result_time_cost = time.time_ns() - start
+        self._time_cost = self._preprocessor.time_cost + self._lexer.time_cost + self._parser.time_cost + self._evaluator.time_cost + self._result_time_cost
 
         self._detail: dict[any] = {
             "expression": {
@@ -136,10 +148,394 @@ class OlocResult:
                 "lexer": self._lexer.time_cost,
                 "parser": self._parser.time_cost,
                 "evaluator": self._evaluator.time_cost,
-                "result": self._time_cost
+                "result": self._result_time_cost
             },
             "result": self._result,
+            "version": self._version,
         }
+
+    def format_detail(self, simp: bool = True) -> str:
+        r"""
+        获取格式化计算细节
+        :param simp: 是否返回简化模式结果
+        :return: 格式化计算细节字符串
+        """
+
+        # 定义子函数
+        def _format_simple() -> str:
+            r"""
+            生成简化版的计算细节
+            :return: 简化模式的计算细节字符串
+            """
+            result = f"{self._expression}\n={self._parser.expression}\n"
+            for temp_result in self._result:
+                result += f"={temp_result}\n"
+            result += f"In {self._time_cost / 1000000:.6f} ms"
+            return result
+
+        def _format_summary() -> str:
+            r"""
+            生成摘要部分
+            :return: 格式化后的摘要字符串
+            """
+            result = "== Summary ==\n"
+            result += f"Input Expression: {self._detail['expression']['input']}\n"
+            result += f"Final Result    : {self._detail['expression']['evaluator']}\n"
+            result += f"Total Time      : {self._time_cost / 1000000:.6f} ms\n"
+            result += f"Steps Token     : {len(self._result)}\n\n"
+            return result
+
+        def _format_expression_flow() -> str:
+            r"""
+            生成表达式变化过程
+            :return: 格式化后的表达式流程字符串
+            """
+            result = "== Expression Flow ==\n"
+            result += f"Input       : {self._detail['expression']['input']}\n"
+            result += f"Preprocessor: {self._detail['expression']['preprocessor']}\n"
+            result += f"Lexer       : {self._detail['expression']['lexer']}\n"
+            result += f"Parser      : {self._detail['expression']['parser']}\n"
+            result += f"Evaluator   : {self._detail['expression']['evaluator']}\n\n"
+            return result
+
+        def _format_token_flow() -> str:
+            r"""
+            生成Token流信息
+            :return: 格式化后的Token流字符串
+            """
+            result = "== Token Flow ==\n"
+            result += "Lexer Tokens:\n"
+            for i, token in enumerate(self._detail['token flow']['lexer']):
+                result += f"  [{i}] {token}\n"
+
+            result += "\nParser Tokens:\n"
+            for i, token in enumerate(self._detail['token flow']['parser']):
+                result += f"  [{i}] {token}\n"
+
+            result += "\nEvaluator Tokens:\n"
+            for i, token in enumerate(self._detail['token flow']['evaluator']):
+                result += f"  [{i}] {token}\n"
+            return result
+
+        def _format_ast() -> str:
+            r"""
+            生成AST信息
+            :return: 格式化后的AST字符串
+            """
+            result = "\n== Abstract Syntax Tree ==\n"
+            result += f"{self._detail['ast']['parser']}\n\n"
+            return result
+
+        def _format_evaluation_process() -> str:
+            r"""
+            生成计算过程
+            :return: 格式化后的计算过程字符串
+            """
+            result = "== Evaluation Process ==\n"
+            for i, step in enumerate(self._result):
+                if i == 0:
+                    result += f"Initial: {step}\n"
+                else:
+                    result += f"Step {i}: {step}\n"
+            result += f"Final: {self._detail['expression']['evaluator']}\n\n"
+            return result
+
+        def _format_complexity_analysis() -> str:
+            r"""
+            生成表达式复杂度分析
+            :return: 格式化后的复杂度分析字符串
+            """
+            tokens = self._detail['token flow']['lexer']
+
+            # 定义各类型的权重
+            weights = {
+                # 基本数字类型
+                Token.TYPE.INTEGER: 1,
+                Token.TYPE.FINITE_DECIMAL: 1.5,
+                Token.TYPE.PERCENTAGE: 1.5,
+                Token.TYPE.INFINITE_DECIMAL: 2.5,
+
+                # 无理数类型
+                Token.TYPE.NATIVE_IRRATIONAL: 2,
+                Token.TYPE.SHORT_CUSTOM: 2.5,
+                Token.TYPE.LONG_CUSTOM: 3,
+                Token.TYPE.IRRATIONAL_PARAM: 2.5,
+
+                # 运算符
+                Token.TYPE.OPERATOR: 1,
+                Token.TYPE.LBRACKET: 1,
+                Token.TYPE.RBRACKET: 1,
+
+                # 函数和分隔符
+                Token.TYPE.FUNCTION: 3,
+                Token.TYPE.PARAM_SEPARATOR: 0.5,
+
+                # 其他
+                Token.TYPE.UNKNOWN: 5
+            }
+
+            # 按类型统计token数量
+            type_counts = {}
+            for token in tokens:
+                token_type = token.type
+                if token_type not in type_counts:
+                    type_counts[token_type] = 0
+                type_counts[token_type] += 1
+
+            # 计算总复杂度分数
+            complexity_score = 0
+            for token_type, count in type_counts.items():
+                if token_type in weights:
+                    complexity_score += weights[token_type] * count
+
+            # 嵌套深度分析
+            bracket_stack = []
+            max_depth = 0
+            current_depth = 0
+
+            for token in tokens:
+                if token.type == Token.TYPE.LBRACKET:
+                    bracket_stack.append(token.value)
+                    current_depth += 1
+                    max_depth = max(max_depth, current_depth)
+                elif token.type == Token.TYPE.RBRACKET:
+                    if bracket_stack:  # 检查栈是否为空
+                        bracket_stack.pop()
+                        current_depth -= 1
+
+            # 函数嵌套分析
+            function_count = 0
+            function_depth = 0
+            max_function_depth = 0
+
+            for i, token in enumerate(tokens):
+                if token.type == Token.TYPE.FUNCTION:
+                    function_count += 1
+                    # 查找下一个括号，分析是否是函数嵌套
+                    if i + 1 < len(tokens) and tokens[i + 1].type == Token.TYPE.LBRACKET:
+                        function_depth += 1
+                        max_function_depth = max(max_function_depth, function_depth)
+
+                        # 查找对应的右括号
+                        bracket_count = 1
+                        for j in range(i + 2, len(tokens)):
+                            if tokens[j].type == Token.TYPE.LBRACKET:
+                                bracket_count += 1
+                            elif tokens[j].type == Token.TYPE.RBRACKET:
+                                bracket_count -= 1
+                                if bracket_count == 0:
+                                    if j + 1 < len(tokens) and tokens[j + 1].type != Token.TYPE.FUNCTION:
+                                        function_depth -= 1
+                                    break
+
+            # 为嵌套深度添加额外分数
+            complexity_score += max_depth * 2
+            complexity_score += max_function_depth * 3
+
+            # 根据总分确定复杂度级别
+            complexity_level = ""
+            if complexity_score <= 10:
+                complexity_level = "Very Simple"
+            elif complexity_score <= 20:
+                complexity_level = "Simple"
+            elif complexity_score <= 35:
+                complexity_level = "Moderate"
+            elif complexity_score <= 50:
+                complexity_level = "Complex"
+            elif complexity_score <= 70:
+                complexity_level = "Very Complex"
+            else:
+                complexity_level = "Extremely Complex"
+
+            # 格式化输出
+            result = "== Complexity Analysis ==\n"
+            result += f"Overall Complexity: {complexity_level} (Score: {complexity_score:.1f})\n\n"
+
+            # 细节分析
+            result += "Token Distribution:\n"
+            for token_type, count in sorted(type_counts.items(), key=lambda x: x[1], reverse=True):
+                if token_type in weights:
+                    token_weight = weights[token_type]
+                    token_contribution = token_weight * count
+                    token_percentage = (token_contribution / complexity_score) * 100 if complexity_score > 0 else 0
+                    result += f"  {token_type}: {count} tokens × {token_weight:.1f} weight = {token_contribution:.1f} ({token_percentage:.1f}%)\n"
+
+            result += f"\nNesting Analysis:\n"
+            result += f"  Maximum Bracket Depth: {max_depth}\n"
+            result += f"  Function Count: {function_count}\n"
+            result += f"  Maximum Function Nesting: {max_function_depth}\n\n"
+
+            # 提供复杂度减少建议
+            suggestions = []
+            if complexity_score > 20:
+                if max_depth > 3:
+                    suggestions.append("  • Consider breaking deeply nested expressions into smaller parts")
+
+                if max_function_depth > 2:
+                    suggestions.append("  • Reduce function nesting by storing intermediate function results")
+
+                if Token.TYPE.INFINITE_DECIMAL in type_counts and type_counts[Token.TYPE.INFINITE_DECIMAL] > 1:
+                    suggestions.append("  • Consider simplifying or approximating infinite decimals")
+
+                if Token.TYPE.LONG_CUSTOM in type_counts:
+                    suggestions.append("  • Use shorter variable names for custom irrational numbers")
+
+                if len(tokens) > 30:
+                    suggestions.append("  • Split long expressions into multiple calculations")
+
+            # 仅在有建议时显示标题和建议
+            if suggestions:
+                result += "Complexity Reduction Suggestions:\n"
+                result += "\n".join(suggestions) + "\n"
+
+            return result
+
+        def _format_time_cost() -> str:
+            r"""
+            生成时间消耗分析
+            :return: 格式化后的时间消耗字符串
+            """
+            # 提取各阶段时间
+            preproc_time = self._detail['time cost']['preprocessor'] / 1000000
+            lexer_time = self._detail['time cost']['lexer'] / 1000000
+            parser_time = self._detail['time cost']['parser'] / 1000000
+            evaluator_time = self._detail['time cost']['evaluator'] / 1000000
+            result_time = self._detail['time cost']['result'] / 1000000
+            total_time = self._time_cost / 1000000
+
+            result = "\n== Time Cost (ms) ==\n"
+            result += f"Preprocessor: {preproc_time:.6f} ms\n"
+            result += f"Lexer       : {lexer_time:.6f} ms\n"
+            result += f"Parser      : {parser_time:.6f} ms\n"
+            result += f"Evaluator   : {evaluator_time:.6f} ms\n"
+            result += f"Result      : {result_time:.6f} ms\n"
+            result += f"Total       : {total_time:.6f} ms\n\n"
+
+            # 添加横条可视化
+            if total_time > 0:
+                # 计算百分比
+                preproc_pct = (preproc_time / total_time) * 100
+                lexer_pct = (lexer_time / total_time) * 100
+                parser_pct = (parser_time / total_time) * 100
+                evaluator_pct = (evaluator_time / total_time) * 100
+                result_pct = (result_time / total_time) * 100
+
+                # 创建可视化横条
+                result += _format_time_bar(
+                    preproc_pct, lexer_pct, parser_pct, evaluator_pct, result_pct
+                )
+
+            return result
+
+        def _format_time_bar(preproc_pct, lexer_pct, parser_pct, evaluator_pct, result_pct) -> str:
+            r"""
+            生成时间分布横条可视化
+            :param preproc_pct: 预处理器所占百分比
+            :param lexer_pct: 词法分析器所占百分比
+            :param parser_pct: 语法分析器所占百分比
+            :param evaluator_pct: 求值器所占百分比
+            :param result_pct: 结果处理所占百分比
+            :return: 格式化后的时间分布横条字符串
+            """
+            bar_width = 60  # 横条总宽度
+
+            # 计算每个部分的字符数
+            preproc_width = max(1, int(preproc_pct * bar_width / 100)) if preproc_pct > 0 else 0
+            lexer_width = max(1, int(lexer_pct * bar_width / 100)) if lexer_pct > 0 else 0
+            parser_width = max(1, int(parser_pct * bar_width / 100)) if parser_pct > 0 else 0
+            evaluator_width = max(1, int(evaluator_pct * bar_width / 100)) if evaluator_pct > 0 else 0
+            result_width = max(1, int(result_pct * bar_width / 100)) if result_pct > 0 else 0
+
+            # 调整总宽度
+            total_width = preproc_width + lexer_width + parser_width + evaluator_width + result_width
+
+            # 处理舍入误差
+            if total_width < bar_width:
+                # 将差值添加到最大部分
+                diff = bar_width - total_width
+                max_pct = max(preproc_pct, lexer_pct, parser_pct, evaluator_pct, result_pct)
+
+                if max_pct == preproc_pct and preproc_width > 0:
+                    preproc_width += diff
+                elif max_pct == lexer_pct and lexer_width > 0:
+                    lexer_width += diff
+                elif max_pct == parser_pct and parser_width > 0:
+                    parser_width += diff
+                elif max_pct == evaluator_pct and evaluator_width > 0:
+                    evaluator_width += diff
+                elif result_width > 0:
+                    result_width += diff
+            elif total_width > bar_width:
+                # 从最大部分减去差值
+                diff = total_width - bar_width
+                max_width = max(preproc_width, lexer_width, parser_width, evaluator_width, result_width)
+
+                if max_width == preproc_width and preproc_width > diff:
+                    preproc_width -= diff
+                elif max_width == lexer_width and lexer_width > diff:
+                    lexer_width -= diff
+                elif max_width == parser_width and parser_width > diff:
+                    parser_width -= diff
+                elif max_width == evaluator_width and evaluator_width > diff:
+                    evaluator_width -= diff
+                elif result_width > diff:
+                    result_width -= diff
+
+            # 生成横条
+            result = "Time Distribution:\n"
+
+            # 上边界
+            result += "+" + "-" * bar_width + "+\n"
+
+            # 横条内容
+            bar = "|"
+            if preproc_width > 0:
+                bar += "P" * preproc_width
+            if lexer_width > 0:
+                bar += "L" * lexer_width
+            if parser_width > 0:
+                bar += "A" * parser_width
+            if evaluator_width > 0:
+                bar += "E" * evaluator_width
+            if result_width > 0:
+                bar += "R" * result_width
+            bar += "|\n"
+
+            result += bar
+
+            # 下边界
+            result += "+" + "-" * bar_width + "+\n"
+
+            # 图例
+            result += "Legend: P=Preprocessor, L=Lexer, A=Parser, E=Evaluator, R=Result\n"
+
+            # 各部分百分比
+            result += f"Preprocessor: {preproc_pct:.1f}%, "
+            result += f"Lexer: {lexer_pct:.1f}%, "
+            result += f"Parser: {parser_pct:.1f}%, "
+            result += f"Evaluator: {evaluator_pct:.1f}%, "
+            result += f"Result: {result_pct:.1f}%\n"
+
+            return result
+
+        # 根据 simp 参数选择返回简化或详细版本
+        if simp:
+            return _format_simple()
+        else:
+            # 创建详细的计算过程展示
+            result = "=== Oloc Calculation Detailed Report ===\n"
+            result += f"Version: {self._version}\n\n"
+
+            # 添加各个详细部分
+            result += _format_summary()
+            result += _format_expression_flow()
+            result += _format_token_flow()
+            result += _format_ast()
+            result += _format_evaluation_process()
+            result += _format_complexity_analysis()
+            result += _format_time_cost()
+
+            return result
 
     @property
     def expression(self) -> str:
@@ -163,8 +559,7 @@ class OlocResult:
         获取总计算耗时
         :return: 计算耗时(ms)
         """
-        return (
-                self._time_cost + self._preprocessor.time_cost + self._lexer.time_cost + self._parser.time_cost + self._evaluator.time_cost) / 1000000
+        return self._time_cost
 
     @property
     def detail(self) -> dict:
@@ -207,21 +602,6 @@ class OlocResult:
         转化为Python原生的Fraction类型。(先转化为浮点)
         :return: Fraction类型的结果
         """
-
-    def format_detail(self, simp: bool = True) -> str:
-        r"""
-        获取格式化计算细节
-        :param simp: 是否返回简化模式结果
-        :return: 格式化计算细节字符串
-        """
-        if simp:
-            result = f"{self._expression}\n"
-            for temp_result in self._result:
-                result += f"={temp_result}\n"
-            result += f"{self.time_cost} ms"
-        else:
-            result = ""
-        return result
 
     def __setattr__(self, name: str, value: Any) -> None:
         r"""

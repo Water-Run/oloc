@@ -42,7 +42,7 @@ def _process_expression(expression: str) -> OlocResult:
 
     # Evaluation
     evaluator = Evaluator(parser.expression, parser.tokens, parser.ast)
-    evaluator.evaluate()
+    evaluator.execute()
 
     # Result packaging
     return OlocResult(expression, preprocessor, lexer, parser, evaluator)
@@ -178,7 +178,8 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
         for test in tests:
             try:
                 # Perform the calculation and print the result
-                print(calculate(test, time_limit=time_limit).format_detail())
+                print(calculate(test, time_limit=time_limit).format_detail(simp=False))
+                print("\n" * 5)
             except Exception as error:
                 # Handle exceptions and optionally pause
                 print("\n\n================================")
@@ -192,8 +193,18 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
         print(f"\n======TEST======\n{len(tests)} cases in {time.time() - start: .4f} s ({skip_count} skipped)")
 
 
+def oloc_version() -> str:
+    r"""
+    Get oloc version string
+    :return: None
+    """
+    return utils.get_version()
+
+
 """test"""
 if __name__ == "__main__":
+    print(calculate("x^23+xy^100"))
+    input(">>")
     while True:
-        run_test("./data/oloctest.ini", "test_cases", 1, random_choice=50)
+        run_test("./data/oloctest.ini", "test_cases", pause_if_exception=True, random_choice=5)
         input(">>>")

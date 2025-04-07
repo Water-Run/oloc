@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-06
+:date: 2025-04-07
 :file: oloc_parser.py
 :description: Oloc parser
 """
@@ -147,7 +147,7 @@ class Parser:
                                 primary_info=temp_token.value,
                             )
 
-                        if (self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and \
+                        if (self.tokens[token_index - 1].type == Token.TYPE.OPERATOR and
                                 self.tokens[token_index - 1].value in ('+', '-', '*', '/', '√', '^', '%'))\
                                 or not (self.tokens[token_index - 1].is_number() or self.tokens[token_index - 1].type == Token.TYPE.OPERATOR):
                             raise OlocSyntaxError(

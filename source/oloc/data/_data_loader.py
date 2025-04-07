@@ -11,6 +11,8 @@ r"""
 After modification, run this script directly in the "data" path
 """
 
+version = '0.1.0'
+
 retain_decimal_places: int = 7
 
 symbol_mapping_table: dict[dict[str:list[str]]] = {
@@ -121,7 +123,7 @@ formatting_output_function_options_table: dict[str, dict[str:any]] = {
             "number separators add thresholds": 5,
             "number separator interval": 3,
             "scientific notation adding thresholds": -1,
-            "superscript": False,
+            "superscript": True,
             "commonly-used-decimal conversions": {
                 "1/2": "0.5",
             },
@@ -3884,12 +3886,129 @@ test_case12 = [
     "sin(a+b) - sin(a)*cos(b) + cos(a)*sin(b)"
 ]
 
-test_cases = test_case1 + test_case2 + test_case3 + test_case4 + test_case5 + test_case6 + test_case7 + test_case8 + test_case9 + test_case10 + test_case11 + test_case12
+test_case13 = [
+    # 基本整数运算
+    "1+2",
+    "5-3",
+    "4*5",
+    "10/2",
+    "2+3*4",
+    "2*(3+4)",
+    "(2+3)*(4-1)",
+
+    # 分数运算
+    "1/2+1/3",
+    "3/4-1/6",
+    "2/3*3/4",
+    "1/2/2",
+    "1/2+(3/4-1/6)",
+
+    # 混合整数和分数运算
+    "2+1/2",
+    "3-1/4",
+    "2*3/4",
+    "5/2/5",
+
+    # 负数
+    "-1+2",
+    "3-(-2)",
+    "-4*(-3)",
+    "(-2)/(-4)",
+    "-(3+2)",
+
+    # 带括号的复杂表达式
+    "(1+2)*(3-4/2)",
+    "((2+3)/5)*(4-1)",
+    "1+(2+(3+(4+5)))",
+    "1-(2-(3-(4-5)))",
+
+    # 变量表达式
+    "x+3",
+    "2*y",
+    "z/2",
+    "a-b",
+    "x+y+z",
+    "2*x+3*y",
+
+    # 变量和数值的混合运算
+    "x+y-2",
+    "3*x/4",
+    "x*(y+2)",
+    "(a+b)/(c-d)",
+
+    # 同类项
+    "x+x",
+    "3*x+2*x",
+    "y-y",
+    "a*b+a*b",
+
+    # 幂运算
+    "2^3",
+    "3^2",
+    "2^(-1)",
+    "2^(1/2)",
+    "x^2",
+    "(x+y)^2",
+
+    # 多层嵌套表达式
+    "1+2*(3+4*(5+6))",
+    "(((1+2)+3)+4)",
+    "x/(y/(z/2))",
+    "a-(b-(c-(d-e)))",
+
+    # 特殊情况
+    "0+x",
+    "x*0",
+    "x*1",
+    "0/2",
+    "2/0",  # 应该引发除零错误
+    "0^0",  # 应该引发未定义错误
+
+    # 混合多种运算
+    "1+2-3*4/5",
+    "2^3+4*5-6/3",
+    "x+y*z-a/b",
+    "(x+1)/(y-2)*(z+3)",
+
+    # 无理数表达式
+    "π+2",
+    "3*π",
+    "π*π",
+    "𝑒^2",
+    "π+𝑒",
+
+    # 自定义无理数
+    "x?2+3",
+    "y?-1*2",
+    "<irrational>+5",
+    "<custom>?3-1",
+
+    # 函数调用
+    "pow(2;3)",
+    "sqrt(9)",
+    "sq(4)",
+    "sqrt(2)+1",
+    "pow(x;2)",
+
+    # 复杂代数表达式
+    "x/2-y*(3-2/3)",
+    "(a+b)^2-(a^2+2*a*b+b^2)",
+    "x/(1+x/y)",
+    "(1+1/x)^(-1)",
+
+    # 长表达式
+    "1+2+3+4+5+6+7+8+9+10",
+    "1*2*3*4*5",
+    "a+b+c+d+e+f+g+h",
+    "x^2+y^2+z^2+2*x*y+2*y*z+2*x*z"
+]
+
+test_cases = test_case1 + test_case2 + test_case3 + test_case4 + test_case5 + test_case6 + test_case7 + test_case8 + test_case9 + test_case10 + test_case11 + test_case12 + test_case13
 
 ss.write("test_cases", test_cases, file="oloctest.ini")
 
 # Write Data
-pending = (['retain_decimal_places', retain_decimal_places], ['function_mapping_table' , function_mapping_table], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table])
+pending = (['version', version], ['retain_decimal_places', retain_decimal_places], ['function_mapping_table' , function_mapping_table], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
 print('dataloader: writing to olocconfig.ini')

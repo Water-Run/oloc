@@ -29,6 +29,7 @@
 - **Comprehensive exception handling, precisely pointing out errors and their locations with corresponding suggestions**  
 - **Neat and formatted output results**  
   - The formatting features can be customized.  
+  - The results provide a method to print the calculation of each specific detail.  
 - **Ability to retrieve step-by-step calculation results**  
 - **Multi-type conversion support**, including `int`, `float`, and the native `Fraction` type  
   - Includes controllable floating-point conversion precision: explicitly specify it using the `?` operator or modify the default precision.  
