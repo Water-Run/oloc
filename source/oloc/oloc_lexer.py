@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-05
+:date: 2025-04-07
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -87,7 +87,6 @@ class Lexer:
         while token_index < len(self.tokens) - 1:
             current_token = self.tokens[token_index]
             next_token = self.tokens[token_index + 1]
-
             conditions = [
                 # 情况 1: 数字后接 (
                 (lambda token_front, token_rear: token_front.is_number() and token_rear.type == Token.TYPE.LBRACKET),
@@ -108,7 +107,10 @@ class Lexer:
                 (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_number()),
 
                 # 情况 7: 数字或右括号后接函数名
-                (lambda token_front, token_rear: (token_front.type == Token.TYPE.RBRACKET or token_front.is_number()) and token_rear.type == Token.TYPE.FUNCTION)
+                (lambda token_front, token_rear: (token_front.type == Token.TYPE.RBRACKET or token_front.is_number()) and token_rear.type == Token.TYPE.FUNCTION),
+
+                # 情况 8: 数字后接根号
+                (lambda token_front, token_rear: token_front.is_number() and (token_rear.type == Token.TYPE.OPERATOR and token_rear.value == '√'))
             ]
 
             if any(condition(current_token, next_token) for condition in conditions):
@@ -200,14 +202,26 @@ class Lexer:
                     # 分离整数和小数部分
                     integer_part, decimal_part = base_number.split('.')
 
-                    # 最后一位数字是循环部分
-                    if decimal_part:
+                    # 如果没有小数部分
+                    if not decimal_part:
+                        return ["0", integer_part + ".0"]
+
+                    # 检测循环部分
+                    _repeat_part = ""
+                    _finite_part = integer_part + "."
+
+                    # 使用滑动窗口检测循环节
+                    for length in range(1, len(decimal_part) // 2 + 1):  # 循环节长度从 1 到小数长度的一半
+                        candidate = decimal_part[-length:]  # 候选循环节
+                        if decimal_part.endswith(candidate * 2):  # 如果小数部分以两次重复该候选循环节结尾
+                            _repeat_part = candidate
+                            _finite_part = integer_part + "." + decimal_part[:-len(candidate)]
+                            break
+
+                    # 如果没有找到循环节，则默认循环节为最后一位
+                    if not _repeat_part:
                         _repeat_part = decimal_part[-1]
                         _finite_part = integer_part + "." + decimal_part[:-1]
-                    else:
-                        # 如果没有小数部分，默认循环部分为0
-                        _repeat_part = "0"
-                        _finite_part = integer_part + ".0"
 
                     return [_repeat_part, _finite_part]
 

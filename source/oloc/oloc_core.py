@@ -195,5 +195,5 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
 """test"""
 if __name__ == "__main__":
     while True:
-        run_test("./data/oloctest.ini", "test_cases", -1, random_choice=3)
+        run_test("./data/oloctest.ini", "test_cases", 1, random_choice=50)
         input(">>>")

@@ -335,6 +335,11 @@ class OlocCalculationError(OlocException):
             "The divisor or denominator may not be zero. Check the expression."
         )
 
+        ZERO_TO_THE_POWER_OF_ZERO = (
+            "Undefined result detected in the computational expression `{primary_info}`",
+            "The expression `0^0` is mathematically ambiguous. "
+        )
+
     def __init__(self, exception_type: TYPE, expression: str, positions: List[int],
                  primary_info: str = None, secondary_info: str = None):
         r"""
