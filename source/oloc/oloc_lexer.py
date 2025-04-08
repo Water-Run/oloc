@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: oloc_lexer.py
 :description: Oloc lexer
 """
@@ -87,33 +87,8 @@ class Lexer:
         while token_index < len(self.tokens) - 1:
             current_token = self.tokens[token_index]
             next_token = self.tokens[token_index + 1]
-            conditions = [
-                # 情况 1: 数字后接 (
-                (lambda token_front, token_rear: token_front.is_number() and token_rear.type == Token.TYPE.LBRACKET),
 
-                # 情况 2: 无理数参数后接 (
-                (lambda token_front, token_rear: token_front.type == Token.TYPE.IRRATIONAL_PARAM and token_rear.type == Token.TYPE.LBRACKET),
-
-                # 情况 3: ) 后接数字
-                (lambda token_front, token_rear: token_front.type == Token.TYPE.RBRACKET and token_rear.is_number()),
-
-                # 情况 4: 无理数后接无理数
-                (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_irrational()),
-
-                # 情况 5: 数字后接无理数
-                (lambda token_front, token_rear: token_front.is_number() and token_rear.is_irrational()),
-
-                # 情况 6: 无理数后接数字
-                (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_number()),
-
-                # 情况 7: 数字或右括号后接函数名
-                (lambda token_front, token_rear: (token_front.type == Token.TYPE.RBRACKET or token_front.is_number()) and token_rear.type == Token.TYPE.FUNCTION),
-
-                # 情况 8: 数字后接根号
-                (lambda token_front, token_rear: token_front.is_number() and (token_rear.type == Token.TYPE.OPERATOR and token_rear.value == '√'))
-            ]
-
-            if any(condition(current_token, next_token) for condition in conditions):
+            if Lexer.omit_multiplication_sign_condition(current_token, next_token):
                 _add_multiply(token_index)
 
             token_index += 1
@@ -513,6 +488,44 @@ class Lexer:
     """
     静态方法
     """
+
+    @staticmethod
+    def omit_multiplication_sign_condition(previous_token: Token, next_token: Token) -> bool:
+        r"""
+        判断指定乘法符号位置是否满足省略乘法符号的情况
+        :param previous_token: 指定乘法符号的前一个Token
+        :param next_token: 指定乘法符号的后一个Token
+        :return: 是否满足省略乘法符号的情况
+        """
+        conditions = [
+            # 情况 1: 数字后接 (
+            (lambda token_front, token_rear: token_front.is_number() and token_rear.type == Token.TYPE.LBRACKET),
+
+            # 情况 2: 无理数参数后接 (
+            (lambda token_front,
+                    token_rear: token_front.type == Token.TYPE.IRRATIONAL_PARAM and token_rear.type == Token.TYPE.LBRACKET),
+
+            # 情况 3: ) 后接数字
+            (lambda token_front, token_rear: token_front.type == Token.TYPE.RBRACKET and token_rear.is_number()),
+
+            # 情况 4: 无理数后接无理数
+            (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_irrational()),
+
+            # 情况 5: 数字后接无理数
+            (lambda token_front, token_rear: token_front.is_number() and token_rear.is_irrational()),
+
+            # 情况 6: 无理数后接数字
+            (lambda token_front, token_rear: token_front.is_irrational() and token_rear.is_number()),
+
+            # 情况 7: 数字或右括号后接函数名
+            (lambda token_front, token_rear: (
+                                                     token_front.type == Token.TYPE.RBRACKET or token_front.is_number()) and token_rear.type == Token.TYPE.FUNCTION),
+
+            # 情况 8: 数字后接根号
+            (lambda token_front, token_rear: token_front.is_number() and (
+                    token_rear.type == Token.TYPE.OPERATOR and token_rear.value == '√'))
+        ]
+        return any(condition(previous_token, next_token) for condition in conditions)
 
     @staticmethod
     def tokenizer(expression: str) -> list[Token]:

@@ -4,20 +4,32 @@ r"""
 :file: _data_loader.py
 :description: Script program to generate various table data required for oloc runtime
 """
-
 import simpsave as ss
 
-r"""
-After modification, run this script directly in the "data" path
-"""
+"""After modification, run this script directly in the "data" path"""
 
+"""
+Version
+Type: Str
+Description: Oloc Version String.
+"""
 version = '0.1.0'
 
+"""
+Retain decimal places
+Type: int
+Description: The default number of decimal places to retain when converting results.
+"""
 retain_decimal_places: int = 7
 
+"""
+Symbol Mapping Table
+Type: Dict
+Description: The symbol on the right will be mapped to the symbol on the left.
+"""
 symbol_mapping_table: dict[dict[str:list[str]]] = {
     # 空
-    "": [" ", "_", "rad", "radians", "个", "的", "'s", "的", "'s", "以"],
+    "": [" ", "_", "rad", "radians", "个", "的", "'s", "的", "以"],
 
     # 等号
     "=": ["==", "=", "equals", "equal", "eq", "is", "are", "=>", "->", "等于", "是"],
@@ -32,9 +44,9 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
 
     # 算术运算符
     "+": ["+", "plus", "add", "加", "\\"],
-    "-": ["-", "minus", "sub",  "减"],
-    "*": ["*", "・", "·", "⋅", "×", "mul",  "multiply", "乘"],
-    "/": ["/", "÷", "div",  "divide", "除"],
+    "-": ["-", "minus", "sub", "减"],
+    "*": ["*", "・", "·", "⋅", "×", "mul", "multiply", "乘"],
+    "/": ["/", "÷", "div", "divide", "除"],
 
     # 特殊运算符
     "?": ["?", "def", "dflt", "default", "指定"],
@@ -82,6 +94,11 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "𝑒": ["𝑒", "e", "自然底数", "自然"],
 }
 
+"""
+Function Mapping Table
+Type: Dict
+Description: The function name on the right will be mapped to the function name on the left.
+"""
 function_mapping_table: dict[str, str] = {
     "sqrt": ["sqrt", "sqt"],
     "sq": ["square", "sq"],
@@ -116,6 +133,7 @@ formatting_output_function_options_table: dict[str, dict[str:any]] = {
     "function formatting":
         {
             "operator form functions": True,
+            "function form operators": False,
         },
     "readability":
         {
@@ -1446,7 +1464,6 @@ test_case2 = [
     "\n",  # 只有换行符
     "/* comment */",  # 只有注释
 
-
     # 34. 文本插值异常
     "${x+y}",  # 文本插值语法
     "#{1+2}",  # Ruby风格插值
@@ -2495,7 +2512,8 @@ test_case4 = [
     "((((((((((((((((((((1+2))))))))))))))))))))",  # 过深嵌套
     "[[[[[[[[[[[[[[[[[[[[[[[[[1+2]]]]]]]]]]]]]]]]]]]]]]]]]]",  # 极深中括号
     "{{{{{{{{{{{{{{{{{{{{{{{{1+2}}}}}}}}}}}}}}}}}}}}}}}}",  # 极深大括号
-    "((((((((((((((((((((((((((((((((((((((((((((((((((1+2))))))))))))))))))))))))))))))))))))))))))))))))))",  # 超过合理嵌套限制
+    "((((((((((((((((((((((((((((((((((((((((((((((((((1+2))))))))))))))))))))))))))))))))))))))))))))))))))",
+    # 超过合理嵌套限制
 
     # 10. 特殊符号与括号混合
     "(1+2)@3",  # 非法符号与括号组合
@@ -4008,7 +4026,10 @@ test_cases = test_case1 + test_case2 + test_case3 + test_case4 + test_case5 + te
 ss.write("test_cases", test_cases, file="oloctest.ini")
 
 # Write Data
-pending = (['version', version], ['retain_decimal_places', retain_decimal_places], ['function_mapping_table' , function_mapping_table], ['symbol_mapping_table', symbol_mapping_table], ['formatting_output_function_options_table', formatting_output_function_options_table], ['transcendental_function_table', transcendental_function_table])
+pending = (['version', version], ['retain_decimal_places', retain_decimal_places],
+           ['function_mapping_table', function_mapping_table], ['symbol_mapping_table', symbol_mapping_table],
+           ['formatting_output_function_options_table', formatting_output_function_options_table],
+           ['transcendental_function_table', transcendental_function_table])
 for table in pending:
     ss.write(table[0], table[1], file='olocconfig.ini')
 print('dataloader: writing to olocconfig.ini')
@@ -4019,4 +4040,3 @@ for table in pending:
         break
 else:
     print('dataloader: olocconfig updated')
-

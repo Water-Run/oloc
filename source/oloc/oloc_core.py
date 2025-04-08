@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -203,7 +203,7 @@ def oloc_version() -> str:
 
 """test"""
 if __name__ == "__main__":
-    print(calculate("x^23+xy^100"))
+    print(calculate("x^23+5000000xy^100"))
     input(">>")
     while True:
         run_test("./data/oloctest.ini", "test_cases", pause_if_exception=True, random_choice=5)

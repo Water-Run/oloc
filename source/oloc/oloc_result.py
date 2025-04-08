@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: oloc_result.py
 :description: Oloc result
 """
@@ -51,7 +51,7 @@ def output_filter(tokens: list[Token]) -> str:
     configs = utils.get_formatting_output_function_options_table()
 
     between_token = " " * configs["readability"]["space between tokens"]
-    number_seperator = "," if configs["custom"]["underline-style number separator"] else "_"
+    number_seperator = "_" if configs["custom"]["underline-style number separator"] else ","
 
     ascii_native_irrational_map = {"π": "pi", "𝑒": "e"}
     superscript_map = {'1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹',
@@ -69,8 +69,10 @@ def output_filter(tokens: list[Token]) -> str:
             add_superscript = True
             continue
 
-        if index != 0 and index != len(tokens) - 1 and not add_superscript:
-            result += between_token
+        if 1 <= index <= len(tokens) - 1 and configs["custom"]["omit the multiplication sign"] and \
+                temp_token.type == Token.TYPE.OPERATOR and temp_token.value == '*' and \
+                Lexer.omit_multiplication_sign_condition(tokens[index - 1], tokens[index + 1]):
+            continue
 
         # 当不启用保留无理数参数时,舍弃无理数参数
         if temp_token.type == Token.TYPE.IRRATIONAL_PARAM and not configs["custom"]["retain irrational param"]:
@@ -84,12 +86,18 @@ def output_filter(tokens: list[Token]) -> str:
             if add_superscript:
                 for char in temp_token.value:
                     result += superscript_map[char]
+                    continue
             else:
                 result += _add_separator(temp_token, number_seperator,
                                      configs["readability"]["number separators add thresholds"],
                                      configs["readability"]["number separator interval"])
         else:
             result += temp_token.value
+
+        if index != len(tokens) - 1 and \
+                not (configs["readability"]["superscript"] and tokens[index + 1].value == '^') and\
+                not (configs["custom"]["omit the multiplication sign"] and tokens[index + 1].value == '*' and index + 2 < len(tokens) and Lexer.omit_multiplication_sign_condition(tokens[index], tokens[index + 2])):
+            result += between_token
 
     return result
 

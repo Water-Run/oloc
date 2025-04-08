@@ -1,11 +1,12 @@
 r"""
 :author: WaterRun
-:date: 2025-04-07
+:date: 2025-04-08
 :file: oloc_utils.py
 :description: Oloc utils
 """
 
 import simpsave as ss
+from oloc_token import Token
 
 """
 版本信息
@@ -29,6 +30,7 @@ def get_version() -> str:
         raise RuntimeError("There is a formatting error in the oloc version in olocdata.ini. Visit "
                            "https://github.com/Water-Run/oloc for documentation to fix.")
     return result
+
 
 """
 运算符优先级
