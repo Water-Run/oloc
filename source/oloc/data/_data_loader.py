@@ -8,21 +8,21 @@ import simpsave as ss
 
 """After modification, run this script directly in the "data" path"""
 
-"""
+r"""
 Version
 Type: Str
 Description: Oloc Version String.
 """
 version = '0.1.0'
 
-"""
+r"""
 Retain decimal places
 Type: int
 Description: The default number of decimal places to retain when converting results.
 """
 retain_decimal_places: int = 7
 
-"""
+r"""
 Symbol Mapping Table
 Type: Dict
 Description: The symbol on the right will be mapped to the symbol on the left.
@@ -94,7 +94,7 @@ symbol_mapping_table: dict[dict[str:list[str]]] = {
     "𝑒": ["𝑒", "e", "自然底数", "自然"],
 }
 
-"""
+r"""
 Function Mapping Table
 Type: Dict
 Description: The function name on the right will be mapped to the function name on the left.
