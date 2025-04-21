@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-08
+:date: 2025-04-21
 :file: oloc_exceptions.py
 :description: Oloc exceptions
 """
@@ -265,6 +265,11 @@ class OlocSyntaxError(OlocException):
             "The `=` can only appear in the last part of a valid expression."
         )
 
+        INVALID_EXPRESSION = (
+            "Invalid expression structure `{primary_info}`",
+            "The expression has an invalid structure. Check for proper formatting and syntax."
+        )
+
         GROUP_EXPRESSION_ERROR = (
             "Invalid grouped expression structure",
             "A grouped expression must contain exactly one expression inside the parentheses. Empty groups () or "
@@ -337,13 +342,44 @@ class OlocCalculationError(OlocException):
 
         ZERO_TO_THE_POWER_OF_ZERO = (
             "Undefined result detected in the computational expression `{primary_info}`",
-            "The expression `0^0` is mathematically ambiguous. "
+            "The expression `0^0` is mathematically ambiguous."
+        )
+
+        NEGATIVE_TO_FRACTIONAL_POWER = (
+            "Invalid operation detected: negative number raised to fractional power `{primary_info}`",
+            "Negative numbers cannot be raised to fractional powers in the real number domain."
+        )
+
+        OVERFLOW_ERROR = (
+            "Calculation overflow detected in expression `{primary_info}`",
+            "The result of this calculation is too large to represent. Consider simplifying your expression."
         )
 
         UNSUPPORTED_FUNCTION = (
             "Unsupported function detected `{primary_info}`",
             "The evaluator accepted an invalid function name. This may be because the function is not implemented. "
             "Consult the documentation or submit an issue."
+        )
+
+        UNSUPPORTED_OPERATOR = (
+            "Unsupported operator detected `{primary_info}`",
+            "The evaluator encountered an operator it cannot process. This may be because the operator is not implemented. "
+            "Consult the documentation or submit an issue."
+        )
+
+        DOMAIN_ERROR = (
+            "Domain error in expression `{primary_info}`",
+            "The input value is outside the valid domain for this operation. Check your expression."
+        )
+
+        INVALID_OPERATION = (
+            "Invalid mathematical operation `{primary_info}`",
+            "This mathematical operation is not valid. Please check your expression."
+        )
+
+        RECIPROCAL_OF_ZERO = (
+            "Cannot calculate reciprocal of zero in expression `{primary_info}`",
+            "Taking the reciprocal (1/x) of zero is undefined. Check your expression."
         )
 
     def __init__(self, exception_type: TYPE, expression: str, positions: List[int],

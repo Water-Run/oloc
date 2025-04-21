@@ -1,12 +1,11 @@
 r"""
 :author: WaterRun
-:date: 2025-04-08
+:date: 2025-04-21
 :file: oloc_utils.py
 :description: Oloc utils
 """
 
 import simpsave as ss
-from oloc_token import Token
 
 """
 版本信息

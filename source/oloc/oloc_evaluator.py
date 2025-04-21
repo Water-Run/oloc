@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-08
+:date: 2025-04-21
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
@@ -8,8 +8,8 @@ r"""
 import time
 
 from oloc_token import Token
-from oloc_lexer import Lexer
 from oloc_ast import ASTTree, ASTNode
+from oloc_lexer import Lexer
 from oloc_exceptions import *
 
 
@@ -31,7 +31,7 @@ class Evaluator:
     def __repr__(self):
         result = (f"Evaluator: \n"
                   f"expression: {self.expression}\n"
-                  f"expression (spilt between token): ")
+                  f"expression (split between token): ")
         for token in self.tokens:
             result += f"{token.value} "
         result += "\ntoken flow: \n"
@@ -40,7 +40,7 @@ class Evaluator:
         result += f"ast: \n{self.ast}"
         result += "\n result:\n"
         for result_index, result_list in enumerate(self.result):
-            result += f"{result_index}: {result_list}"
+            result += f"{result_index}: {result_list}\n"
         result += f"\ntime cost: {'(Not execute)' if self.time_cost == -1 else self.time_cost / 1000000} ms\n"
         return result
 
@@ -49,7 +49,7 @@ class Evaluator:
         执行求值
         :return: None
         """
-        # 初始化结果历史记录
+        # 初始化结果历史记录，开始只有原始表达式
         self.result = [self.tokens.copy()]
 
         # 递归求值AST树
@@ -68,53 +68,50 @@ class Evaluator:
         :param node: 要评估的节点
         :return: 计算结果的Token列表
         """
-        # 字面量节点
+        # 字面量节点直接返回其值
         if node.type == ASTNode.TYPE.LITERAL:
-            # 假设字面量节点的第一个token是其值
             return [node.tokens[0]]
 
         # 分组表达式节点
         elif node.type == ASTNode.TYPE.GRP_EXP:
-            # 假设分组表达式有一个子节点表示其内容
             if len(node.children) != 1:
-                raise Exception(f"GroupExpression should have exactly one child, got {len(node.children)}")
+                raise OlocSyntaxError(
+                    OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                    self.expression,
+                    [node.tokens[0].range[0] if node.tokens else 0],
+                    primary_info=f"Group expression should have exactly one child, got {len(node.children)}"
+                )
 
-            # 递归计算分组内的表达式
+            # 计算括号内的表达式
             inner_result = self._evaluate_node(node.children[0])
 
-            # 记录中间状态
-            self._record_intermediate_state(inner_result)
+            # 记录这一步计算
+            self._record_step(inner_result)
 
-            # 对于简单结果（单个Token），直接返回
+            # 如果结果简单，不需要括号
             if len(inner_result) == 1:
                 return inner_result
 
-            # 对于复杂结果，保留括号
+            # 否则保留括号
             l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
-            r_bracket = Token(Token.TYPE.RBRACKET, ")", [0,0])
-            result = [l_bracket] + inner_result + [r_bracket]
-            return result
+            r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+            return [l_bracket] + inner_result + [r_bracket]
 
         # 二元表达式节点
         elif node.type == ASTNode.TYPE.BIN_EXP:
-            # 假设二元表达式有两个子节点和一个operator token
             if len(node.children) != 2:
-                raise Exception(f"BinaryExpression should have exactly two children, got {len(node.children)}")
+                raise OlocSyntaxError(
+                    OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                    self.expression,
+                    [node.tokens[0].range[0] if node.tokens else 0],
+                    primary_info=f"Binary expression should have exactly two children, got {len(node.children)}"
+                )
 
-            # 计算左子树
+            # 计算左右子表达式
             left_result = self._evaluate_node(node.children[0])
-
-            # 记录左子树计算后的状态
-            self._record_intermediate_state(left_result)
-
-            # 计算右子树
             right_result = self._evaluate_node(node.children[1])
 
-            # 记录右子树计算后的状态
-            self._record_intermediate_state(right_result)
-
-            # 根据操作符执行相应的计算
-            # 假设操作符是节点的第一个token
+            # 根据操作符执行计算
             operator = node.tokens[0].value
 
             if operator == "+":
@@ -126,36 +123,33 @@ class Evaluator:
             elif operator == "/":
                 result = Calculation.division(left_result, right_result)
             elif operator == "^":
-                # 幂运算
                 result = Function.Pow.pow(left_result, right_result)
             else:
-                # 不支持的运算符
                 raise OlocCalculationError(
-                    OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
+                    OlocCalculationError.TYPE.UNSUPPORTED_OPERATOR,
                     self.expression,
                     [node.tokens[0].range[0]],
                     primary_info=f"Unsupported operator: {operator}"
                 )
 
             # 记录计算结果
-            self._record_intermediate_state(result)
-
+            self._record_step(result)
             return result
 
         # 一元表达式节点
         elif node.type == ASTNode.TYPE.URY_EXP:
-            # 假设一元表达式有一个子节点和一个operator token
             if len(node.children) != 1:
-                raise Exception(f"UnaryExpression should have exactly one child, got {len(node.children)}")
+                raise OlocSyntaxError(
+                    OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                    self.expression,
+                    [node.tokens[0].range[0] if node.tokens else 0],
+                    primary_info=f"Unary expression should have exactly one child, got {len(node.children)}"
+                )
 
-            # 计算子表达式
+            # 计算操作数
             operand_result = self._evaluate_node(node.children[0])
 
-            # 记录子表达式计算后的状态
-            self._record_intermediate_state(operand_result)
-
-            # 根据一元运算符执行计算
-            # 假设操作符是节点的第一个token
+            # 应用一元运算符
             operator = node.tokens[0].value
 
             if operator == "-":
@@ -163,35 +157,28 @@ class Evaluator:
             elif operator == "+":
                 result = operand_result  # 正号不改变值
             elif operator == "√":
-                # 平方根运算
                 result = Function.Pow.sqrt(operand_result)
             else:
-                # 不支持的一元运算符
                 raise OlocCalculationError(
-                    OlocCalculationError.TYPE.DIVIDE_BY_ZERO,  # 临时使用此类型
+                    OlocCalculationError.TYPE.UNSUPPORTED_OPERATOR,
                     self.expression,
                     [node.tokens[0].range[0]],
                     primary_info=f"Unsupported unary operator: {operator}"
                 )
 
             # 记录计算结果
-            self._record_intermediate_state(result)
-
+            self._record_step(result)
             return result
 
         # 函数调用节点
         elif node.type == ASTNode.TYPE.FUN_CAL:
-            # 假设函数调用有多个子节点（参数）和一个function token
-
             # 计算所有参数
             args_results = []
             for child in node.children:
                 arg_result = self._evaluate_node(child)
                 args_results.append(arg_result)
-                # 记录参数计算后的状态
-                self._record_intermediate_state(arg_result)
 
-            # 假设函数名是节点的第一个token
+            # 执行函数计算
             func_name = node.tokens[0].value
 
             if func_name == "pow":
@@ -252,53 +239,35 @@ class Evaluator:
                     primary_info=func_name
                 )
 
-            # 记录函数计算后的状态
-            self._record_intermediate_state(result)
-
+            # 记录计算结果
+            self._record_step(result)
             return result
 
         # 未知节点类型
         else:
-            raise Exception(f"Unknown node type: {node.type}")
+            raise OlocSyntaxError(
+                OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                self.expression,
+                [0],
+                primary_info=f"Unknown node type: {node.type}"
+            )
 
-    def _record_intermediate_state(self, tokens):
+    def _record_step(self, result):
         """
-        记录中间计算状态到结果历史中
-        :param tokens: 当前计算的Token列表
+        记录有意义的计算步骤
+        :param result: 当前计算得到的结果
         """
-        # 避免添加重复的状态
-        if self.result and tokens != self.result[-1]:
-            # 创建深拷贝以避免后续修改影响历史记录
-            self.result.append(tokens.copy())
+        # 仅当结果与上一步不同时才记录
+        if self.result and self._tokens_to_str(result) != self._tokens_to_str(self.result[-1]):
+            self.result.append(result.copy())
 
-    def _negate(self, tokens):
+    def _tokens_to_str(self, tokens):
         """
-        对Token列表执行取反操作
-        :param tokens: 要取反的Token列表
-        :return: 取反后的结果
+        将Token列表转换为字符串用于比较
+        :param tokens: Token列表
+        :return: 字符串表示
         """
-        if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
-            # 整数取反
-            value = str(-int(tokens[0].value))
-            return [Token(Token.TYPE.INTEGER, value, [0, len(value) - 1])]
-        elif len(tokens) == 3 and tokens[1].value == "/":
-            # 分数取反，取反分子
-            num = -int(tokens[0].value)
-            den = int(tokens[2].value)
-            num_str = str(num)
-            num_token = Token(Token.TYPE.INTEGER, num_str, [0, len(num_str) - 1])
-            return [num_token, tokens[1], tokens[2]]
-        else:
-            # 复杂表达式，添加负号和括号
-            neg_op = Token(Token.TYPE.OPERATOR, "-", [0, 0])
-            if len(tokens) > 1:
-                # 需要括号
-                l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                return [neg_op, l_bracket] + tokens + [r_bracket]
-            else:
-                # 不需要括号
-                return [neg_op] + tokens
+        return ''.join([token.value for token in tokens])
 
     def execute(self):
         r"""
@@ -311,7 +280,6 @@ class Evaluator:
 
 
 class Calculation:
-
     r"""
     执行计算的静态类
     """
@@ -339,8 +307,8 @@ class Calculation:
 
         # 3.1 同类型变量
         if (len(augend) == 1 and len(addend) == 1 and
-                augend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and
-                addend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and
+                augend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
+                addend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
                 augend[0].value == addend[0].value):
             # 相同变量相加: x + x = 2*x
             return [
@@ -381,8 +349,8 @@ class Calculation:
 
         # 4.1 同类型变量
         if (len(minuend) == 1 and len(subtrahend) == 1 and
-                minuend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and
-                subtrahend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM] and
+                minuend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
+                subtrahend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
                 minuend[0].value == subtrahend[0].value):
             # 相同变量相减: x - x = 0
             return [Token(Token.TYPE.INTEGER, "0", [0, 0])]
@@ -425,13 +393,32 @@ class Calculation:
 
         # 4. 处理变量与数值的乘法
 
-        # 4.1 数值 * 变量
+        # 4.1 无理数乘法的特殊情况
+        if (len(factor_1) == 1 and len(factor_2) == 1 and
+                factor_1[0].type == Token.TYPE.NATIVE_IRRATIONAL and factor_2[0].type == Token.TYPE.NATIVE_IRRATIONAL):
+            # 处理无理数与无理数的乘法 (如 π*π)
+            if factor_1[0].value == "π" and factor_2[0].value == "π":
+                # π*π = π^2
+                return [
+                    factor_1[0],
+                    Token(Token.TYPE.OPERATOR, "^", [0, 0]),
+                    Token(Token.TYPE.INTEGER, "2", [0, 0])
+                ]
+            if factor_1[0].value == "𝑒" and factor_2[0].value == "𝑒":
+                # e*e = e^2
+                return [
+                    factor_1[0],
+                    Token(Token.TYPE.OPERATOR, "^", [0, 0]),
+                    Token(Token.TYPE.INTEGER, "2", [0, 0])
+                ]
+
+        # 4.2 数值 * 变量
         if (Calculation.is_numeric(factor_1) and len(factor_2) == 1 and
                 factor_2[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
             # 整数/分数 * 变量
             return factor_1 + [Token(Token.TYPE.OPERATOR, "*", [0, 0])] + factor_2
 
-        # 4.2 变量 * 数值
+        # 4.3 变量 * 数值
         if (Calculation.is_numeric(factor_2) and len(factor_1) == 1 and
                 factor_1[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
             # 变量 * 整数/分数 (标准化为 整数/分数 * 变量)
@@ -470,9 +457,15 @@ class Calculation:
 
         # 4. 处理整数和分数的除法
         if Calculation.is_numeric(dividend) and Calculation.is_numeric(divisor):
-            # 转换为乘法: a / b = a * (1/b)
-            reciprocal = Calculation.get_reciprocal(divisor)
-            return Calculation.multiply_numeric(dividend, reciprocal)
+            # 转换为分数
+            num_dividend, den_dividend = Calculation.to_fraction(dividend)
+            num_divisor, den_divisor = Calculation.to_fraction(divisor)
+
+            # a/b ÷ c/d = (a/b) × (d/c) = (a×d)/(b×c)
+            num_result = num_dividend * den_divisor
+            den_result = den_dividend * num_divisor
+
+            return Calculation.create_fraction(num_result, den_result)
 
         # 5. 处理变量与整数/分数的除法
         if (len(dividend) == 1 and
@@ -507,23 +500,31 @@ class Calculation:
                     Token(Token.TYPE.INTEGER, num, [0, 0])
                 ]
 
-        # 6. 无法化简的情况，保持原始表达式形式
+        # 6. 特殊情况：同类无理数相除
+        if (len(dividend) == 1 and len(divisor) == 1 and
+                dividend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
+                divisor[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
+                dividend[0].value == divisor[0].value):
+            # 相同变量相除：x/x = 1
+            return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
+
+        # 7. 无法化简的情况，保持原始表达式形式
         # 需要确保复杂表达式加上括号
         if len(dividend) > 1 and not (len(dividend) == 3 and dividend[1].value == "/"):
             dividend_with_brackets = [
-                                         Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                                     ] + dividend + [
-                                         Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                                     ]
+                Token(Token.TYPE.LBRACKET, "(", [0, 0])
+            ] + dividend + [
+                Token(Token.TYPE.RBRACKET, ")", [0, 0])
+            ]
         else:
             dividend_with_brackets = dividend.copy()
 
         if len(divisor) > 1 and not (len(divisor) == 3 and divisor[1].value == "/"):
             divisor_with_brackets = [
-                                        Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                                    ] + divisor + [
-                                        Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                                    ]
+                Token(Token.TYPE.LBRACKET, "(", [0, 0])
+            ] + divisor + [
+                Token(Token.TYPE.RBRACKET, ")", [0, 0])
+            ]
         else:
             divisor_with_brackets = divisor.copy()
 
@@ -532,7 +533,11 @@ class Calculation:
     # 辅助方法
     @staticmethod
     def is_zero(tokens: list[Token]) -> bool:
-        """判断Token列表是否表示0"""
+        """
+        判断Token列表是否表示0
+        :param tokens: 待判断的Token列表
+        :return: 是否表示0
+        """
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "0":
             return True
 
@@ -544,7 +549,11 @@ class Calculation:
 
     @staticmethod
     def is_one(tokens: list[Token]) -> bool:
-        """判断Token列表是否表示1"""
+        """
+        判断Token列表是否表示1
+        :param tokens: 待判断的Token列表
+        :return: 是否表示1
+        """
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "1":
             return True
 
@@ -556,7 +565,11 @@ class Calculation:
 
     @staticmethod
     def is_numeric(tokens: list[Token]) -> bool:
-        """判断Token列表是否表示纯数值（整数或分数）"""
+        """
+        判断Token列表是否表示纯数值（整数或分数）
+        :param tokens: 待判断的Token列表
+        :return: 是否是纯数值
+        """
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
             return True
 
@@ -568,7 +581,12 @@ class Calculation:
 
     @staticmethod
     def to_fraction(tokens: list[Token]) -> tuple:
-        """将Token列表转换为分数表示（分子,分母）"""
+        """
+        将Token列表转换为分数表示
+        :param tokens: 待转换的Token列表
+        :return: 分子和分母的元组
+        :raises ValueError: 无法转换为分数时
+        """
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
             return int(tokens[0].value), 1
 
@@ -579,7 +597,12 @@ class Calculation:
 
     @staticmethod
     def add_numeric(a: list[Token], b: list[Token]) -> list[Token]:
-        """处理纯数值（整数或分数）的加法"""
+        """
+        处理纯数值（整数或分数）的加法
+        :param a: 被加数
+        :param b: 加数
+        :return: 加法结果
+        """
         # 转换为分数形式
         num_a, den_a = Calculation.to_fraction(a)
         num_b, den_b = Calculation.to_fraction(b)
@@ -593,7 +616,12 @@ class Calculation:
 
     @staticmethod
     def multiply_numeric(a: list[Token], b: list[Token]) -> list[Token]:
-        """处理纯数值（整数或分数）的乘法"""
+        """
+        处理纯数值（整数或分数）的乘法
+        :param a: 因数1
+        :param b: 因数2
+        :return: 乘法结果
+        """
         # 转换为分数形式
         num_a, den_a = Calculation.to_fraction(a)
         num_b, den_b = Calculation.to_fraction(b)
@@ -607,7 +635,11 @@ class Calculation:
 
     @staticmethod
     def negate_expression(tokens: list[Token]) -> list[Token]:
-        """对表达式取反"""
+        """
+        对表达式取反
+        :param tokens: 要取反的表达式
+        :return: 取反后的表达式
+        """
         if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
             # 整数取反
             value = str(-int(tokens[0].value))
@@ -632,14 +664,19 @@ class Calculation:
 
     @staticmethod
     def get_reciprocal(tokens: list[Token]) -> list[Token]:
-        """计算倒数"""
+        """
+        计算倒数
+        :param tokens: 待求倒数的Token列表
+        :return: 倒数结果
+        :raises OlocCalculationError: 当原数为0时
+        """
         num, den = Calculation.to_fraction(tokens)
 
         # 检查分子是否为0
         if num == 0:
             raise OlocCalculationError(
                 OlocCalculationError.TYPE.DIVIDE_BY_ZERO,
-                "Division by zero",
+                "Reciprocal of zero",
                 [0],
                 primary_info="reciprocal of zero"
             )
@@ -649,7 +686,13 @@ class Calculation:
 
     @staticmethod
     def create_fraction(numerator: int, denominator: int) -> list[Token]:
-        """创建分数Token列表，自动化简"""
+        """
+        创建分数Token列表，自动化简
+        :param numerator: 分子
+        :param denominator: 分母
+        :return: 分数Token列表
+        :raises OlocCalculationError: 分母为0时
+        """
         # 检查除数是否为0
         if denominator == 0:
             raise OlocCalculationError(
@@ -672,34 +715,28 @@ class Calculation:
         # 创建结果Token
         if denominator == 1:
             # 整数结果
-            result_value = str(numerator)  # 确保是字符串
-            # 创建Token时确保token_value参数位置正确
+            result_value = str(numerator)
             return [Token(Token.TYPE.INTEGER, result_value, [0, len(result_value) - 1])]
         else:
             # 分数结果
-            num_str = str(numerator)  # 确保是字符串
-            den_str = str(denominator)  # 确保是字符串
+            num_str = str(numerator)
+            den_str = str(denominator)
 
-            # 确保参数顺序正确: (token_type, token_value, token_range)
             num_token = Token(Token.TYPE.INTEGER, num_str, [0, len(num_str) - 1])
             op_token = Token(Token.TYPE.OPERATOR, "/", [len(num_str), len(num_str)])
             den_token = Token(Token.TYPE.INTEGER, den_str,
-                              [len(num_str) + 1, len(num_str) + len(den_str)])
+                            [len(num_str) + 1, len(num_str) + len(den_str)])
             return [num_token, op_token, den_token]
 
 
 class Function:
     r"""
-    函数
-    """
-
-    """
-    代数函数
+    函数类，提供各种数学函数的实现
     """
 
     class Pow:
         r"""
-        指数函数
+        指数函数相关功能
         """
 
         @staticmethod
@@ -709,6 +746,7 @@ class Function:
             :param x: 底数Token流
             :param y: 次数Token流
             :return: 计算结果
+            :raises OlocCalculationError: 当出现0^0情况时
             """
             # 特殊情况: 0^0
             if Calculation.is_zero(x) and Calculation.is_zero(y):
@@ -716,7 +754,7 @@ class Function:
                     OlocCalculationError.TYPE.ZERO_TO_THE_POWER_OF_ZERO,
                     "Zero to the power of zero",
                     [0],
-                    primary_info="0^0"
+                    primary_info="0^0 is undefined"
                 )
 
             # 特殊情况: x^0 = 1
@@ -734,6 +772,15 @@ class Function:
             # 特殊情况: 1^y = 1
             if Calculation.is_one(x):
                 return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
+
+            # 处理负整数次幂
+            if (len(y) == 1 and y[0].type == Token.TYPE.INTEGER and y[0].value.startswith('-')):
+                # 负整数幂: x^(-n) = 1/(x^n)
+                positive_exponent = [Token(Token.TYPE.INTEGER, y[0].value[1:], [0, 0])]
+                positive_result = Function.Pow.pow(x, positive_exponent)
+
+                # 计算倒数
+                return Calculation.get_reciprocal(positive_result)
 
             # 处理整数的整数次幂
             if (len(x) == 1 and x[0].type == Token.TYPE.INTEGER and
@@ -758,15 +805,33 @@ class Function:
 
                 if exponent > 0:
                     # 正整数次幂: (a/b)^n = a^n/b^n
-                    num_result = num ** exponent
-                    den_result = den ** exponent
-                    return Calculation.create_fraction(num_result, den_result)
+                    try:
+                        num_result = num ** exponent
+                        den_result = den ** exponent
+                        return Calculation.create_fraction(num_result, den_result)
+                    except OverflowError:
+                        # 结果太大，保持原始表达式形式
+                        pass
                 elif exponent < 0:
                     # 负整数次幂: (a/b)^(-n) = (b/a)^n
                     exponent = -exponent
-                    num_result = den ** exponent
-                    den_result = num ** exponent
-                    return Calculation.create_fraction(num_result, den_result)
+                    try:
+                        num_result = den ** exponent
+                        den_result = num ** exponent
+                        return Calculation.create_fraction(num_result, den_result)
+                    except OverflowError:
+                        # 结果太大，保持原始表达式形式
+                        pass
+
+            # 特殊情况: 无理数的简单指数
+            if (len(x) == 1 and x[0].type == Token.TYPE.NATIVE_IRRATIONAL and
+                    len(y) == 1 and y[0].type == Token.TYPE.INTEGER):
+                # 例如 π^2, e^3 等
+                return [
+                    x[0],
+                    Token(Token.TYPE.OPERATOR, "^", [0, 0]),
+                    y[0]
+                ]
 
             # 无法直接计算的情况，保持原始表达式形式
             return x + [Token(Token.TYPE.OPERATOR, "^", [0, 0])] + y
@@ -774,39 +839,159 @@ class Function:
         @staticmethod
         def sqrt(x: list[Token]) -> list[Token]:
             r"""
-            计算开根号函数
-            :param x: 被开根号的数
+            计算平方根函数
+            :param x: 被开方数Token流
             :return: 计算结果
             """
-            return Function.Pow.pow(x, Lexer.tokenizer("1/2"))
+            # 特殊情况: √0 = 0
+            if Calculation.is_zero(x):
+                return [Token(Token.TYPE.INTEGER, "0", [0, 0])]
+
+            # 特殊情况: √1 = 1
+            if Calculation.is_one(x):
+                return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
+
+            # 处理完全平方数
+            if len(x) == 1 and x[0].type == Token.TYPE.INTEGER:
+                value = int(x[0].value)
+                # 检查是否是完全平方数
+                sqrt_value = int(value ** 0.5)
+                if sqrt_value ** 2 == value:
+                    return [Token(Token.TYPE.INTEGER, str(sqrt_value), [0, 0])]
+
+            # 使用幂运算表示: √x = x^(1/2)
+            half_power = [
+                Token(Token.TYPE.INTEGER, "1", [0, 0]),
+                Token(Token.TYPE.OPERATOR, "/", [1, 1]),
+                Token(Token.TYPE.INTEGER, "2", [2, 2])
+            ]
+            return Function.Pow.pow(x, half_power)
 
         @staticmethod
         def sq(x: list[Token]) -> list[Token]:
             r"""
-            计算二次方函数
-            :param x: 被二次方的数
+            计算平方函数
+            :param x: 被平方数Token流
             :return: 计算结果
             """
-            return Function.Pow.pow(x, Lexer.tokenizer("2"))
+            # 使用幂运算表示: sq(x) = x^2
+            square = [Token(Token.TYPE.INTEGER, "2", [0, 0])]
+            return Function.Pow.pow(x, square)
 
         @staticmethod
         def cub(x: list[Token]) -> list[Token]:
             r"""
-            计算三次方函数
-            :param x: 被三次方的数
+            计算立方函数
+            :param x: 被立方数Token流
             :return: 计算结果
             """
-            return Function.Pow.pow(x, Lexer.tokenizer("3"))
+            # 使用幂运算表示: cub(x) = x^3
+            cube = [Token(Token.TYPE.INTEGER, "3", [0, 0])]
+            return Function.Pow.pow(x, cube)
 
         @staticmethod
         def rec(x: list[Token]) -> list[Token]:
             r"""
             计算倒数函数
-            :param x: 被计算倒数的数
+            :param x: 被求倒数Token流
             :return: 计算结果
             """
-            return Function.Pow.pow(x, Lexer.tokenizer("-1"))
+            # 使用幂运算表示: rec(x) = x^(-1)
+            negative_one = [Token(Token.TYPE.INTEGER, "-1", [0, 1])]
+            return Function.Pow.pow(x, negative_one)
 
-    """
-    超越函数
-    """
+
+"""test"""
+if __name__ == "__main__":
+    from oloc_lexer import Lexer
+    from oloc_parser import Parser
+    from oloc_preprocessor import Preprocessor
+
+    def test_expression(expr):
+        print(f"\nTesting: {expr}")
+        try:
+            # 预处理
+            preprocessor = Preprocessor(expr)
+            preprocessor.execute()
+
+            # 词法分析
+            lexer = Lexer(preprocessor.expression)
+            lexer.execute()
+
+            # 语法分析
+            parser = Parser(lexer.tokens)
+            parser.execute()
+
+            # 求值
+            evaluator = Evaluator(parser.expression, parser.tokens, parser.ast)
+            evaluator.execute()
+
+            # 打印结果
+            print(f"Result: {evaluator.expression}")
+            print("Calculation steps:")
+            for i, step in enumerate(evaluator.result):
+                step_expr = ' '.join([token.value for token in step])
+                print(f"  Step {i}: {step_expr}")
+
+        except Exception as e:
+            print(f"Error: {e}")
+
+    # 测试用例1: 基本整数加法
+    test_expression("1+2")
+
+    # 测试用例2: 基本整数四则运算
+    test_expression("2*3+4")
+
+    # 测试用例3: 带括号的表达式
+    test_expression("(2+3)*4")
+
+    # 测试用例4: 分数运算
+    test_expression("1/2+3/4")
+
+    # 测试用例5: 带负数的运算
+    test_expression("-5+7")
+
+    # 测试用例6: 幂运算
+    test_expression("2^3")
+
+    # 测试用例7: 函数调用
+    test_expression("sqrt(16)")
+
+    # 测试用例8: 包含无理数的表达式
+    test_expression("2*π")
+
+    # 测试用例9: 复杂表达式
+    test_expression("(3+4)*(5-2)/sqrt(16)")
+
+    # 测试用例10: 多层嵌套表达式
+    test_expression("((2+3)^2-1)/((4*5)+(6/3))")
+
+    # 附加测试用例11: 基本分数运算
+    test_expression("3/4*2/3")
+
+    # 附加测试用例12: 负数幂运算
+    test_expression("2^(-3)")
+
+    # 附加测试用例13: 带有无理数的复杂运算
+    test_expression("π^2+e^2")
+
+    # 附加测试用例14: 函数嵌套
+    test_expression("sqrt(sqrt(16))")
+
+    # 附加测试用例15: 复杂分数运算
+    test_expression("(1/2+1/3)/(1/4+1/5)")
+
+    # 附加测试用例16: 变量相乘
+    test_expression("π*π")
+
+    # 附加测试用例17: 变量相除
+    test_expression("x/x")
+
+    # 附加测试用例18: 零值测试
+    test_expression("0+5")
+
+    # 附加测试用例19: 单位值测试
+    test_expression("1*7")
+
+    # 附加测试用例20: 除零错误测试
+    test_expression("5/0")
