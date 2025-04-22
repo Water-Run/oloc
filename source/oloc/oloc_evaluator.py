@@ -1,16 +1,41 @@
 r"""
 :author: WaterRun
-:date: 2025-04-21
+:date: 2025-04-22
 :file: oloc_evaluator.py
 :description: Oloc evaluator
 """
 
 import time
+from enum import Enum, auto
 
 from oloc_token import Token
 from oloc_ast import ASTTree, ASTNode
 from oloc_lexer import Lexer
 from oloc_exceptions import *
+
+
+class CalcEvent:
+    r"""
+    计算事件类，用于记录计算过程中的事件
+    """
+    class Type(Enum):
+        r"""计算事件类型"""
+        NODE_EVAL_START = auto()  # 节点开始计算
+        NODE_EVAL_COMPLETE = auto()  # 节点计算完成
+        STEP_COMPLETE = auto()  # 计算步骤完成
+
+    def __init__(self, event_type: Type, node: ASTNode = None, result: list[Token] = None, description: str = None):
+        r"""
+        初始化计算事件
+        :param event_type: 事件类型
+        :param node: 相关的AST节点
+        :param result: 计算结果
+        :param description: 事件描述
+        """
+        self.type = event_type
+        self.node = node
+        self.result = result
+        self.description = description
 
 
 class Evaluator:
@@ -25,8 +50,14 @@ class Evaluator:
         self.expression = expression
         self.tokens = tokens
         self.ast = ast
-        self.result: list[list[Token]] = [self.tokens]
+        self.result: list[list[Token]] = []  # 清空结果列表，不再使用初始tokens
         self.time_cost = -1
+
+        # 为新的计算步骤生成机制添加的属性
+        self.calculation_events = []  # 记录计算事件
+        self.node_results = {}  # 记录节点计算结果，键为节点ID，值为Token列表
+        self.node_original = {}  # 记录节点原始表示，键为节点ID，值为Token列表
+        self.eval_order = []  # 记录节点的计算顺序，存储节点ID
 
     def __repr__(self):
         result = (f"Evaluator: \n"
@@ -40,7 +71,7 @@ class Evaluator:
         result += f"ast: \n{self.ast}"
         result += "\n result:\n"
         for result_index, result_list in enumerate(self.result):
-            result += f"{result_index}: {result_list}\n"
+            result += f"{result_index}: {' '.join([t.value for t in result_list])}\n"
         result += f"\ntime cost: {'(Not execute)' if self.time_cost == -1 else self.time_cost / 1000000} ms\n"
         return result
 
@@ -49,28 +80,53 @@ class Evaluator:
         执行求值
         :return: None
         """
-        # 初始化结果历史记录，开始只有原始表达式
-        self.result = [self.tokens.copy()]
+        # 清空事件和结果记录
+        self.calculation_events = []
+        self.node_results = {}
+        self.node_original = {}
+        self.eval_order = []
+        self.result = []
+
+        # 将原始表达式添加为第一步
+        self.result.append(self.tokens.copy())
 
         # 递归求值AST树
-        final_tokens = self._evaluate_node(self.ast.root)
+        final_result = self._evaluate_node(self.ast.root)
 
-        # 更新表达式字符串
-        self.tokens, self.expression = Lexer.update(final_tokens)
+        # 生成计算步骤
+        self._generate_calculation_steps()
 
-        # 确保最终结果添加到历史中
-        if self.result[-1] != final_tokens:
-            self.result.append(final_tokens)
+        # 确保最终结果与最后一步一致
+        last_step = self.result[-1] if self.result else []
+        last_step_str = ' '.join([t.value for t in last_step])
+        final_result_str = ' '.join([t.value for t in final_result])
 
-    def _evaluate_node(self, node):
-        """
-        递归评估AST节点
+        if not self.result or last_step_str != final_result_str:
+            self.result.append(final_result)
+
+        # 更新表达式字符串和tokens
+        self.tokens, self.expression = Lexer.update(final_result)
+
+    def _evaluate_node(self, node: ASTNode) -> list[Token]:
+        r"""
+        递归评估AST节点，记录计算事件
         :param node: 要评估的节点
         :return: 计算结果的Token列表
         """
-        # 字面量节点直接返回其值
+        # 为节点生成原始表示
+        original_repr = self._generate_node_representation(node)
+        self.node_original[id(node)] = original_repr
+
+        # 记录节点开始计算的事件
+        self.calculation_events.append(
+            CalcEvent(CalcEvent.Type.NODE_EVAL_START, node, None)
+        )
+
+        result = None
+
+        # 字面量节点
         if node.type == ASTNode.TYPE.LITERAL:
-            return [node.tokens[0]]
+            result = [node.tokens[0]]
 
         # 分组表达式节点
         elif node.type == ASTNode.TYPE.GRP_EXP:
@@ -85,17 +141,9 @@ class Evaluator:
             # 计算括号内的表达式
             inner_result = self._evaluate_node(node.children[0])
 
-            # 记录这一步计算
-            self._record_step(inner_result)
-
-            # 如果结果简单，不需要括号
-            if len(inner_result) == 1:
-                return inner_result
-
-            # 否则保留括号
-            l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
-            r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
-            return [l_bracket] + inner_result + [r_bracket]
+            # 这里是关键变化：不再自动添加括号，直接返回内部结果
+            # 括号会在必要时由上层方法添加
+            result = inner_result
 
         # 二元表达式节点
         elif node.type == ASTNode.TYPE.BIN_EXP:
@@ -107,12 +155,27 @@ class Evaluator:
                     primary_info=f"Binary expression should have exactly two children, got {len(node.children)}"
                 )
 
+            # 获取操作符
+            op_token = None
+            for token in node.tokens:
+                if token.type == Token.TYPE.OPERATOR:
+                    op_token = token
+                    break
+
+            if op_token is None:
+                raise OlocSyntaxError(
+                    OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                    self.expression,
+                    [0],
+                    primary_info="Binary expression missing operator"
+                )
+
             # 计算左右子表达式
             left_result = self._evaluate_node(node.children[0])
             right_result = self._evaluate_node(node.children[1])
 
             # 根据操作符执行计算
-            operator = node.tokens[0].value
+            operator = op_token.value
 
             if operator == "+":
                 result = Calculation.addition(left_result, right_result)
@@ -128,13 +191,9 @@ class Evaluator:
                 raise OlocCalculationError(
                     OlocCalculationError.TYPE.UNSUPPORTED_OPERATOR,
                     self.expression,
-                    [node.tokens[0].range[0]],
+                    [op_token.range[0]],
                     primary_info=f"Unsupported operator: {operator}"
                 )
-
-            # 记录计算结果
-            self._record_step(result)
-            return result
 
         # 一元表达式节点
         elif node.type == ASTNode.TYPE.URY_EXP:
@@ -146,11 +205,26 @@ class Evaluator:
                     primary_info=f"Unary expression should have exactly one child, got {len(node.children)}"
                 )
 
+            # 获取操作符
+            op_token = None
+            for token in node.tokens:
+                if token.type == Token.TYPE.OPERATOR:
+                    op_token = token
+                    break
+
+            if op_token is None:
+                raise OlocSyntaxError(
+                    OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                    self.expression,
+                    [0],
+                    primary_info="Unary expression missing operator"
+                )
+
             # 计算操作数
             operand_result = self._evaluate_node(node.children[0])
 
             # 应用一元运算符
-            operator = node.tokens[0].value
+            operator = op_token.value
 
             if operator == "-":
                 result = Calculation.negate_expression(operand_result)
@@ -162,16 +236,29 @@ class Evaluator:
                 raise OlocCalculationError(
                     OlocCalculationError.TYPE.UNSUPPORTED_OPERATOR,
                     self.expression,
-                    [node.tokens[0].range[0]],
+                    [op_token.range[0]],
                     primary_info=f"Unsupported unary operator: {operator}"
                 )
 
-            # 记录计算结果
-            self._record_step(result)
-            return result
-
         # 函数调用节点
         elif node.type == ASTNode.TYPE.FUN_CAL:
+            # 获取函数名
+            func_token = None
+            for token in node.tokens:
+                if token.type == Token.TYPE.FUNCTION:
+                    func_token = token
+                    break
+
+            if func_token is None:
+                raise OlocSyntaxError(
+                    OlocSyntaxError.TYPE.INVALID_EXPRESSION,
+                    self.expression,
+                    [0],
+                    primary_info="Function call missing function name"
+                )
+
+            func_name = func_token.value
+
             # 计算所有参数
             args_results = []
             for child in node.children:
@@ -179,14 +266,12 @@ class Evaluator:
                 args_results.append(arg_result)
 
             # 执行函数计算
-            func_name = node.tokens[0].value
-
             if func_name == "pow":
                 if len(args_results) != 2:
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
                         expression=self.expression,
-                        positions=[node.tokens[0].range[0]],
+                        positions=[func_token.range[0]],
                         primary_info="pow",
                         secondary_info="expected 2 arguments"
                     )
@@ -196,7 +281,7 @@ class Evaluator:
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
                         expression=self.expression,
-                        positions=[node.tokens[0].range[0]],
+                        positions=[func_token.range[0]],
                         primary_info="sqrt",
                         secondary_info="expected 1 argument"
                     )
@@ -206,7 +291,7 @@ class Evaluator:
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
                         expression=self.expression,
-                        positions=[node.tokens[0].range[0]],
+                        positions=[func_token.range[0]],
                         primary_info="sq",
                         secondary_info="expected 1 argument"
                     )
@@ -216,7 +301,7 @@ class Evaluator:
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
                         expression=self.expression,
-                        positions=[node.tokens[0].range[0]],
+                        positions=[func_token.range[0]],
                         primary_info="cub",
                         secondary_info="expected 1 argument"
                     )
@@ -226,7 +311,7 @@ class Evaluator:
                     raise OlocSyntaxError(
                         exception_type=OlocSyntaxError.TYPE.FUNCTION_PARAM_COUNT_ERROR,
                         expression=self.expression,
-                        positions=[node.tokens[0].range[0]],
+                        positions=[func_token.range[0]],
                         primary_info="rec",
                         secondary_info="expected 1 argument"
                     )
@@ -235,13 +320,9 @@ class Evaluator:
                 raise OlocCalculationError(
                     exception_type=OlocCalculationError.TYPE.UNSUPPORTED_FUNCTION,
                     expression=self.expression,
-                    positions=[node.tokens[0].range[0]],
+                    positions=[func_token.range[0]],
                     primary_info=func_name
                 )
-
-            # 记录计算结果
-            self._record_step(result)
-            return result
 
         # 未知节点类型
         else:
@@ -252,18 +333,951 @@ class Evaluator:
                 primary_info=f"Unknown node type: {node.type}"
             )
 
-    def _record_step(self, result):
-        """
-        记录有意义的计算步骤
-        :param result: 当前计算得到的结果
-        """
-        # 仅当结果与上一步不同时才记录
-        if self.result and self._tokens_to_str(result) != self._tokens_to_str(self.result[-1]):
-            self.result.append(result.copy())
+        # 记录节点计算结果
+        self.node_results[id(node)] = result
 
-    def _tokens_to_str(self, tokens):
+        # 记录节点完成计算的事件
+        self.calculation_events.append(
+            CalcEvent(CalcEvent.Type.NODE_EVAL_COMPLETE, node, result)
+        )
+
+        # 将节点ID添加到计算顺序列表
+        self.eval_order.append(id(node))
+
+        # 记录完成一个有意义的计算步骤
+        self._record_calculation_step(node)
+
+        return result
+
+    def _generate_node_representation(self, node: ASTNode) -> list[Token]:
+        r"""
+        生成节点的原始表示，会自动移除冗余括号
+        :param node: 要表示的节点
+        :return: 表示节点的Token列表
         """
-        将Token列表转换为字符串用于比较
+        if node.type == ASTNode.TYPE.LITERAL:
+            # 字面量节点直接返回token
+            return [node.tokens[0]]
+
+        elif node.type == ASTNode.TYPE.GRP_EXP:
+            # 分组表达式: (expr)
+            if len(node.children) == 1:
+                inner_repr = self._generate_node_representation(node.children[0])
+
+                # 如果内部表达式只有一个token，不需要添加括号
+                if len(inner_repr) == 1:
+                    return inner_repr
+
+                # 否则添加括号
+                l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                return [l_bracket] + inner_repr + [r_bracket]
+            else:
+                return []
+
+        elif node.type == ASTNode.TYPE.BIN_EXP:
+            # 二元表达式: left op right
+            if len(node.children) == 2:
+                left_repr = self._generate_node_representation(node.children[0])
+                right_repr = self._generate_node_representation(node.children[1])
+
+                # 查找操作符
+                op_token = None
+                for token in node.tokens:
+                    if token.type == Token.TYPE.OPERATOR:
+                        op_token = token
+                        break
+
+                if op_token:
+                    # 检查是否需要为左子表达式添加括号
+                    left_needs_brackets = self._needs_brackets(node.children[0], op_token.value, "left")
+
+                    # 检查是否需要为右子表达式添加括号
+                    right_needs_brackets = self._needs_brackets(node.children[1], op_token.value, "right")
+
+                    result = []
+
+                    # 添加左子表达式，必要时添加括号
+                    if left_needs_brackets:
+                        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                        result.extend([l_bracket] + left_repr + [r_bracket])
+                    else:
+                        result.extend(left_repr)
+
+                    # 添加操作符
+                    result.append(op_token)
+
+                    # 添加右子表达式，必要时添加括号
+                    if right_needs_brackets:
+                        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                        result.extend([l_bracket] + right_repr + [r_bracket])
+                    else:
+                        result.extend(right_repr)
+
+                    return result
+                else:
+                    return []
+            else:
+                return []
+
+        elif node.type == ASTNode.TYPE.URY_EXP:
+            # 一元表达式: op expr
+            if len(node.children) == 1:
+                expr_repr = self._generate_node_representation(node.children[0])
+
+                # 查找操作符
+                op_token = None
+                for token in node.tokens:
+                    if token.type == Token.TYPE.OPERATOR:
+                        op_token = token
+                        break
+
+                if op_token:
+                    # 检查是否需要为表达式添加括号
+                    expr_needs_brackets = self._needs_brackets_for_unary(node.children[0])
+
+                    if expr_needs_brackets:
+                        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                        return [op_token, l_bracket] + expr_repr + [r_bracket]
+                    else:
+                        return [op_token] + expr_repr
+                else:
+                    return []
+            else:
+                return []
+
+        elif node.type == ASTNode.TYPE.FUN_CAL:
+            # 函数调用: func(args)
+            func_token = None
+            for token in node.tokens:
+                if token.type == Token.TYPE.FUNCTION:
+                    func_token = token
+                    break
+
+            if func_token:
+                result = [func_token, Token(Token.TYPE.LBRACKET, "(", [0, 0])]
+
+                # 添加参数
+                for i, child in enumerate(node.children):
+                    if i > 0:
+                        result.append(Token(Token.TYPE.SEPARATOR, ",", [0, 0]))
+                    result.extend(self._generate_node_representation(child))
+
+                result.append(Token(Token.TYPE.RBRACKET, ")", [0, 0]))
+                return result
+            else:
+                return []
+
+        # 其他类型节点
+        return []
+
+    def _needs_brackets(self, node: ASTNode, parent_op: str, position: str) -> bool:
+        r"""
+        判断节点是否需要括号
+        :param node: 要判断的节点
+        :param parent_op: 父节点的操作符
+        :param position: 节点在父节点中的位置 ('left' 或 'right')
+        :return: 是否需要括号
+        """
+        # 单个token不需要括号
+        if node.type == ASTNode.TYPE.LITERAL:
+            return False
+
+        # 如果节点本身已经是分组表达式，不需要再加括号
+        if node.type == ASTNode.TYPE.GRP_EXP:
+            return False
+
+        # 一元表达式通常不需要括号，除非作为幂的底数
+        if node.type == ASTNode.TYPE.URY_EXP:
+            return parent_op == "^" and position == "left"
+
+        # 对于二元表达式，需要根据运算符优先级判断
+        if node.type == ASTNode.TYPE.BIN_EXP:
+            node_op = None
+            for token in node.tokens:
+                if token.type == Token.TYPE.OPERATOR:
+                    node_op = token.value
+                    break
+
+            if node_op:
+                # 根据运算符优先级判断是否需要括号
+                return self._needs_brackets_by_precedence(node_op, parent_op, position)
+
+        # 函数调用不需要括号
+        if node.type == ASTNode.TYPE.FUN_CAL:
+            return False
+
+        # 默认情况，保守起见加括号
+        return True
+
+    def _needs_brackets_for_unary(self, node: ASTNode) -> bool:
+        r"""
+        判断一元表达式的操作数是否需要括号
+        :param node: 要判断的节点
+        :return: 是否需要括号
+        """
+        # 字面量不需要括号
+        if node.type == ASTNode.TYPE.LITERAL:
+            return False
+
+        # 分组表达式不需要括号
+        if node.type == ASTNode.TYPE.GRP_EXP:
+            return False
+
+        # 函数调用不需要括号
+        if node.type == ASTNode.TYPE.FUN_CAL:
+            return False
+
+        # 二元表达式需要括号
+        if node.type == ASTNode.TYPE.BIN_EXP:
+            return True
+
+        # 其他情况（包括嵌套的一元表达式）通常不需要括号
+        return False
+
+    def _needs_brackets_by_precedence(self, node_op: str, parent_op: str, position: str) -> bool:
+        r"""
+        根据运算符优先级判断是否需要括号
+        :param node_op: 节点的运算符
+        :param parent_op: 父节点的运算符
+        :param position: 节点在父节点中的位置 ('left' 或 'right')
+        :return: 是否需要括号
+        """
+        # 定义运算符优先级，数字越大优先级越高
+        precedence = {
+            "+": 1,
+            "-": 1,
+            "*": 2,
+            "/": 2,
+            "^": 3
+        }
+
+        # 获取优先级
+        node_prec = precedence.get(node_op, 0)
+        parent_prec = precedence.get(parent_op, 0)
+
+        # 如果节点运算符优先级低于父节点，需要括号
+        if node_prec < parent_prec:
+            return True
+
+        # 如果优先级相同，根据结合性和位置判断
+        if node_prec == parent_prec:
+            # 加减法和乘除法左结合，只有右侧需要括号
+            if node_op in ["+", "-", "*", "/"] and parent_op in ["+", "-", "*", "/"] and position == "right" and node_op != parent_op:
+                return True
+
+            # 减法的特殊处理：左侧是减法时右侧需要括号
+            if parent_op == "-" and position == "right":
+                return True
+
+            # 除法的特殊处理：左侧是除法时右侧需要括号
+            if parent_op == "/" and position == "right":
+                return True
+
+            # 幂运算右结合，左侧需要括号
+            if node_op == "^" and parent_op == "^" and position == "left":
+                return True
+
+        return False
+
+    def _simplify_brackets(self, tokens: list[Token]) -> list[Token]:
+        r"""
+        简化表达式中不必要的括号
+        :param tokens: 要简化的Token列表
+        :return: 简化后的Token列表
+        """
+        # 如果只有一对括号包裹整个表达式，可以去除
+        if (len(tokens) >= 3 and
+            tokens[0].type == Token.TYPE.LBRACKET and tokens[0].value == "(" and
+            tokens[-1].type == Token.TYPE.RBRACKET and tokens[-1].value == ")"):
+
+            # 检查这对括号是否匹配
+            bracket_level = 1
+            for i in range(1, len(tokens) - 1):
+                if tokens[i].type == Token.TYPE.LBRACKET and tokens[i].value == "(":
+                    bracket_level += 1
+                elif tokens[i].type == Token.TYPE.RBRACKET and tokens[i].value == ")":
+                    bracket_level -= 1
+
+                # 如果括号在中间就闭合了，说明最外层括号不是包裹整个表达式的
+                if bracket_level == 0 and i < len(tokens) - 2:
+                    return tokens
+
+            # 最外层括号确实包裹了整个表达式，移除它们
+            # 但需要检查内部表达式是否需要括号保护
+            inner_tokens = tokens[1:-1]
+
+            # 如果内部只有一个token或者是完整的函数调用，可以去括号
+            if len(inner_tokens) == 1 or self._is_complete_function_call(inner_tokens):
+                return inner_tokens
+
+            # 如果内部是一个二元表达式，检查是否需要保留括号
+            operator_pos = self._find_main_operator_position(inner_tokens)
+            if operator_pos is not None:
+                # 这是一个二元表达式，保留原样
+                return tokens
+
+        return tokens
+
+    def _is_complete_function_call(self, tokens: list[Token]) -> bool:
+        r"""
+        检查token序列是否为完整的函数调用
+        :param tokens: 要检查的Token列表
+        :return: 是否为完整的函数调用
+        """
+        if len(tokens) < 3:
+            return False
+
+        if tokens[0].type != Token.TYPE.FUNCTION:
+            return False
+
+        if tokens[1].type != Token.TYPE.LBRACKET or tokens[1].value != "(":
+            return False
+
+        if tokens[-1].type != Token.TYPE.RBRACKET or tokens[-1].value != ")":
+            return False
+
+        # 检查括号是否匹配
+        bracket_level = 1
+        for i in range(2, len(tokens) - 1):
+            if tokens[i].type == Token.TYPE.LBRACKET and tokens[i].value == "(":
+                bracket_level += 1
+            elif tokens[i].type == Token.TYPE.RBRACKET and tokens[i].value == ")":
+                bracket_level -= 1
+
+            if bracket_level == 0:
+                return False
+
+        return True
+
+    def _find_main_operator_position(self, tokens: list[Token]) -> int:
+        r"""
+        查找表达式中主操作符的位置
+        :param tokens: 要查找的Token列表
+        :return: 主操作符的位置，未找到则返回None
+        """
+        # 跟踪括号层级
+        bracket_level = 0
+        # 操作符候选及其位置
+        operators = []
+
+        for i, token in enumerate(tokens):
+            if token.type == Token.TYPE.LBRACKET and token.value == "(":
+                bracket_level += 1
+            elif token.type == Token.TYPE.RBRACKET and token.value == ")":
+                bracket_level -= 1
+            elif token.type == Token.TYPE.OPERATOR and bracket_level == 0:
+                operators.append((i, token.value))
+
+        if not operators:
+            return None
+
+        # 按运算符优先级排序
+        precedence = {
+            "+": 1,
+            "-": 1,
+            "*": 2,
+            "/": 2,
+            "^": 3
+        }
+
+        # 找出最低优先级的运算符
+        min_prec = min(precedence.get(op[1], 0) for op in operators)
+        candidates = [op for op in operators if precedence.get(op[1], 0) == min_prec]
+
+        # 对于相同优先级，选择最后出现的加减，最先出现的乘除
+        if min_prec == 1:  # 加减法
+            return candidates[-1][0]  # 最后出现的
+        else:
+            return candidates[0][0]  # 最先出现的
+
+    def _record_calculation_step(self, node: ASTNode):
+        r"""
+        记录一个有意义的计算步骤
+        :param node: 完成计算的节点
+        """
+        # 检查节点类型，确定是否需要记录步骤
+        if node.type == ASTNode.TYPE.LITERAL:
+            # 字面量节点不需要记录步骤
+            return
+
+        # 检查节点是否有原始表示和计算结果
+        if id(node) not in self.node_original or id(node) not in self.node_results:
+            return
+
+        original = self.node_original[id(node)]
+        result = self.node_results[id(node)]
+
+        # 检查计算是否有变化
+        if self._tokens_equal(original, result):
+            # 计算前后没有变化，不记录步骤
+            return
+
+        # 创建步骤完成事件
+        self.calculation_events.append(
+            CalcEvent(CalcEvent.Type.STEP_COMPLETE, node, result)
+        )
+
+    def _generate_calculation_steps(self):
+        r"""
+        根据计算事件生成计算步骤
+        """
+        # 第一步已经是原始表达式，从第二步开始生成
+
+        # 获取所有步骤完成事件
+        step_events = [event for event in self.calculation_events
+                       if event.type == CalcEvent.Type.STEP_COMPLETE]
+
+        # 按照计算的顺序排序步骤
+        step_events.sort(key=lambda e: self.eval_order.index(id(e.node)))
+
+        # 为嵌套函数和表达式处理特殊情况
+        processed_steps = self._process_nested_steps(step_events)
+
+        # 使用集合记录已添加的步骤表达式，避免重复
+        added_steps = set()
+        added_steps.add(self._tokens_to_str(self.result[0]))
+
+        # 生成每一步的表达式
+        for step_event in processed_steps:
+            node = step_event.node
+            result = step_event.result
+
+            # 生成该步骤的完整表达式
+            step_expr = self._generate_step_expression(node, result)
+
+            # 简化表达式中不必要的括号
+            step_expr = self._simplify_expression(step_expr)
+
+            # 转换为字符串，检查是否重复
+            step_expr_str = self._tokens_to_str(step_expr)
+
+            # 添加到结果列表，避免重复
+            if step_expr and step_expr_str not in added_steps:
+                self.result.append(step_expr)
+                added_steps.add(step_expr_str)
+
+    def _simplify_expression(self, expr: list[Token]) -> list[Token]:
+        r"""
+        简化表达式，移除冗余括号并规范化
+        :param expr: 要简化的表达式
+        :return: 简化后的表达式
+        """
+        # 首先尝试删除最外层冗余括号
+        expr = self._remove_redundant_brackets(expr)
+
+        # 然后递归地简化内部括号表达式
+        return self._recursive_simplify_brackets(expr)
+
+    def _remove_redundant_brackets(self, tokens: list[Token]) -> list[Token]:
+        r"""
+        移除最外层冗余的括号
+        :param tokens: 要处理的Token列表
+        :return: 处理后的Token列表
+        """
+        # 检查是否整个表达式被一对括号包裹
+        if len(tokens) < 3:
+            return tokens
+
+        if tokens[0].type != Token.TYPE.LBRACKET or tokens[0].value != "(" or tokens[-1].type != Token.TYPE.RBRACKET or tokens[-1].value != ")":
+            return tokens
+
+        # 检查开头的左括号是否与结尾的右括号匹配
+        bracket_level = 1
+        for i in range(1, len(tokens) - 1):
+            if tokens[i].type == Token.TYPE.LBRACKET and tokens[i].value == "(":
+                bracket_level += 1
+            elif tokens[i].type == Token.TYPE.RBRACKET and tokens[i].value == ")":
+                bracket_level -= 1
+
+            # 如果括号提前匹配完成，说明最外层括号不是包裹整个表达式
+            if bracket_level == 0 and i < len(tokens) - 1:
+                return tokens
+
+        # 如果表达式只有一个token，或者是函数调用，或者是复杂表达式，保留括号
+        inner_tokens = tokens[1:-1]
+
+        # 如果内部只有单个token，可以移除括号
+        if len(inner_tokens) == 1:
+            return inner_tokens
+
+        # 判断内部是否是单一优先级的表达式
+        main_op_pos = self._find_main_operator_position(inner_tokens)
+        if main_op_pos is not None:
+            # 有主操作符，这是一个可以不加括号的完整表达式
+            return inner_tokens
+
+        # 如果内部是函数调用或者其他无法确定的结构，保留括号
+        return tokens
+
+    def _recursive_simplify_brackets(self, tokens: list[Token]) -> list[Token]:
+        r"""
+        递归地简化表达式中的括号
+        :param tokens: 要简化的Token列表
+        :return: 简化后的Token列表
+        """
+        if len(tokens) <= 1:
+            return tokens
+
+        result = []
+        i = 0
+
+        while i < len(tokens):
+            if tokens[i].type == Token.TYPE.LBRACKET and tokens[i].value == "(":
+                # 找到括号封闭的子表达式
+                bracket_level = 1
+                start_pos = i
+
+                for j in range(i + 1, len(tokens)):
+                    if tokens[j].type == Token.TYPE.LBRACKET and tokens[j].value == "(":
+                        bracket_level += 1
+                    elif tokens[j].type == Token.TYPE.RBRACKET and tokens[j].value == ")":
+                        bracket_level -= 1
+
+                    if bracket_level == 0:
+                        # 找到匹配的右括号
+                        sub_expr = tokens[start_pos:j+1]
+                        # 简化子表达式的括号
+                        simplified_sub = self._remove_redundant_brackets(sub_expr)
+
+                        # 递归简化简化后的子表达式
+                        if len(simplified_sub) > 1:
+                            simplified_sub = self._recursive_simplify_brackets(simplified_sub)
+
+                        result.extend(simplified_sub)
+                        i = j + 1
+                        break
+                else:
+                    # 未找到匹配的右括号，保留原样
+                    result.append(tokens[i])
+                    i += 1
+            elif tokens[i].type == Token.TYPE.FUNCTION:
+                # 处理函数调用
+                result.append(tokens[i])
+                i += 1
+
+                # 找到函数的参数列表
+                if i < len(tokens) and tokens[i].type == Token.TYPE.LBRACKET:
+                    result.append(tokens[i])  # 添加左括号
+                    i += 1
+
+                    bracket_level = 1
+                    while i < len(tokens) and bracket_level > 0:
+                        if tokens[i].type == Token.TYPE.LBRACKET:
+                            bracket_level += 1
+                        elif tokens[i].type == Token.TYPE.RBRACKET:
+                            bracket_level -= 1
+
+                        result.append(tokens[i])
+                        i += 1
+
+                    # 函数调用处理完毕
+                    continue
+            else:
+                # 其他token直接添加
+                result.append(tokens[i])
+                i += 1
+
+        return result
+
+    def _process_nested_steps(self, step_events: list[CalcEvent]) -> list[CalcEvent]:
+        r"""
+        处理嵌套函数和表达式的步骤，确保中间步骤不被跳过
+        :param step_events: 原始步骤事件列表
+        :return: 处理后的步骤事件列表
+        """
+        processed_events = []
+
+        # 为函数调用添加中间步骤
+        for event in step_events:
+            node = event.node
+
+            if node.type == ASTNode.TYPE.FUN_CAL and len(node.children) > 0:
+                # 查找所有参数的计算结果
+                for child in node.children:
+                    if id(child) in self.node_results:
+                        # 创建参数计算的中间步骤
+                        func_token = None
+                        for token in node.tokens:
+                            if token.type == Token.TYPE.FUNCTION:
+                                func_token = token
+                                break
+
+                        if func_token:
+                            # 使用参数计算结果替换原始参数，生成中间步骤
+                            intermediate_expr = self._generate_function_with_arg_results(
+                                node, func_token, child
+                            )
+
+                            # 创建中间步骤事件
+                            processed_events.append(
+                                CalcEvent(
+                                    CalcEvent.Type.STEP_COMPLETE,
+                                    node,
+                                    intermediate_expr
+                                )
+                            )
+
+            # 添加原始事件
+            processed_events.append(event)
+
+        return processed_events
+
+    def _generate_function_with_arg_results(self,
+                                          func_node: ASTNode,
+                                          func_token: Token,
+                                          arg_node: ASTNode) -> list[Token]:
+        r"""
+        为函数调用生成带有参数计算结果的中间表示
+        :param func_node: 函数调用节点
+        :param func_token: 函数名token
+        :param arg_node: 已计算的参数节点
+        :return: 中间表示的Token列表
+        """
+        result = [func_token, Token(Token.TYPE.LBRACKET, "(", [0, 0])]
+
+        for i, child in enumerate(func_node.children):
+            if i > 0:
+                result.append(Token(Token.TYPE.SEPARATOR, ",", [0, 0]))
+
+            # 使用计算后的结果替换已计算的参数
+            if child == arg_node and id(child) in self.node_results:
+                result.extend(self.node_results[id(child)])
+            else:
+                # 其他参数使用原始表示
+                if id(child) in self.node_original:
+                    result.extend(self.node_original[id(child)])
+
+        result.append(Token(Token.TYPE.RBRACKET, ")", [0, 0]))
+        return result
+
+    def _generate_step_expression(self, node: ASTNode, result: list[Token]) -> list[Token]:
+        r"""
+        生成计算步骤的完整表达式，替换对应节点的计算结果
+        :param node: 计算完成的节点
+        :param result: 节点的计算结果
+        :return: 完整的表达式Token列表
+        """
+        # 从原始表达式开始
+        original_expr = self.tokens.copy()
+
+        # 使用AST进行递归替换
+        return self._recursive_replace(self.ast.root, node, result, original_expr)
+
+    def _recursive_replace(self,
+                          current: ASTNode,
+                          target: ASTNode,
+                          replacement: list[Token],
+                          expr: list[Token]) -> list[Token]:
+        r"""
+        递归替换表达式中的节点
+        :param current: 当前遍历的节点
+        :param target: 要替换的目标节点
+        :param replacement: 替换内容
+        :param expr: 当前表达式
+        :return: 替换后的表达式
+        """
+        # 如果当前节点就是目标节点，直接返回替换内容
+        if current == target:
+            return replacement
+
+        # 如果当前节点已经计算过，使用其结果
+        if id(current) in self.node_results:
+            # 特殊情况处理：如果当前节点包含目标节点，需要进一步递归
+            contains_target = False
+            for child in current.children:
+                if self._contains_node(child, target):
+                    contains_target = True
+                    break
+
+            if not contains_target:
+                # 当前节点不包含目标节点，可以使用其计算结果
+                return self.node_results[id(current)]
+
+        # 根据节点类型构建表达式
+        if current.type == ASTNode.TYPE.LITERAL:
+            # 字面量节点
+            return [current.tokens[0]]
+
+        elif current.type == ASTNode.TYPE.GRP_EXP:
+            # 分组表达式
+            if len(current.children) == 1:
+                # 递归处理子表达式
+                inner_expr = self._recursive_replace(
+                    current.children[0], target, replacement, expr
+                )
+
+                # 如果内部表达式只有一个token，不需要添加括号
+                if len(inner_expr) == 1:
+                    return inner_expr
+
+                # 添加括号
+                l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                return [l_bracket] + inner_expr + [r_bracket]
+            else:
+                return []
+
+        elif current.type == ASTNode.TYPE.BIN_EXP:
+            # 二元表达式
+            if len(current.children) == 2:
+                # 递归处理左右子表达式
+                left_expr = self._recursive_replace(
+                    current.children[0], target, replacement, expr
+                )
+
+                right_expr = self._recursive_replace(
+                    current.children[1], target, replacement, expr
+                )
+
+                # 查找操作符
+                op_token = None
+                for token in current.tokens:
+                    if token.type == Token.TYPE.OPERATOR:
+                        op_token = token
+                        break
+
+                if op_token:
+                    # 检查是否需要为左子表达式添加括号
+                    left_needs_brackets = self._needs_brackets_for_expression(left_expr, op_token.value, "left")
+
+                    # 检查是否需要为右子表达式添加括号
+                    right_needs_brackets = self._needs_brackets_for_expression(right_expr, op_token.value, "right")
+
+                    result = []
+
+                    # 添加左子表达式，必要时添加括号
+                    if left_needs_brackets:
+                        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                        result.extend([l_bracket] + left_expr + [r_bracket])
+                    else:
+                        result.extend(left_expr)
+
+                    # 添加操作符
+                    result.append(op_token)
+
+                    # 添加右子表达式，必要时添加括号
+                    if right_needs_brackets:
+                        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                        result.extend([l_bracket] + right_expr + [r_bracket])
+                    else:
+                        result.extend(right_expr)
+
+                    return result
+                else:
+                    return []
+            else:
+                return []
+
+        elif current.type == ASTNode.TYPE.URY_EXP:
+            # 一元表达式
+            if len(current.children) == 1:
+                # 递归处理子表达式
+                expr_result = self._recursive_replace(
+                    current.children[0], target, replacement, expr
+                )
+
+                # 查找操作符
+                op_token = None
+                for token in current.tokens:
+                    if token.type == Token.TYPE.OPERATOR:
+                        op_token = token
+                        break
+
+                if op_token:
+                    # 检查是否需要为表达式添加括号
+                    needs_brackets = self._needs_brackets_for_unary_expr(expr_result)
+
+                    if needs_brackets:
+                        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
+                        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
+                        return [op_token, l_bracket] + expr_result + [r_bracket]
+                    else:
+                        return [op_token] + expr_result
+                else:
+                    return []
+            else:
+                return []
+
+        elif current.type == ASTNode.TYPE.FUN_CAL:
+            # 函数调用
+            func_token = None
+            for token in current.tokens:
+                if token.type == Token.TYPE.FUNCTION:
+                    func_token = token
+                    break
+
+            if func_token:
+                result = [func_token, Token(Token.TYPE.LBRACKET, "(", [0, 0])]
+
+                # 递归处理所有参数
+                for i, child in enumerate(current.children):
+                    if i > 0:
+                        result.append(Token(Token.TYPE.SEPARATOR, ",", [0, 0]))
+
+                    arg_expr = self._recursive_replace(
+                        child, target, replacement, expr
+                    )
+                    result.extend(arg_expr)
+
+                result.append(Token(Token.TYPE.RBRACKET, ")", [0, 0]))
+                return result
+            else:
+                return []
+
+        # 其他类型节点
+        return []
+
+    def _needs_brackets_for_expression(self, expr: list[Token], parent_op: str, position: str) -> bool:
+        r"""
+        判断表达式是否需要括号
+        :param expr: 要判断的表达式
+        :param parent_op: 父操作符
+        :param position: 表达式位置 ('left' 或 'right')
+        :return: 是否需要括号
+        """
+        # 单个token不需要括号
+        if len(expr) == 1:
+            return False
+
+        # 如果表达式已经带有括号，不需要再加
+        if (expr[0].type == Token.TYPE.LBRACKET and expr[0].value == "(" and
+            expr[-1].type == Token.TYPE.RBRACKET and expr[-1].value == ")"):
+            return False
+
+        # 如果表达式是函数调用，不需要括号
+        if (len(expr) >= 3 and expr[0].type == Token.TYPE.FUNCTION and
+            expr[1].type == Token.TYPE.LBRACKET and expr[-1].type == Token.TYPE.RBRACKET):
+            return False
+
+        # 查找表达式中的主操作符
+        main_op_pos = self._find_main_operator_position(expr)
+        if main_op_pos is not None:
+            main_op = expr[main_op_pos].value
+
+            # 根据运算符优先级判断
+            return self._needs_brackets_by_precedence(main_op, parent_op, position)
+
+        # 默认情况，保守起见添加括号
+        return True
+
+    def _needs_brackets_for_unary_expr(self, expr: list[Token]) -> bool:
+        r"""
+        判断一元表达式的操作数是否需要括号
+        :param expr: 要判断的表达式
+        :return: 是否需要括号
+        """
+        # 单个token不需要括号
+        if len(expr) == 1:
+            return False
+
+        # 如果表达式已经带有括号，不需要再加
+        if (expr[0].type == Token.TYPE.LBRACKET and expr[0].value == "(" and
+            expr[-1].type == Token.TYPE.RBRACKET and expr[-1].value == ")"):
+            return False
+
+        # 如果表达式是函数调用，不需要括号
+        if (len(expr) >= 3 and expr[0].type == Token.TYPE.FUNCTION and
+            expr[1].type == Token.TYPE.LBRACKET and expr[-1].type == Token.TYPE.RBRACKET):
+            return False
+
+        # 查找表达式中的主操作符
+        main_op_pos = self._find_main_operator_position(expr)
+        if main_op_pos is not None:
+            # 二元表达式通常需要括号
+            return True
+
+        # 默认情况下不需要括号
+        return False
+
+    def _needs_brackets_by_precedence(self, node_op: str, parent_op: str, position: str) -> bool:
+        r"""
+        根据运算符优先级判断是否需要括号
+        :param node_op: 节点的运算符
+        :param parent_op: 父节点的运算符
+        :param position: 节点在父节点中的位置 ('left' 或 'right')
+        :return: 是否需要括号
+        """
+        # 定义运算符优先级，数字越大优先级越高
+        precedence = {
+            "+": 1,
+            "-": 1,
+            "*": 2,
+            "/": 2,
+            "^": 3
+        }
+
+        # 获取优先级
+        node_prec = precedence.get(node_op, 0)
+        parent_prec = precedence.get(parent_op, 0)
+
+        # 如果节点运算符优先级低于父节点，需要括号
+        if node_prec < parent_prec:
+            return True
+
+        # 如果优先级相同，根据结合性和位置判断
+        if node_prec == parent_prec:
+            # 加减法和乘除法左结合，只有右侧需要括号
+            if node_op in ["+", "-"] and parent_op in ["+", "-"] and position == "right" and node_op != parent_op:
+                return True
+
+            if node_op in ["*", "/"] and parent_op in ["*", "/"] and position == "right" and node_op != parent_op:
+                return True
+
+            # 减法的特殊处理：左侧是减法时右侧需要括号
+            if parent_op == "-" and position == "right":
+                return True
+
+            # 除法的特殊处理：左侧是除法时右侧需要括号
+            if parent_op == "/" and position == "right":
+                return True
+
+            # 幂运算右结合，左侧需要括号
+            if node_op == "^" and parent_op == "^" and position == "left":
+                return True
+
+        return False
+
+    def _contains_node(self, node: ASTNode, target: ASTNode) -> bool:
+        r"""
+        检查节点是否包含目标节点
+        :param node: 要检查的节点
+        :param target: 目标节点
+        :return: 是否包含
+        """
+        if node == target:
+            return True
+
+        for child in node.children:
+            if self._contains_node(child, target):
+                return True
+
+        return False
+
+    def _tokens_equal(self, tokens1: list[Token], tokens2: list[Token]) -> bool:
+        r"""
+        检查两个Token列表是否相等
+        :param tokens1: 第一个Token列表
+        :param tokens2: 第二个Token列表
+        :return: 是否相等
+        """
+        if len(tokens1) != len(tokens2):
+            return False
+
+        for i in range(len(tokens1)):
+            if tokens1[i].type != tokens2[i].type or tokens1[i].value != tokens2[i].value:
+                return False
+
+        return True
+
+    def _tokens_to_str(self, tokens: list[Token]) -> str:
+        r"""
+        将Token列表转换为字符串
         :param tokens: Token列表
         :return: 字符串表示
         """
