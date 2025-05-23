@@ -8,16 +8,14 @@ r"""
 import time
 import math
 from enum import auto
-from fractions import Fraction
 from math import gcd, lcm
 
 from oloc_token import Token
 from oloc_ast import ASTTree, ASTNode
-from oloc_lexer import Lexer
 from oloc_exceptions import *
 
 
-class CalcEvent:
+class CalculateEvent:
     r"""
     计算事件类，用于记录计算过程中的事件
     """
@@ -473,7 +471,7 @@ class Evaluator:
 
         # 记录节点开始计算的事件
         self.calculation_events.append(
-            CalcEvent(CalcEvent.Type.NODE_EVAL_START, node, None)
+            CalculateEvent(CalculateEvent.Type.NODE_EVAL_START, node, None)
         )
 
         # 根据节点类型选择相应的求值策略
@@ -485,7 +483,7 @@ class Evaluator:
 
         # 记录节点完成计算的事件
         self.calculation_events.append(
-            CalcEvent(CalcEvent.Type.NODE_EVAL_COMPLETE, node, result)
+            CalculateEvent(CalculateEvent.Type.NODE_EVAL_COMPLETE, node, result)
         )
 
         # 将节点ID添加到计算顺序列表
@@ -825,7 +823,7 @@ class Evaluator:
 
         # 创建步骤完成事件
         self.calculation_events.append(
-            CalcEvent(CalcEvent.Type.STEP_COMPLETE, node, result)
+            CalculateEvent(CalculateEvent.Type.STEP_COMPLETE, node, result)
         )
 
     def _generate_calculation_steps(self):
@@ -834,7 +832,7 @@ class Evaluator:
         """
         # 获取所有步骤完成事件
         step_events = [event for event in self.calculation_events
-                       if event.type == CalcEvent.Type.STEP_COMPLETE]
+                       if event.type == CalculateEvent.Type.STEP_COMPLETE]
 
         # 按照计算的顺序排序步骤
         step_events.sort(key=lambda e: self.eval_order.index(id(e.node)))
@@ -980,7 +978,7 @@ class Evaluator:
 
         return result
 
-    def _process_nested_steps(self, step_events: list[CalcEvent]) -> list[CalcEvent]:
+    def _process_nested_steps(self, step_events: list[CalculateEvent]) -> list[CalculateEvent]:
         r"""
         处理嵌套函数和表达式的步骤，确保中间步骤不被跳过
         :param step_events: 原始步骤事件列表
@@ -1011,8 +1009,8 @@ class Evaluator:
 
                             # 创建中间步骤事件
                             processed_events.append(
-                                CalcEvent(
-                                    CalcEvent.Type.STEP_COMPLETE,
+                                CalculateEvent(
+                                    CalculateEvent.Type.STEP_COMPLETE,
                                     node,
                                     intermediate_expr
                                 )
@@ -2104,508 +2102,6 @@ class Calculation:
 
         # 形式 x^(expr)，返回括号内表达式
         return tokens[3:-1]
-
-
-@staticmethod
-def division(dividend: list[Token], divisor: list[Token]) -> list[Token]:
-    r"""
-    计算除法.结果化至最简形式
-    :param dividend: 被除数
-    :param divisor: 除数
-    :return: 除法运算的结果
-    """
-    # 1. 错误情况: 除数为0
-    if Calculation.is_zero(divisor):
-        raise OlocCalculationError(
-            OlocCalculationError.TYPE.DIVIDE_BY_ZERO,
-            "Division by zero",
-            [0],
-            primary_info="division by zero"
-        )
-
-    # 2. 特殊情况: 被除数为0
-    if Calculation.is_zero(dividend):
-        return [Token(Token.TYPE.INTEGER, "0", [0, 0])]
-
-    # 3. 特殊情况: 除数为1
-    if Calculation.is_one(divisor):
-        return dividend
-
-    # 4. 处理整数和分数的除法
-    if Calculation.is_numeric(dividend) and Calculation.is_numeric(divisor):
-        # 转换为分数
-        num_dividend, den_dividend = Calculation.to_fraction(dividend)
-        num_divisor, den_divisor = Calculation.to_fraction(divisor)
-
-        # a/b ÷ c/d = (a/b) × (d/c) = (a×d)/(b×c)
-        num_result = num_dividend * den_divisor
-        den_result = den_dividend * num_divisor
-
-        return Calculation.create_fraction(num_result, den_result)
-
-    # 5. 处理变量与整数/分数的除法
-    if (len(dividend) == 1 and
-            dividend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
-            Calculation.is_numeric(divisor)):
-        # 变量 / 整数/分数
-        if len(divisor) == 1:  # 整数
-            # 创建分数形式
-            return [
-                dividend[0],
-                Token(Token.TYPE.OPERATOR, "/", [0, 0]),
-                divisor[0]
-            ]
-        else:  # 分数
-            # 变量 / (a/b) = (变量 * b) / a
-            num = divisor[0].value
-            den = divisor[2].value
-
-            # 创建 变量*b 的Token
-            var_times_den = [
-                dividend[0],
-                Token(Token.TYPE.OPERATOR, "*", [0, 0]),
-                Token(Token.TYPE.INTEGER, den, [0, 0])
-            ]
-
-            # 创建 (变量*b)/a 的Token
-            return [
-                Token(Token.TYPE.LBRACKET, "(", [0, 0]),
-            ] + var_times_den + [
-                Token(Token.TYPE.RBRACKET, ")", [0, 0]),
-                Token(Token.TYPE.OPERATOR, "/", [0, 0]),
-                Token(Token.TYPE.INTEGER, num, [0, 0])
-            ]
-
-    # 6. 处理幂与除法的关系: x^a / x^b = x^(a-b)
-    if (Calculation._is_variable_power(dividend) and
-            Calculation._is_variable_power(divisor) and
-            Calculation._get_power_base(dividend).value == Calculation._get_power_base(divisor).value):
-        base = Calculation._get_power_base(dividend)
-        exp1 = Calculation._get_power_exponent(dividend)
-        exp2 = Calculation._get_power_exponent(divisor)
-
-        # 计算指数差
-        diff_exp = Calculation.subtraction(exp1, exp2)
-
-        # 如果指数差为0，返回1
-        if Calculation.is_zero(diff_exp):
-            return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
-
-        # 如果指数差为1，只返回底数
-        if Calculation.is_one(diff_exp):
-            return [base]
-
-        # 如果指数差为负数，可能需要取倒数
-        if len(diff_exp) == 1 and diff_exp[0].value.startswith('-'):
-            # 负指数: x^(-n) = 1/(x^n)
-            pos_exp = [Token(Token.TYPE.INTEGER, diff_exp[0].value[1:], [0, 0])]
-            return [
-                Token(Token.TYPE.INTEGER, "1", [0, 0]),
-                Token(Token.TYPE.OPERATOR, "/", [0, 0]),
-                Token(Token.TYPE.LBRACKET, "(", [0, 0]),
-                base,
-                Token(Token.TYPE.OPERATOR, "^", [0, 0])
-            ] + pos_exp + [
-                Token(Token.TYPE.RBRACKET, ")", [0, 0])
-            ]
-
-        # 否则返回 x^(a-b)
-        return [
-            base,
-            Token(Token.TYPE.OPERATOR, "^", [0, 0])
-        ] + (diff_exp if len(diff_exp) == 1 else [
-                                                     Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                                                 ] + diff_exp + [
-                                                     Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                                                 ])
-
-    # 7. 特殊情况：同类无理数相除: x/x = 1
-    if (len(dividend) == 1 and len(divisor) == 1 and
-            dividend[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
-            divisor[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
-            dividend[0].value == divisor[0].value):
-        return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
-
-    # 8. 系数变量相除: (a*x) / (b*y)
-    if (Calculation._is_coefficient_variable(dividend) and
-            Calculation._is_coefficient_variable(divisor)):
-        coef1 = Calculation._get_coefficient(dividend)
-        coef2 = Calculation._get_coefficient(divisor)
-        var1 = Calculation._get_variable(dividend)
-        var2 = Calculation._get_variable(divisor)
-
-        # 计算系数商
-        coef_quotient = Calculation.division(coef1, coef2)
-
-        # 如果是同一个变量: a*x / b*x = a/b
-        if var1.value == var2.value:
-            return coef_quotient
-
-        # 对于不同变量: a*x / b*y = (a/b)*(x/y)
-        if Calculation.is_one(coef_quotient):
-            return [var1, Token(Token.TYPE.OPERATOR, "/", [0, 0]), var2]
-        else:
-            # 为复杂系数添加括号
-            if len(coef_quotient) > 1:
-                coef_quotient = [
-                                    Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                                ] + coef_quotient + [
-                                    Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                                ]
-
-            return coef_quotient + [
-                Token(Token.TYPE.OPERATOR, "*", [0, 0]),
-                Token(Token.TYPE.LBRACKET, "(", [0, 0]),
-                var1,
-                Token(Token.TYPE.OPERATOR, "/", [0, 0]),
-                var2,
-                Token(Token.TYPE.RBRACKET, ")", [0, 0])
-            ]
-
-    # 9. 无法化简的情况，保持原始表达式形式
-    # 需要确保复杂表达式加上括号
-    if len(dividend) > 1 and not (len(dividend) == 3 and dividend[1].value == "/"):
-        dividend_with_brackets = [
-                                     Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                                 ] + dividend + [
-                                     Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                                 ]
-    else:
-        dividend_with_brackets = dividend.copy()
-
-    if len(divisor) > 1 and not (len(divisor) == 3 and divisor[1].value == "/"):
-        divisor_with_brackets = [
-                                    Token(Token.TYPE.LBRACKET, "(", [0, 0])
-                                ] + divisor + [
-                                    Token(Token.TYPE.RBRACKET, ")", [0, 0])
-                                ]
-    else:
-        divisor_with_brackets = divisor.copy()
-
-    return dividend_with_brackets + [Token(Token.TYPE.OPERATOR, "/", [0, 0])] + divisor_with_brackets
-
-
-# 辅助方法
-@staticmethod
-def is_zero(tokens: list[Token]) -> bool:
-    """
-    判断Token列表是否表示0
-    :param tokens: 待判断的Token列表
-    :return: 是否表示0
-    """
-    if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "0":
-        return True
-
-    if (len(tokens) == 3 and tokens[1].value == "/" and
-            tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "0"):
-        return True
-
-    return False
-
-
-@staticmethod
-def is_one(tokens: list[Token]) -> bool:
-    """
-    判断Token列表是否表示1
-    :param tokens: 待判断的Token列表
-    :return: 是否表示1
-    """
-    if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER and tokens[0].value == "1":
-        return True
-
-    if (len(tokens) == 3 and tokens[1].value == "/" and
-            tokens[0].type == Token.TYPE.INTEGER and tokens[2].type == Token.TYPE.INTEGER and
-            tokens[0].value == tokens[2].value):
-        return True
-
-    return False
-
-
-@staticmethod
-def is_numeric(tokens: list[Token]) -> bool:
-    """
-    判断Token列表是否表示纯数值（整数或分数）
-    :param tokens: 待判断的Token列表
-    :return: 是否是纯数值
-    """
-    if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
-        return True
-
-    if (len(tokens) == 3 and tokens[1].value == "/" and
-            tokens[0].type == Token.TYPE.INTEGER and tokens[2].type == Token.TYPE.INTEGER):
-        return True
-
-    return False
-
-
-@staticmethod
-def to_fraction(tokens: list[Token]) -> tuple:
-    """
-    将Token列表转换为分数表示
-    :param tokens: 待转换的Token列表
-    :return: 分子和分母的元组
-    :raises ValueError: 无法转换为分数时
-    """
-    if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
-        return int(tokens[0].value), 1
-
-    if len(tokens) == 3 and tokens[1].value == "/":
-        return int(tokens[0].value), int(tokens[2].value)
-
-    raise ValueError(f"Cannot convert to fraction: {tokens}")
-
-
-@staticmethod
-def add_numeric(a: list[Token], b: list[Token]) -> list[Token]:
-    """
-    处理纯数值（整数或分数）的加法
-    :param a: 被加数
-    :param b: 加数
-    :return: 加法结果
-    """
-    # 转换为分数形式
-    num_a, den_a = Calculation.to_fraction(a)
-    num_b, den_b = Calculation.to_fraction(b)
-
-    # 计算: a/b + c/d = (a*d + c*b)/(b*d)
-    num_result = num_a * den_b + num_b * den_a
-    den_result = den_a * den_b
-
-    # 化简
-    return Calculation.create_fraction(num_result, den_result)
-
-
-@staticmethod
-def multiply_numeric(a: list[Token], b: list[Token]) -> list[Token]:
-    """
-    处理纯数值（整数或分数）的乘法
-    :param a: 因数1
-    :param b: 因数2
-    :return: 乘法结果
-    """
-    # 转换为分数形式
-    num_a, den_a = Calculation.to_fraction(a)
-    num_b, den_b = Calculation.to_fraction(b)
-
-    # 计算: (a/b) * (c/d) = (a*c)/(b*d)
-    num_result = num_a * num_b
-    den_result = den_a * den_b
-
-    # 化简
-    return Calculation.create_fraction(num_result, den_result)
-
-
-@staticmethod
-def negate_expression(tokens: list[Token]) -> list[Token]:
-    """
-    对表达式取反
-    :param tokens: 要取反的表达式
-    :return: 取反后的表达式
-    """
-    if len(tokens) == 1 and tokens[0].type == Token.TYPE.INTEGER:
-        # 整数取反
-        value = str(-int(tokens[0].value))
-        return [Token(Token.TYPE.INTEGER, value, [0, len(value) - 1])]
-
-    if len(tokens) == 3 and tokens[1].value == "/":
-        # 分数取反，取反分子
-        num = -int(tokens[0].value)
-        den = int(tokens[2].value)
-        return Calculation.create_fraction(num, den)
-
-    # 复杂表达式，添加负号和括号
-    neg_op = Token(Token.TYPE.OPERATOR, "-", [0, 0])
-    if len(tokens) > 1:
-        # 需要括号
-        l_bracket = Token(Token.TYPE.LBRACKET, "(", [0, 0])
-        r_bracket = Token(Token.TYPE.RBRACKET, ")", [0, 0])
-        return [neg_op, l_bracket] + tokens + [r_bracket]
-    else:
-        # 不需要括号
-        return [neg_op] + tokens
-
-
-@staticmethod
-def get_reciprocal(tokens: list[Token]) -> list[Token]:
-    """
-    计算倒数
-    :param tokens: 待求倒数的Token列表
-    :return: 倒数结果
-    :raises OlocCalculationError: 当原数为0时
-    """
-    # 处理复杂表达式
-    if not Calculation.is_numeric(tokens):
-        # 如果不是简单数值，使用1除以该表达式
-        return Calculation.division(
-            [Token(Token.TYPE.INTEGER, "1", [0, 0])],
-            tokens
-        )
-
-    # 处理数值
-    num, den = Calculation.to_fraction(tokens)
-
-    # 检查分子是否为0
-    if num == 0:
-        raise OlocCalculationError(
-            OlocCalculationError.TYPE.DIVIDE_BY_ZERO,
-            "Reciprocal of zero",
-            [0],
-            primary_info="reciprocal of zero"
-        )
-
-    # 计算倒数: (a/b)^-1 = b/a
-    return Calculation.create_fraction(den, num)
-
-
-@staticmethod
-def create_fraction(numerator: int, denominator: int) -> list[Token]:
-    """
-    创建分数Token列表，自动化简
-    :param numerator: 分子
-    :param denominator: 分母
-    :return: 分数Token列表
-    :raises OlocCalculationError: 分母为0时
-    """
-    # 检查除数是否为0
-    if denominator == 0:
-        raise OlocCalculationError(
-            OlocCalculationError.TYPE.DIVIDE_BY_ZERO,
-            "Division by zero",
-            [0],
-            primary_info="denominator is zero"
-        )
-
-    # 计算最大公约数进行约分
-    g = gcd(abs(numerator), abs(denominator))
-    numerator //= g
-    denominator //= g
-
-    # 处理负号情况
-    if denominator < 0:
-        numerator, denominator = -numerator, -denominator
-
-    # 创建结果Token
-    if denominator == 1:
-        # 整数结果
-        result_value = str(numerator)
-        return [Token(Token.TYPE.INTEGER, result_value, [0, len(result_value) - 1])]
-    else:
-        # 分数结果
-        num_str = str(numerator)
-        den_str = str(denominator)
-
-        num_token = Token(Token.TYPE.INTEGER, num_str, [0, len(num_str) - 1])
-        op_token = Token(Token.TYPE.OPERATOR, "/", [len(num_str), len(num_str)])
-        den_token = Token(Token.TYPE.INTEGER, den_str,
-                          [len(num_str) + 1, len(num_str) + len(den_str)])
-        return [num_token, op_token, den_token]
-
-
-@staticmethod
-def _is_coefficient_variable(tokens: list[Token]) -> bool:
-    """
-    判断Token列表是否表示系数乘以变量的形式（如2*x）
-    :param tokens: 待判断的Token列表
-    :return: 是否是系数乘以变量形式
-    """
-    # 单个变量可以看作1*变量
-    if (len(tokens) == 1 and
-            tokens[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
-        return True
-
-    # 检查 num * var 形式
-    if (len(tokens) == 3 and tokens[1].value == "*" and
-            Calculation.is_numeric([tokens[0]]) and
-            tokens[2].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
-        return True
-
-    return False
-
-
-@staticmethod
-def _get_coefficient(tokens: list[Token]) -> list[Token]:
-    """
-    获取系数乘以变量形式中的系数部分
-    :param tokens: 系数乘以变量形式的Token列表
-    :return: 系数部分的Token列表
-    """
-    if len(tokens) == 1:
-        # 单个变量，系数为1
-        return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
-
-    # 通常形式 a*x，返回系数a
-    return [tokens[0]]
-
-
-@staticmethod
-def _get_variable(tokens: list[Token]) -> Token:
-    """
-    获取系数乘以变量形式中的变量部分
-    :param tokens: 系数乘以变量形式的Token列表
-    :return: 变量部分的Token
-    """
-    if len(tokens) == 1:
-        # 单个变量
-        return tokens[0]
-
-    # 通常形式 a*x，返回变量x
-    return tokens[2]
-
-
-@staticmethod
-def _is_variable_power(tokens: list[Token]) -> bool:
-    """
-    判断Token列表是否表示变量的幂形式（如x^2）
-    :param tokens: 待判断的Token列表
-    :return: 是否是变量的幂形式
-    """
-    # 单个变量可以看作变量的一次幂
-    if (len(tokens) == 1 and
-            tokens[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
-        return True
-
-    # 检查 var^num 形式
-    if (len(tokens) == 3 and tokens[1].value == "^" and
-            tokens[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL] and
-            Calculation.is_numeric([tokens[2]])):
-        return True
-
-    # 检查 var^(expr) 形式
-    if (len(tokens) >= 5 and tokens[1].value == "^" and tokens[2].value == "(" and tokens[-1].value == ")" and
-            tokens[0].type in [Token.TYPE.SHORT_CUSTOM, Token.TYPE.LONG_CUSTOM, Token.TYPE.NATIVE_IRRATIONAL]):
-        return True
-
-    return False
-
-
-@staticmethod
-def _get_power_base(tokens: list[Token]) -> Token:
-    """
-    获取变量的幂形式中的底数（变量）部分
-    :param tokens: 变量的幂形式的Token列表
-    :return: 底数部分的Token
-    """
-    # 返回变量
-    return tokens[0]
-
-
-@staticmethod
-def _get_power_exponent(tokens: list[Token]) -> list[Token]:
-    """
-    获取变量的幂形式中的指数部分
-    :param tokens: 变量的幂形式的Token列表
-    :return: 指数部分的Token列表
-    """
-    if len(tokens) == 1:
-        # 单个变量，指数为1
-        return [Token(Token.TYPE.INTEGER, "1", [0, 0])]
-
-    if len(tokens) == 3:
-        # 形式 x^2，返回指数2
-        return [tokens[2]]
-
-    # 形式 x^(expr)，返回括号内表达式
-    return tokens[3:-1]
 
 
 class Function:

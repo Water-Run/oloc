@@ -1,6 +1,6 @@
 r"""
 :author: WaterRun
-:date: 2025-04-08
+:date: 2025-05-20
 :file: oloc_core.py
 :description: Core of oloc
 """
@@ -151,6 +151,9 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
     :return: None
     """
     start = time.time()
+    print(f'Oloc Test Config: \n'
+          f'from `{test_key}` in `{test_file}` select {"all" if random_choice == -1 else str(random_choice) + "(randomly)"} case(s);\n'
+          f'time limit {"disabled" if time_limit == -1 else str(time_limit) + "s"}; {"pause if exception" if pause_if_exception else ""}\n')
     try:
         # Read test cases from the file using the provided key
         tests = ss.read(test_key, file=test_file)
@@ -172,11 +175,15 @@ def run_test(test_file: str, test_key: str, time_limit: float = -1, *, pause_if_
             else:
                 print(f"Selecting {random_choice} random test cases from {len(tests)} total cases...")
                 tests = random.sample(tests, min(random_choice, len(tests)))
+        print('______________________________________________________________________________________\n\n')
 
         # Iterate through the selected test cases
         skip_count = 0
         for test in tests:
             try:
+                print(f'.............................................................................\n'
+                      f'Testing Expression: {test}\n'
+                      f'.............................................................................')
                 # Perform the calculation and print the result
                 print(calculate(test, time_limit=time_limit).format_detail(simp=False))
                 print("\n" * 5)
@@ -203,8 +210,6 @@ def oloc_version() -> str:
 
 """test"""
 if __name__ == "__main__":
-    print(calculate("x^23+5000000xy^100"))
-    input(">>")
     while True:
         run_test("./data/oloctest.ini", "test_cases", pause_if_exception=True, random_choice=5)
         input(">>>")
